@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HealthyVibes | Dua Konsep UX Mobile</title>
+  <style>
+    :root{color-scheme:light;--ink:#20362d;--muted:#68776f;--green:#245c43;--line:#e3e9e3}
+    *{box-sizing:border-box}
+    body{margin:0;background:#f1f3ee;color:var(--ink);font-family:Arial,Helvetica,sans-serif;line-height:1.5}
+    .review{max-width:1160px;margin:auto;padding:48px 32px}
+    .eyebrow{font-size:11px;letter-spacing:2px;font-weight:700;text-transform:uppercase;color:var(--green)}
+    h1{font-size:clamp(28px,4vw,44px);letter-spacing:-1.5px;line-height:1.15;margin:12px 0}
+    .intro{max-width:730px;color:var(--muted);font-size:15px}
+    .notice{padding:12px 16px;border:1px solid #d9e3d9;border-radius:12px;background:#e8eee5;font-size:12px;margin:22px 0 32px}
+    .concepts{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+    .concept-title{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .letter{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--green);color:white;font-weight:700}
+    .concept-title h2{font-size:19px;margin:0;line-height:1.25}
+    .concept-title small{color:var(--muted);font-size:11px}
+    .description{font-size:13px;color:var(--muted);min-height:60px;margin:12px 0 20px}
+    .phone{width:100%;max-width:390px;margin:auto;border:7px solid #20312b;border-radius:34px;overflow:hidden;background:white;box-shadow:0 18px 45px #18362a14}
+    .status{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 4px;font-size:11px;font-weight:bold}
+    .status span:last-child{letter-spacing:1px;font-size:10px}
+    .app-header{display:flex;align-items:center;justify-content:space-between;padding:15px 19px}
+    .brand{font-size:21px;letter-spacing:-1px;font-weight:800}
+    .brand b{color:#709b43}
+    .avatar{border:1px solid var(--line);padding:7px 10px;border-radius:20px;font-size:11px}
+    .a-content{padding:0 18px 18px}
+    .greeting{font-size:24px;line-height:1.22;letter-spacing:-.7px;margin:12px 0 5px}
+    .sub{font-size:12px;color:var(--muted);margin:0 0 18px}
+    .segmented{display:grid;grid-template-columns:1fr 1fr;background:#f0f3ee;border-radius:12px;padding:4px;gap:4px}
+    .segment{text-align:center;padding:9px 3px;border-radius:9px;font-size:12px;font-weight:bold}
+    .segment.active{background:var(--green);color:white}
+    .cutoff{margin:10px 0 15px;font-size:10px;color:#756348;background:#fbf5e9;padding:9px 11px;border-radius:8px}
+    .fulfillment{font-size:11px;display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+    .fulfillment b{color:var(--green)}
+    .search{border:1px solid var(--line);background:#fafbf9;border-radius:11px;margin:15px 0 12px;padding:12px;color:#79877e;font-size:12px}
+    .chips{display:flex;gap:7px;margin-bottom:19px}
+    .chip{padding:7px 11px;border:1px solid var(--line);border-radius:18px;font-size:10px;white-space:nowrap}
+    .chip.active{background:#e8f0e3;color:var(--green);border-color:#d8e7ce;font-weight:bold}
+    .section-heading{display:flex;justify-content:space-between;align-items:center;margin:0 0 10px}
+    .section-heading h3{font-size:15px;margin:0}
+    .section-heading span{font-size:10px;color:var(--muted)}
+    .product-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .product{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:white}
+    .product-category{padding:24px 12px;background:#e8efdf;color:#365b3c;font:italic 22px Georgia,serif}
+    .product-category.drink{background:#edf1df;color:#52683b}
+    .product-info{padding:10px}
+    .tag{font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:.8px;font-weight:bold}
+    .product h4{font-size:12px;line-height:1.4;margin:5px 0}
+    .product p{font-size:9px;color:var(--muted);margin:0 0 10px}
+    .price-row{display:flex;align-items:center;justify-content:space-between;gap:4px}
+    .price-row b{font-size:12px}
+    .add{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#e8f0e3;font-size:20px;color:var(--green)}
+    .payment-note{font-size:10px;padding:15px 0 0;color:var(--muted)}
+    .cart-a{background:var(--green);color:white;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;margin:0 12px 13px;border-radius:13px}
+    .cart-a strong{font-size:12px;display:block}
+    .cart-a small{font-size:10px;opacity:.8}
+    .cart-a .action{font-size:12px;font-weight:bold}
+    .bottom-a{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding:11px 4px 15px;font-size:10px;color:var(--muted)}
+    .bottom-a b{color:var(--green)}
+    .b{background:#fbf7ee}
+    .b .app-header{padding-bottom:10px}
+    .b .brand{font-family:Georgia,serif;font-size:24px}
+    .b .avatar{background:white}
+    .hero{position:relative;height:244px;margin:0 12px;border-radius:21px;overflow:hidden;background:#244b3b}
+    .hero-top{position:absolute;top:20px;left:19px;border:1px solid #b9ce9670;color:#dfecc5;border-radius:20px;padding:5px 10px;font-size:10px}
+    .hero-text{position:absolute;left:19px;bottom:20px;right:18px;z-index:1;color:white}
+    .hero-label{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#dfecc5}
+    .hero h3{font-family:Georgia,serif;font-size:40px;line-height:1.1;font-weight:normal;margin:8px 0}
+    .hero p{font-size:11px;margin:0;color:#e2eadd}
+    .b-content{padding:17px 18px}
+    .steps{display:flex;gap:8px;align-items:center;font-size:9px;color:#8a8c7d;margin-bottom:13px}
+    .steps .current{color:var(--green);font-weight:bold}
+    .steps .dash{height:1px;flex:1;background:#dce1d0}
+    .b h4{font-size:15px;margin:0 0 10px}
+    .schedule{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .schedule-card{border:1px solid #dedfcf;border-radius:12px;padding:12px 10px;background:#fffdf7}
+    .schedule-card strong{display:block;font-size:12px}
+    .schedule-card small{display:block;font-size:9px;color:#7a8274;margin-top:3px}
+    .schedule-card.selected{background:#eaf0df;border:1.5px solid #739453}
+    .deadline{font-size:10px;color:#667850;margin:9px 0 19px}
+    .feature-product{display:flex;gap:12px;background:#fffdf8;border:1px solid #e6e4d5;border-radius:14px;padding:14px;align-items:center}
+    .feature-product .info{flex:1}
+    .feature-product h5{font-size:12px;margin:4px 0}
+    .feature-product p{font-size:9px;color:var(--muted);margin:0 0 6px}
+    .feature-product strong{font-size:12px}
+    .b-cart{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid #e4e3d5;background:#fffcf5}
+    .b-cart small{display:block;font-size:9px;color:var(--muted)}
+    .b-cart strong{font-size:15px}
+    .b-cart .next{background:var(--green);border-radius:22px;color:white;padding:12px 19px;font-size:11px;font-weight:bold}
+    .bottom-b{display:flex;justify-content:space-around;background:#fffcf5;padding:8px 6px 15px;font-size:10px;color:#7c8272}
+    .bottom-b b{background:#e8eeda;color:var(--green);border-radius:15px;padding:5px 13px}
+    .bottom-b span{padding:5px}
+    .annotations{max-width:390px;margin:22px auto 0;display:grid;gap:9px;font-size:12px;color:var(--muted)}
+    .annotations div{padding-left:12px;border-left:3px solid #b6cba3}
+    .review-footer{margin-top:38px;border-top:1px solid #dbe2d6;padding-top:20px;font-size:13px;color:var(--muted)}
+    .review-footer strong{color:var(--ink)}
+    @media(max-width:850px){.concepts{gap:28px}.review{padding:30px 18px}.description{min-height:80px}}
+    @media(max-width:690px){.concepts{grid-template-columns:1fr;gap:42px}.description{min-height:0}.concept-title,.description{max-width:390px;margin-left:auto;margin-right:auto}.review{padding:25px 12px}.notice{font-size:11px}.phone{border-width:5px}.intro{font-size:13px}}
+    @media(max-width:355px){.a-content,.b-content{padding-left:12px;padding-right:12px}.chip{padding:6px 8px}.product-info{padding:7px}.product h4{font-size:11px}.price-row b{font-size:10px}.hero h3{font-size:28px}.app-header{padding-left:13px;padding-right:13px}.brand{font-size:19px}}
+    @media print{body{background:white}.review{padding:15px}.phone{box-shadow:none}.concepts{gap:20px}.notice{background:white}}
+  </style>
+</head>
+<body>
+  <main class="review">
+    <div class="eyebrow">HealthyVibes / Visual Review 01</div>
+    <h1>Makan sehat.<br>Pesan dengan mudah.</h1>
+    <p class="intro">Dua arah desain untuk toko makanan dan minuman sehat Anda. Preview utama ditampilkan dalam format HP, dengan struktur yang nanti diadaptasi untuk tablet dan desktop setelah konsep dipilih.</p>
+    <div class="notice"><strong>MOCKUP VISUAL, BUKAN APLIKASI AKTIF.</strong> Produk, harga dan isi keranjang adalah contoh, bukan data toko. Kontrol tidak melakukan transaksi. Nama HealthyVibes adalah usulan sementara. Layanan generasi foto belum memberikan hasil siap pakai; preview ini tanpa foto. Foto produk perlu ditinjau sebelum desain final dikunci.</div>
+    <div class="concepts">
+      <section aria-labelledby="concept-a">
+        <div class="concept-title"><span class="letter">A</span><div><h2 id="concept-a">Professional &amp; Functional</h2><small>Katalog ringkas / akses cepat / hijau bersih</small></div></div>
+        <p class="description">Langsung melihat kategori, mencari produk, dan menambah ke keranjang. Pilihan waktu serta cara penerimaan berada di awal, tanpa perlu berpindah langkah.</p>
+        <div class="phone" aria-label="Mockup konsep A pada smartphone">
+          <div class="status"><span>09:41</span><span>4G | 100%</span></div>
+          <header class="app-header"><div class="brand">healthy<b>vibes.</b></div><span class="avatar">Pesanan saya</span></header>
+          <div class="a-content">
+            <h3 class="greeting">Pilihan sehat<br>untuk hari Anda.</h3>
+            <p class="sub">Makanan segar dan minuman pilihan.</p>
+            <div class="segmented"><div class="segment active">Pesan langsung</div><div class="segment">Preorder besok</div></div>
+            <div class="cutoff">Preorder besok ditutup pukul <strong>17.00 waktu toko</strong>.</div>
+            <div class="fulfillment"><span><b>Diantar</b> &nbsp; / &nbsp; Ambil sendiri</span><span>Atur alamat &gt;</span></div>
+            <div class="search">Cari makanan atau minuman...</div>
+            <div class="chips"><span class="chip active">Semua</span><span class="chip">Makanan</span><span class="chip">Minuman</span><span class="chip">Paket</span></div>
+            <div class="section-heading"><h3>Menu pilihan</h3><span>Contoh produk</span></div>
+            <div class="product-grid">
+              <article class="product">
+                <div class="product-category">Eat well.</div>
+                <div class="product-info"><span class="tag">Makanan</span><h4>Chicken<br>Veggie Bowl</h4><p>Nasi merah &amp; sayuran</p><div class="price-row"><b>Rp35.000</b><span class="add" aria-label="Contoh tombol tambah">+</span></div></div>
+              </article>
+              <article class="product">
+                <div class="product-category drink">Feel fresh.</div>
+                <div class="product-info"><span class="tag">Minuman</span><h4>Green<br>Fresh Juice</h4><p>Apel &amp; bayam</p><div class="price-row"><b>Rp22.000</b><span class="add" aria-label="Contoh tombol tambah">+</span></div></div>
+              </article>
+            </div>
+            <div class="payment-note">Transfer / QRIS manual atau bayar saat diterima.<br>Preorder dibayar di muka.</div>
+          </div>
+          <div class="cart-a"><div><strong>2 item &middot; Rp57.000</strong><small>Contoh subtotal, belum termasuk ongkir</small></div><span class="action">Keranjang &gt;</span></div>
+          <nav class="bottom-a" aria-label="Contoh navigasi A"><b>Menu</b><span>Pesanan</span><span>Bantuan</span></nav>
+        </div>
+        <div class="annotations"><div>Produk dua kolom; informasi harga dan tombol tambah tetap mudah dijangkau.</div><div>Rencana mobile: ringkasan keranjang melekat di bawah layar saat menggulir.</div><div>Panel pengelola: navigasi operasional dengan tabel pesanan, filter, stok, serta laporan.</div></div>
+      </section>
+      <section aria-labelledby="concept-b">
+        <div class="concept-title"><span class="letter" style="background:#596d3a">B</span><div><h2 id="concept-b">Modern &amp; Innovative</h2><small>Etalase editorial / alur bertahap / krem alami</small></div></div>
+        <p class="description">Komposisi editorial dengan pesan utama yang besar. Pelanggan memilih waktu, menyusun menu, lalu menentukan antar atau ambil sendiri saat checkout.</p>
+        <div class="phone b" aria-label="Mockup konsep B pada smartphone">
+          <div class="status"><span>09:41</span><span>4G | 100%</span></div>
+          <header class="app-header"><div class="brand">healthyvibes.</div><span class="avatar">Cari menu</span></header>
+          <div class="hero">
+            <div class="hero-top">Makanan &amp; minuman sehat</div>
+            <div class="hero-text"><span class="hero-label">Fresh food, better days</span><h3>Sehat itu<br>bisa nikmat.</h3><p>Pilih menu Anda. Kami siapkan dengan segar.</p></div>
+          </div>
+          <div class="b-content">
+            <div class="steps"><span class="current">01 Waktu</span><span class="dash"></span><span>02 Menu</span><span class="dash"></span><span>03 Checkout</span></div>
+            <h4>Kapan ingin menikmati?</h4>
+            <div class="schedule"><div class="schedule-card"><strong>Hari ini</strong><small>Pesan dari stok tersedia</small></div><div class="schedule-card selected"><strong>Besok &middot; terpilih</strong><small>Preorder H-1</small></div></div>
+            <p class="deadline">Pesan sebelum 17.00 waktu toko &middot; bayar di muka</p>
+            <div class="section-heading"><h3>Lengkapi dengan minuman</h3><span>Contoh menu</span></div>
+            <article class="feature-product">
+              <div class="info"><span class="tag">Minuman pilihan</span><h5>Green Fresh Juice</h5><p>Apel &amp; bayam</p><strong>Rp22.000</strong></div><span class="add" aria-label="Contoh tombol tambah">+</span>
+            </article>
+            <p class="payment-note">Diantar atau diambil sendiri? Pilih di checkout.<br>Ongkir ditampilkan sebelum konfirmasi pesanan.</p>
+          </div>
+          <div class="b-cart"><div><small>Contoh: 2 item, belum termasuk ongkir</small><strong>Rp57.000</strong></div><span class="next">Lanjut pesan &gt;</span></div>
+          <nav class="bottom-b" aria-label="Contoh navigasi B"><b>Jelajahi</b><span>Kategori</span><span>Pesanan</span></nav>
+        </div>
+        <div class="annotations"><div>Banner editorial dan kartu menu horizontal memberikan pengalaman etalase yang berbeda. Foto akan ditinjau terpisah.</div><div>Alur bertahap mengurangi kepadatan informasi pada layar HP.</div><div>Panel pengelola: antrean visual berdasarkan status pesanan, dengan tampilan tabel untuk pencarian dan laporan.</div></div>
+      </section>
+    </div>
+    <footer class="review-footer"><strong>Rekomendasi awal: Konsep A.</strong> Cocok untuk pelanggan yang ingin cepat memilih dan memesan. Setelah pilihan Anda disetujui, tahap berikutnya adalah preview desktop, tablet, dan mobile, termasuk tampilan pengelola, lalu checklist final sebelum pembangunan aplikasi.</footer>
+  </main>
+</body>
+</html>

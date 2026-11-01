@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HealthyVibes | Preview Gabungan Responsive</title>
+<style>
+:root{--green:#065b55;--orange:#f58b32;--ink:#171717;--muted:#62666a;--cream:#fffcf6;--line:#e3e5e7}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f3f4;color:var(--ink);line-height:1.5}
+button{font:inherit;cursor:pointer}button:focus-visible{outline:3px solid var(--orange);outline-offset:3px}
+.review{max-width:1440px;margin:auto;padding:28px}.eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--green);font-weight:bold}
+h1{font:36px/1.15 Georgia,serif;margin:12px 0}p{margin:8px 0}
+.intro{max-width:850px;color:var(--muted);font-size:14px}.notice{padding:12px 16px;background:var(--cream);border:1px solid #f4d5b6;border-left:4px solid var(--orange);border-radius:12px;font-size:12px;margin:20px 0}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0}
+.toolbar button{border:1px solid var(--line);background:white;border-radius:10px;padding:12px 16px;min-height:44px;font-size:13px;color:var(--ink)}
+.toolbar button[aria-pressed=true]{background:var(--green);color:white;border-color:var(--green)}
+.group{display:flex;gap:7px;flex-wrap:wrap}.separator{width:1px;height:30px;background:var(--line);margin:0 4px}
+#size-label{font-size:12px;color:var(--muted)}.stage{padding:18px;background:#e3e5e7;border-radius:18px;overflow:hidden}
+#frame-wrap{position:relative;margin:auto;max-width:100%}iframe{display:block;border:0;background:var(--cream);border-radius:12px;transform-origin:top left}
+.notes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}.note{padding:18px;border:1px solid var(--line);border-radius:13px;background:white;font-size:13px}
+.note strong{display:block;margin-bottom:6px}.note p{color:var(--muted)}
+.baseline{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.palette{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.swatch{display:flex;align-items:center;gap:8px;background:white;border:1px solid var(--line);border-radius:20px;padding:7px 12px;font-size:11px}
+.swatch i{width:18px;height:18px;border-radius:50%;background:var(--color);border:1px solid #00000018}
+@media(max-width:650px){.review{padding:18px 12px}h1{font-size:28px}.notes{grid-template-columns:1fr}.stage{padding:8px}.separator{display:none}.toolbar button{padding:11px 12px}}
+</style>
+</head>
+<body>
+<main class="review">
+  <div class="eyebrow">HealthyVibes / Palet Disetujui / Layout Menunggu Persetujuan</div>
+  <h1>Visual modern. Pemesanan praktis.</h1>
+  <p class="intro">Revisi identitas Healthy Vibes: hijau tosca sebagai warna utama, orange untuk aksi dan aksen, cream untuk latar hangat, serta abu-abu muda, hitam dan putih untuk keterbacaan. Struktur gabungan A dan B dipertahankan.</p>
+  <div class="palette" aria-label="Palet warna yang disetujui">
+    <span class="swatch"><i style="--color:#065b55"></i>Tosca Tua #065B55</span>
+    <span class="swatch"><i style="--color:#f58b32"></i>Orange #F58B32</span>
+    <span class="swatch"><i style="--color:#fffcf6"></i>Cream Muda #FFFCF6</span>
+    <span class="swatch"><i style="--color:#f2f3f4"></i>Abu muda #F2F3F4</span>
+    <span class="swatch"><i style="--color:#171717"></i>Hitam #171717</span>
+    <span class="swatch"><i style="--color:#ffffff"></i>Putih #FFFFFF</span>
+  </div>
+  <div class="notice"><strong>PREVIEW VISUAL SAJA.</strong> Data, produk, harga, nama pelanggan, dan KPI di bawah adalah contoh desain, bukan data nyata. Kontrol aplikasi tidak aktif. Tombol perangkat dan tampilan di halaman ini hanya mengganti preview. Tanpa foto sampai hasil gambar layak ditinjau; bukan aplikasi final dan belum diuji untuk produksi.</div>
+  <div class="toolbar">
+    <div class="group" aria-label="Pilih tampilan">
+      <button type="button" data-mode="shop" aria-pressed="true">Toko Pelanggan</button>
+      <button type="button" data-mode="admin" aria-pressed="false">Panel Pengelola</button>
+      <button type="button" data-mode="checkout" aria-pressed="false">Checkout</button>
+      <button type="button" data-mode="login" aria-pressed="false">Login</button>
+      <button type="button" data-mode="users" aria-pressed="false">Setup User</button>
+      <button type="button" data-mode="productSetup" aria-pressed="false">Setup Produk</button>
+    </div>
+    <span class="separator"></span>
+    <div class="group" aria-label="Pilih ukuran perangkat">
+      <button type="button" data-device="desktop" aria-pressed="false">Desktop</button>
+      <button type="button" data-device="tablet" aria-pressed="false">Tablet</button>
+      <button type="button" data-device="mobile" aria-pressed="true">HP</button>
+      <button type="button" data-device="small" aria-pressed="false">HP Kecil</button>
+      <button type="button" id="rotate" aria-pressed="false">Landscape</button>
+    </div>
+  </div>
+  <div id="checkout-tools" hidden>
+    <p class="intro">Pilih langkah dan contoh skenario untuk menilai desain. Tidak ada data yang dikirim, pembayaran atau pesanan nyata.</p>
+    <div class="toolbar">
+      <div class="group" aria-label="Langkah checkout">
+        <button type="button" data-step="1" aria-pressed="true">1. Penerima</button>
+        <button type="button" data-step="2" aria-pressed="false">2. Pembayaran</button>
+        <button type="button" data-step="3" aria-pressed="false">3. Tinjau Pesanan</button>
+      </div>
+      <div class="group" aria-label="Contoh skenario">
+        <button type="button" data-scenario="preorder" aria-pressed="true">Preorder / Antar</button>
+        <button type="button" data-scenario="direct" aria-pressed="false">Langsung / Ambil</button>
+      </div>
+    </div>
+  </div>
+  <p id="size-label" aria-live="polite"></p>
+  <div class="stage"><div id="frame-wrap"><iframe id="preview" title="Preview toko pelanggan ukuran HP"></iframe></div></div>
+  <div class="notes">
+    <div class="note"><strong>Desktop / 1280 px</strong><p>Toko: katalog tiga kolom dan ringkasan keranjang di kanan. Pengelola: sidebar, KPI empat kolom, tabel pesanan dan antrean status.</p></div>
+    <div class="note"><strong>Tablet / 820 px</strong><p>Toko: katalog dua kolom dan keranjang bawah. Pengelola: navigasi mendatar, KPI dua kolom; tabel dapat digulir dalam area sendiri.</p></div>
+    <div class="note"><strong>HP / 390 px dan 320 px</strong><p>Toko: banner ringkas, menu dua kolom, keranjang melekat di bawah. Pengelola: menu drawer yang direncanakan, kartu pesanan menggantikan tabel; filter dan ekspor tetap tersedia.</p></div>
+  </div>
+  <div class="baseline"><strong>Palet SETUJU; layout belum dikunci:</strong> palet di atas menjadi acuan tetap; judul Georgia dan teks Arial; kartu membulat; kontrol utama minimal 44 px. Header dan sidebar disiapkan untuk logo Healthy Vibes dengan proporsi asli, tanpa dipotong; sekarang hanya nama merek, bukan logo final. Logo belum tersedia. Bootstrap digunakan saat implementasi final. Preview checkout tersedia dalam tiga langkah. Layout lintas perangkat, foto dan logo masih perlu ditinjau sebelum persetujuan build.</div>
+</main>
+<script>
+// This script renders visual mockups only; it has no order or database operations.
+const shared = `
+  :root{--green:#065b55;--orange:#f58b32;--ink:#171717;--muted:#62666a;--cream:#fffcf6;--line:#e3e5e7}
+  *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:14px/1.5 Arial,Helvetica,sans-serif}
+  h1,h2,h3,p{margin:0}small{font-size:12px;color:var(--muted)}.brand{font:26px Georgia,serif;letter-spacing:-1px}
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 28px;background:#fffdf7;border-bottom:1px solid var(--line)}
+  .nav{display:flex;gap:24px;font-size:13px}.pill{border:1px solid var(--line);border-radius:24px;padding:10px 15px;font-size:12px}
+  .mock-label{background:#e9efdf;text-align:center;font-size:10px;padding:5px;color:#466039}
+  .content{max-width:1200px;margin:auto;padding:26px}.hero{background:var(--green);color:#fffdf0;border-radius:20px;padding:25px 30px;margin-bottom:22px}
+  .hero small{color:#d7e5be;letter-spacing:1.5px;text-transform:uppercase;font-size:10px}.hero h1{font:36px/1.12 Georgia,serif;margin:8px 0}.hero p{font-size:13px;color:#e0e9d7}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;align-items:start}
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}.toggle{display:flex;border:1px solid var(--line);background:white;padding:4px;border-radius:12px}
+  .choice{padding:11px 16px;min-height:44px;border-radius:8px;font-size:13px}.active{background:var(--green);color:white}.delivery{font-size:12px;color:var(--green)}
+  .cutoff{padding:10px 12px;background:#f5ecd8;border-radius:10px;font-size:12px;color:#655334;margin-bottom:16px}
+  .search{padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:white;color:var(--muted);margin-bottom:12px;min-height:46px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.chip{border:1px solid var(--line);border-radius:22px;padding:11px 15px;font-size:12px;min-height:44px;background:white}
+  .chip.selected{background:#e8efdc;border-color:#ccdbbe;color:var(--green);font-weight:bold}
+  .section-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.section-title h2{font-size:20px}
+  .products{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .product{border:1px solid var(--line);border-radius:14px;background:#fffdf8;padding:18px;min-width:0}
+  .category{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--green)}
+  .product h3{font-size:16px;line-height:1.4;margin:8px 0}.product p{font-size:12px;color:var(--muted);margin-bottom:15px}
+  .price{display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:14px;font-weight:bold}
+  .plus{display:grid;place-items:center;min-width:44px;height:44px;border-radius:12px;background:#e7efdb;color:var(--green);font-size:23px}
+  .basket{border:1px solid var(--line);border-radius:16px;background:white;padding:20px;position:sticky;top:16px}
+  .basket h2{font:23px Georgia,serif;margin-bottom:18px}.basket-line{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .total{display:flex;justify-content:space-between;margin:16px 0 4px}.cta{display:block;text-align:center;border-radius:12px;background:var(--green);color:white;padding:13px 16px;font-weight:bold;margin-top:16px;min-height:46px}
+  .payment{font-size:12px;color:var(--muted);margin-top:18px}.mobile-cart,.mobile-nav{display:none}
+  .admin-shell{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:100vh}.sidebar{background:var(--green);color:white;padding:24px 16px}
+  .sidebar .brand{margin-bottom:34px}.side-item{padding:13px;border-radius:10px;margin-bottom:8px;font-size:13px}.side-item.on{background:#ffffff1c;font-weight:bold}
+  .admin-content{padding:28px;min-width:0}.admin-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:20px}
+  .admin-heading h1{font:30px Georgia,serif}.admin-heading p{font-size:12px;color:var(--muted);margin-top:6px}
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+  .kpi{padding:18px;background:white;border:1px solid var(--line);border-radius:14px}.kpi strong{font-size:25px;display:block;margin-top:8px}.kpi small{display:block}
+  .work{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:20px}.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+  .panel h2{font-size:18px;margin-bottom:14px}.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}
+  .filter{font-size:12px;min-height:44px;padding:12px;border:1px solid var(--line);border-radius:8px}
+  .table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}th,td{padding:14px 10px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:#f4f6ee;color:#56664f}.badge{background:#eaf0dd;color:#426137;border-radius:16px;padding:5px 9px;font-size:11px}.badge.wait{background:#fff1d4;color:#7c5d1d}
+  .queue{padding:14px;background:#f7f8f0;border:1px solid var(--line);border-radius:10px;margin-bottom:10px}.queue b{font-size:13px;display:block}.queue small{display:block;margin-top:5px}
+  .admin-cards,.compact-header,.tablet-nav{display:none}
+  @media(max-width:1050px){.products{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}.basket{display:none}
+  .content{padding-bottom:125px}.mobile-cart{position:fixed;bottom:48px;left:18px;right:18px;padding:12px 16px;display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--green);color:white;border-radius:13px}
+  .mobile-cart small{color:#e1ead6;font-size:11px}.mobile-cart .continue{background:#ffffff19;padding:10px 14px;min-height:44px;border-radius:9px;font-size:12px;font-weight:bold}
+  .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;height:48px;align-items:center;justify-content:space-around;background:#fffdf7;border-top:1px solid var(--line);font-size:12px}
+  .admin-shell{grid-template-columns:1fr}.sidebar{display:none}.tablet-nav{display:flex;gap:20px;padding:13px 24px;background:var(--green);color:white;font-size:12px;flex-wrap:wrap}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.work{grid-template-columns:1fr}.admin-content{padding:22px}.nav{gap:14px}.compact-header{display:flex;padding:18px 24px;justify-content:space-between;border-bottom:1px solid var(--line)}
+  }
+  @media(max-width:600px){.header{padding:16px}.brand{font-size:23px}.nav{display:none}.pill{font-size:11px;padding:10px}
+  .content{padding:16px 14px 142px}.hero{padding:19px 20px;border-radius:16px;margin-bottom:18px}.hero h1{font-size:30px}.hero p{font-size:12px}
+  .choice{padding:11px 12px;font-size:12px}.toggle{width:100%}.choice{flex:1;text-align:center}.delivery{padding:4px 0}
+  .product{padding:12px}.product h3{font-size:14px}.product p{font-size:11px}.price{font-size:12px}.section-title h2{font-size:18px}
+  .section-title small{font-size:10px}.chips{gap:6px}.chip{padding:10px 12px;font-size:11px}.cutoff{font-size:11px}
+  .mobile-cart{left:10px;right:10px}.mobile-cart b{font-size:13px}.mobile-cart .continue{padding:11px 12px}
+  .tablet-nav{display:none}.compact-header{padding:16px}.admin-content{padding:16px}.admin-heading{align-items:start}.admin-heading h1{font-size:25px}
+  .kpi{padding:14px}.kpi strong{font-size:21px}.kpi small{font-size:11px}.table-wrap{display:none}.admin-cards{display:grid;gap:12px}
+  .order-card{border:1px solid var(--line);border-radius:12px;padding:14px}.order-top{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px}
+  .order-card p{margin:8px 0;font-size:12px}.order-card small{font-size:11px}.order-action{min-height:44px;display:flex;align-items:center;color:var(--green);font-size:12px;font-weight:bold;margin-top:8px}
+  .panel{padding:14px}.admin-content .payment{font-size:11px}.filter{flex:1;min-width:110px}
+  }
+  @media(max-width:350px){.price{flex-wrap:wrap}.price .plus{margin-left:auto}.product h3{font-size:13px}.chips{gap:4px}.chip{padding:10px}.hero h1{font-size:27px}}
+  .brand{display:flex;flex-direction:column;justify-content:center;flex-shrink:0;min-height:44px;font:700 21px/1.15 Arial,Helvetica,sans-serif;letter-spacing:-.6px}
+  .brand .brand-note{font:10px/1.4 Arial,Helvetica,sans-serif;letter-spacing:0;color:var(--muted);margin-top:4px}
+  .brand img{max-width:150px;max-height:48px;object-fit:contain}
+  .header,.compact-header,.mobile-nav{background:white}
+  .mock-label{background:#f2f3f4;color:var(--muted)}
+  .hero{color:white;border-top:4px solid var(--orange)}
+  .hero small{color:white}.hero p{color:#e5f5f3}
+  .cutoff{background:var(--cream);color:#7b4011;border:1px solid #f4d5b6;border-left:4px solid var(--orange)}
+  .chip.selected{background:#e1f3f0;border-color:#a7d6d1}
+  .product{background:white}.plus{background:var(--orange);color:var(--ink)}
+  .cta{background:var(--orange);color:var(--ink)}
+  .sidebar .brand-note{color:#e5f5f3}.side-item.on{border-left:3px solid var(--orange)}
+  th,.queue{background:#f2f3f4}th{color:var(--muted)}
+  .badge{background:#e1f3f0;color:#08635e}.badge.wait{background:#fff0df;color:#7b4011}
+  .mobile-cart small{color:#e5f5f3}.mobile-cart .continue{background:var(--orange);color:var(--ink)}
+  .mobile-nav b{color:var(--green)}
+  @media(max-width:600px){.brand{font-size:19px}.brand img{max-width:130px;max-height:44px}}
+  .checkout-content{max-width:1050px}.checkout-title{font:30px Georgia,serif;margin-bottom:8px}
+  .progress{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.progress span{padding:10px 12px;border:1px solid var(--line);border-radius:20px;font-size:12px;background:white}
+  .progress .current{background:var(--green);color:white;border-color:var(--green)}
+  .checkout-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:22px;align-items:start}
+  .checkout-panel{padding:22px;background:white;border:1px solid var(--line);border-radius:16px}
+  .checkout-panel h2{font-size:20px;margin-bottom:16px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .field{font-size:12px;min-width:0}.field b{display:block;margin-bottom:6px}.field.wide{grid-column:1/-1}
+  .input-demo{border:1px solid var(--line);border-radius:10px;min-height:46px;padding:12px;font-size:14px;background:#fdfdfd}
+  .input-demo.address{min-height:78px}.hint{font-size:11px;color:var(--muted);margin-top:6px}
+  .option{padding:15px;border:1px solid var(--line);border-radius:12px;margin-bottom:12px}.option.selected{border:2px solid var(--green);background:#f3faf8}
+  .option b{display:block;font-size:14px}.option p{font-size:12px;color:var(--muted);margin-top:5px}
+  .option.unavailable{background:#f2f3f4}.checkout-summary{background:white;border:1px solid var(--line);padding:20px;border-radius:16px}
+  .checkout-summary h2{font-size:18px;margin-bottom:14px}.summary-item{padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .summary-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;font-size:13px}.summary-row.grand{font-weight:bold;font-size:17px;border-top:1px solid var(--line);margin-top:8px;padding-top:14px}
+  .review-section{border-bottom:1px solid var(--line);padding:14px 0}.review-section b{display:block;font-size:13px}.review-section p{font-size:13px;margin:5px 0}
+  .checkout-actions{display:flex;gap:10px;margin-top:18px}.checkout-actions span{padding:12px 16px;min-height:46px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:13px}
+  .checkout-actions .forward{background:var(--orange);color:var(--ink);border-color:var(--orange);font-weight:bold;flex:1}
+  .privacy{font-size:11px;color:var(--muted);margin-top:14px}
+  @media(max-width:800px){.checkout-layout{grid-template-columns:1fr}.checkout-summary{order:2}}
+  @media(max-width:600px){.checkout-content{padding-bottom:24px}.checkout-title{font-size:26px}.checkout-panel,.checkout-summary{padding:16px}.fields{grid-template-columns:1fr}.progress{gap:6px}.progress span{padding:8px;font-size:11px}}
+  .login-layout{display:grid;grid-template-columns:1fr 1fr;gap:40px;max-width:960px;margin:40px auto;padding:26px;align-items:center}
+  .login-story{background:var(--green);border-top:4px solid var(--orange);color:white;padding:36px;border-radius:20px}
+  .login-story h1{font:34px/1.2 Georgia,serif;margin:18px 0}.login-story p{font-size:14px;color:#e5f5f3}
+  .login-story .brand-note{color:#e5f5f3}.login-form h2{font:28px Georgia,serif;margin-bottom:12px}
+  .login-form .field{margin-top:18px}.login-form .cta{margin-top:22px}
+  .user-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;align-items:start}
+  .account-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .account-actions span{min-height:44px;display:flex;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:12px}
+  .users-form .field{margin-bottom:15px}.role-note{padding:12px;background:var(--cream);border:1px solid var(--line);border-radius:10px;font-size:12px}
+  @media(max-width:1050px){.user-layout{grid-template-columns:1fr}}
+  @media(max-width:600px){.login-layout{grid-template-columns:1fr;padding:16px;margin:0;gap:20px}.login-story{padding:22px}.login-story h1{font-size:27px;margin:12px 0}}
+  .product-setup{max-width:1180px;margin:auto}.product-editor{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px}
+  .upload-area{border:2px dashed #99bdb7;border-radius:16px;background:var(--cream);padding:26px 18px;text-align:center;min-height:210px;display:flex;flex-direction:column;justify-content:center}
+  .upload-area strong{font-size:18px;color:var(--green)}.upload-area p{font-size:12px;color:var(--muted);margin:10px 0}
+  .upload-area .cta{margin:10px 0}.product-editor .field{margin-bottom:18px}
+  .catalog-preview{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+  .catalog-preview h3{font-size:14px;margin-bottom:12px}.product-setup .product{background:var(--cream)}
+  .setup-list{margin-top:24px}.setup-list .table-wrap{display:block}.editor-title{margin-bottom:18px}
+  .editor-title h2{margin-bottom:4px}.editor-title p{font-size:12px;color:var(--muted)}
+  @media(max-width:800px){.product-editor{grid-template-columns:1fr}.upload-area{min-height:170px}}
+  @media(max-width:600px){.setup-list .table-wrap{display:none}.product-setup .admin-heading{flex-wrap:wrap}.upload-area{padding:18px}}
+  .promo-box{border:1px solid var(--line);border-left:4px solid var(--orange);border-radius:12px;padding:16px;margin:18px 0;background:var(--cream)}
+  .promo-box h3{font-size:16px;margin-bottom:8px}.promo-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .promo-fields .field{margin-bottom:0}.old-price{font-size:12px;color:var(--muted);text-decoration:line-through}.promo-price{color:var(--green)}
+  @media(max-width:600px){.promo-fields{grid-template-columns:1fr}}
+`;
+const brand = '<span class="brand" aria-label="Healthy Vibes, logo akan ditambahkan">Healthy Vibes<span class="brand-note">Logo akan ditambahkan</span></span>';
+const products = [
+  ['Makanan','Chicken Veggie Bowl','Nasi merah dan sayuran','Rp35.000'],
+  ['Minuman','Green Fresh Juice','Apel dan bayam','Rp22.000'],
+  ['Paket','Bowl + Fresh Juice','Makan dan minum praktis','Rp57.000'],
+  ['Makanan','Salad Sayur Segar','Sayur dengan dressing terpisah','Rp28.000']
+];
+const orders = [
+  ['HV-001','Dina','Langsung / Antar','Rp57.000','Diproses',''],
+  ['HV-002','Rian','Preorder / Ambil','Rp35.000','Belum lunas','wait'],
+  ['HV-003','Sari','Langsung / Ambil','Rp22.000','Siap diambil','']
+];
+function shop(){
+return `<div class="mock-label">DATA CONTOH UNTUK DESAIN</div>
+<header class="header">${brand}<nav class="nav"><b>Menu</b><span>Pesanan saya</span><span>Bantuan</span></nav><span class="pill">Diantar / Ambil sendiri</span></header>
+<main class="content">
+<section class="hero"><small>Makanan &amp; minuman sehat</small><h1>Sehat itu bisa nikmat.</h1><p>Pilih menu favorit. Pesan hari ini atau siapkan untuk besok.</p></section>
+<div class="layout"><section>
+<div class="controls"><div class="toggle"><span class="choice active">Pesan langsung</span><span class="choice">Preorder besok</span></div><span class="delivery">Diantar &middot; Atur alamat &gt;</span></div>
+<div class="cutoff">Preorder besok ditutup <b>17.00 waktu toko</b>. Dibayar di muka.</div>
+<div class="search">Cari makanan atau minuman...</div>
+<div class="chips"><span class="chip selected">Semua</span><span class="chip">Makanan</span><span class="chip">Minuman</span><span class="chip">Paket</span></div>
+<div class="section-title"><h2>Menu pilihan</h2><small>Contoh produk &amp; harga</small></div>
+<div class="products">${products.map(p=>`<article class="product"><span class="category">${p[0]}</span><h3>${p[1]}</h3><p>${p[2]}</p><div class="price"><b>${p[3]}</b><span class="plus">+</span></div></article>`).join('')}</div>
+<p class="payment">Transfer bank / QRIS manual atau bayar saat diterima / diambil. Pembayaran manual diverifikasi pengelola. Ketersediaan mengikuti stok dan kuota.</p>
+</section><aside class="basket"><h2>Keranjang Anda</h2><small>Contoh ringkasan pesanan</small>
+<div class="basket-line"><span>1 &times; Chicken Bowl</span><b>Rp35.000</b></div><div class="basket-line"><span>1 &times; Green Juice</span><b>Rp22.000</b></div>
+<div class="total"><b>Subtotal</b><b>Rp57.000</b></div><small>Ongkir dihitung setelah alamat dipilih.</small><span class="cta">Lanjut checkout &gt;</span><p class="payment">Tahap berikut: data penerima, antar/ambil, pembayaran, lalu tinjau pesanan.</p></aside></div>
+</main><div class="mobile-cart"><div><b>2 item &middot; Rp57.000</b><br><small>Contoh subtotal, belum ongkir</small></div><span class="continue">Keranjang &gt;</span></div>
+<nav class="mobile-nav"><b>Menu</b><span>Pesanan</span><span>Bantuan</span></nav>`;
+}
+function admin(){
+return `<div class="mock-label">PANEL PENGELOLA / SEMUA KPI DAN PESANAN ADALAH CONTOH</div>
+<div class="admin-shell"><aside class="sidebar">${brand}${['Dashboard','Pesanan','Produk & Stok','Laporan','Setup User','Pengaturan','Keluar'].map((x,i)=>`<div class="side-item ${i===0?'on':''}">${x}</div>`).join('')}<small style="color:#e5f5f3">Contoh tampilan Admin. Menu final mengikuti izin pengguna.</small></aside>
+<div><header class="compact-header">${brand}<span class="pill">Menu &equiv;</span></header>
+<nav class="tablet-nav"><b>Dashboard</b><span>Pesanan</span><span>Produk &amp; Stok</span><span>Laporan</span><span>Setup User</span><span>Pengaturan</span><span>Keluar</span></nav>
+<main class="admin-content"><div class="admin-heading"><div><h1>Ringkasan toko</h1><p>Operasional hari ini &middot; waktu lokal toko</p></div><span class="pill">Pengelola</span></div>
+<div class="kpis">${[['Pesanan hari ini','12','Contoh seluruh status'],['Preorder besok','8','Contoh pesanan H-1'],['Belum lunas','3','Perlu verifikasi'],['Penjualan lunas','Rp420.000','Contoh total terverifikasi']].map(k=>`<div class="kpi"><small>${k[0]}</small><strong>${k[1]}</strong><small>${k[2]}</small></div>`).join('')}</div>
+<div class="work"><section class="panel"><h2>Pesanan terbaru</h2><div class="filters"><span class="filter">Cari nomor / nama...</span><span class="filter">Periode: Hari ini</span><span class="filter">Status: Semua</span><span class="filter">Jenis: Semua</span><span class="filter">Urut: Terbaru</span><span class="filter">PDF / Excel</span></div>
+<div class="table-wrap"><table><thead><tr><th>Pesanan</th><th>Pelanggan</th><th>Jenis</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${orders.map(o=>`<tr><td>${o[0]}</td><td>${o[1]}</td><td>${o[2]}</td><td>${o[3]}</td><td><span class="badge ${o[5]}">${o[4]}</span></td><td>Detail &gt;</td></tr>`).join('')}</tbody></table></div>
+<div class="admin-cards">${orders.map(o=>`<article class="order-card"><div class="order-top"><b>${o[0]} &middot; ${o[1]}</b><span class="badge ${o[5]}">${o[4]}</span></div><p>${o[2]} &middot; <b>${o[3]}</b></p><small>Data contoh, bukan transaksi nyata</small><span class="order-action">Lihat detail / kelola &gt;</span></article>`).join('')}</div>
+<p class="payment">Menampilkan 3 contoh pesanan. Hapus/ubah sesuai izin; riwayat transaksi tetap tersimpan. Ekspor mengikuti filter dan hak akses.</p></section>
+<aside class="panel"><h2>Prioritas operasional</h2><div class="queue"><b>Verifikasi pembayaran</b><small>3 contoh pesanan perlu diperiksa.</small></div><div class="queue"><b>Siapkan preorder besok</b><small>Batas masuk 17.00 waktu toko.</small></div><div class="queue"><b>Periksa stok &amp; kuota</b><small>Pisahkan stok langsung dan kuota preorder.</small></div><p class="payment">Status pembayaran dan pemenuhan ditampilkan terpisah pada detail pesanan.</p></aside></div></main></div></div>`;
+}
+function checkout(){
+  const pre=scenario==='preorder';
+  const receipt=pre?'Diantar ke alamat':'Ambil sendiri di toko';
+  const payment=pre?'Transfer bank / QRIS manual':'Bayar saat diambil';
+  const total=pre?'Rp67.000':'Rp57.000';
+  const summary=`<aside class="checkout-summary"><h2>Ringkasan pesanan</h2><small>Seluruh nilai adalah contoh desain</small>
+    <div class="summary-item">1 &times; Chicken Veggie Bowl<br><b>Rp35.000</b></div>
+    <div class="summary-item">1 &times; Green Fresh Juice<br><b>Rp22.000</b></div>
+    <div class="summary-row"><span>Subtotal</span><b>Rp57.000</b></div>
+    <div class="promo-box"><h3>Punya voucher?</h3><div class="input-demo">Masukkan kode voucher</div><span class="cta">Gunakan (mockup)</span><p class="hint">Voucher tidak dapat digabung dengan diskon produk. Belum ada voucher diterapkan. Syarat dan potongan diverifikasi backend pada aplikasi final.</p></div>
+    <div class="summary-row"><span>Ongkir contoh</span><b>${pre?'Rp10.000':'Rp0'}</b></div>
+    <div class="summary-row grand"><span>Total contoh</span><b>${total}</b></div>
+    <p class="payment">${pre?'Preorder besok, diantar.':'Pesanan langsung, ambil sendiri.'} Total final dihitung backend sesuai produk, alamat, dan tarif toko.</p></aside>`;
+  let body='';
+  if(checkoutStep===1)body=`<h2>Data penerima</h2><div class="fields">
+    <div class="field"><b>Nama penerima *</b><div class="input-demo">Pelanggan Contoh</div></div>
+    <div class="field"><b>Nomor HP *</b><div class="input-demo">08xx xxxx xxxx</div><p class="hint">Digunakan untuk koordinasi pesanan.</p></div>
+    <div class="field wide"><b>Cara menerima pesanan</b><div class="toggle"><span class="choice ${pre?'active':''}">Diantar</span><span class="choice ${pre?'':'active'}">Ambil sendiri</span></div></div>
+    ${pre?`<div class="field wide"><b>Wilayah pengantaran *</b><div class="input-demo">Wilayah contoh &middot; ongkir Rp10.000</div></div>
+    <div class="field wide"><b>Alamat lengkap *</b><div class="input-demo address">Alamat contoh, nomor rumah dan patokan.</div><p class="hint">Alamat wajib untuk pengantaran; wilayah harus dilayani toko.</p></div>`:
+    `<div class="field wide"><b>Lokasi pengambilan</b><div class="input-demo">Healthy Vibes &middot; alamat toko akan diatur</div><p class="hint">Tidak perlu alamat pengantaran. Jam layanan mengikuti pengaturan toko.</p></div>`}
+    <div class="field wide"><b>Waktu penerimaan</b><div class="input-demo">${pre?'Besok &middot; slot contoh 11.00-12.00':'Hari ini &middot; slot tersedia dari toko'}</div><p class="hint">Slot dan jam operasional ini usulan, belum ditetapkan.</p></div>
+    <div class="field wide"><b>Catatan (opsional)</b><div class="input-demo address">Contoh: dressing dipisah.</div></div></div>`;
+  if(checkoutStep===2)body=`<h2>Pilih pembayaran</h2>
+    <div class="option ${pre?'selected':''}"><b>Transfer bank / QRIS manual</b><p>Instruksi rekening atau QRIS toko ditampilkan setelah pesanan tersimpan. Bukan pembayaran otomatis.</p></div>
+    <div class="option ${pre?'unavailable':'selected'}"><b>Bayar saat ${pre?'diterima / diambil':'diambil'}</b><p>${pre?'Tidak tersedia untuk preorder: pembayaran wajib di muka.':'Tersedia untuk pesanan langsung; pengelola mencatat pembayaran yang benar-benar diterima.'}</p></div>
+    <div class="cutoff">${pre?'Preorder untuk besok ditutup pukul 17.00 waktu toko.':'Pesanan langsung mengikuti stok dan jam layanan.'}</div>
+    <p class="payment">Bukti transfer tidak otomatis membuat pesanan lunas. Pengelola harus memeriksa transaksi masuk. Batas pembayaran dan penahanan stok/kuota perlu disepakati dalam blueprint.</p>`;
+  if(checkoutStep===3)body=`<h2>Tinjau sebelum memesan</h2>
+    <div class="review-section"><b>Penerima</b><p>Pelanggan Contoh &middot; 08xx xxxx xxxx</p></div>
+    <div class="review-section"><b>${receipt}</b><p>${pre?'Alamat contoh dalam wilayah yang dilayani.':'Alamat dan petunjuk lokasi toko akan ditampilkan.'}</p></div>
+    <div class="review-section"><b>${pre?'Preorder besok':'Pesanan langsung hari ini'}</b><p>${pre?'Slot contoh 11.00-12.00, waktu lokal toko.':'Slot pengambilan mengikuti konfirmasi toko.'}</p></div>
+    <div class="review-section"><b>Pembayaran: ${payment}</b><p>${pre?'Status awal belum lunas; instruksi pembayaran ditampilkan setelah tersimpan.':'Status awal belum lunas; dibayar saat diambil.'}</p></div>
+    <div class="cutoff" style="margin-top:16px">Setelah tersimpan, pelanggan mendapat nomor pesanan dan akses status pribadi. Status pemenuhan dan pembayaran ditampilkan terpisah.</div>
+    <p class="privacy">Kebijakan perubahan, pembatalan dan pembayaran perlu ditetapkan sebelum build. Pada aplikasi final, pelanggan dapat kembali memperbaiki data sebelum konfirmasi.</p>`;
+  return `<div class="mock-label">CHECKOUT CONTOH / TIDAK ADA PESANAN ATAU PEMBAYARAN NYATA</div>
+    <header class="header">${brand}<span class="pill">Checkout</span></header><main class="content checkout-content">
+    <h1 class="checkout-title">Selesaikan pesanan Anda.</h1><small>${pre?'Contoh preorder / antar':'Contoh pesanan langsung / ambil sendiri'}</small>
+    <nav class="progress">${['Penerima','Pembayaran','Tinjau pesanan'].map((s,i)=>`<span class="${checkoutStep===i+1?'current':''}">${i+1}. ${s}</span>`).join('')}</nav>
+    <div class="checkout-layout"><section class="checkout-panel">${body}
+    <div class="checkout-actions"><span>Kembali</span><span class="forward">${checkoutStep===3?'Buat pesanan (mockup)':'Lanjut (mockup)'}</span></div>
+    <p class="privacy">Kontrol di dalam mockup tidak aktif. Ganti langkah melalui tombol di atas preview. Data pribadi tidak disimpan di halaman ini.</p>
+    </section>${summary}</div></main>`;
+}
+function login(){
+  return `<div class="mock-label">PREVIEW LOGIN / TIDAK MEMERIKSA ATAU MENYIMPAN PASSWORD</div>
+    <main class="login-layout"><section class="login-story">${brand}<h1>Kelola toko.<br>Layani dengan baik.</h1><p>Akses operasional Healthy Vibes untuk Admin, Operator dan Viewer sesuai izin.</p></section>
+    <section class="checkout-panel login-form"><h2>Masuk ke akun Anda</h2><small>Gunakan akun yang dibuat admin melalui Setup User.</small>
+    <div class="field"><b>Username</b><div class="input-demo">Username Anda</div></div>
+    <div class="field"><b>Password</b><div class="input-demo">Password Anda</div></div>
+    <span class="cta">Masuk (mockup)</span>
+    <p class="payment">Lupa password? Hubungi admin untuk pemulihan akun.</p>
+    <p class="privacy">Rencana aplikasi final: verifikasi backend, pembatasan percobaan login, sesi kedaluwarsa dan logout. Tampilan ini bukan login aktif.</p></section></main>`;
+}
+function users(){
+  const accounts=[['Admin Contoh','admin.contoh','Admin'],['Operator Contoh','operator.contoh','Operator'],['Viewer Contoh','viewer.contoh','Viewer']];
+  return `<div class="mock-label">SETUP USER / CONTOH AKUN, BUKAN DATA PENGGUNA NYATA</div>
+    <header class="header">${brand}<span class="pill">Admin &middot; Keluar</span></header>
+    <main class="admin-content"><div class="admin-heading"><div><h1>Setup User</h1><p>Kelola akun dan level pengguna &middot; hanya Admin</p></div><span class="pill">+ Tambah User</span></div>
+    <div class="user-layout"><section class="panel"><h2>Daftar pengguna</h2>
+    <div class="filters"><span class="filter">Cari nama / username...</span><span class="filter">Level: Semua</span><span class="filter">Status: Aktif</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Username</th><th>Level</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+    ${accounts.map(a=>`<tr><td>${a[0]}</td><td>${a[1]}</td><td>${a[2]}</td><td><span class="badge">Aktif</span></td><td>Ubah / Reset / Nonaktifkan</td></tr>`).join('')}</tbody></table></div>
+    <div class="admin-cards">${accounts.map(a=>`<article class="order-card"><div class="order-top"><b>${a[0]}</b><span class="badge">${a[2]}</span></div><p>${a[1]} &middot; Aktif</p><div class="account-actions"><span>Ubah</span><span>Reset Password</span><span>Nonaktifkan</span></div></article>`).join('')}</div>
+    <p class="privacy">Rencana keamanan: perubahan izin dan penonaktifan diperiksa backend; admin aktif terakhir tidak boleh dinonaktifkan atau diturunkan levelnya. Riwayat perubahan disimpan.</p></section>
+    <aside class="checkout-panel users-form"><h2>Tambah / Ubah User</h2>
+    <div class="field"><b>Nama lengkap *</b><div class="input-demo">Nama pengguna</div></div>
+    <div class="field"><b>Username unik *</b><div class="input-demo">username.pengguna</div></div>
+    <div class="field"><b>Level *</b><div class="input-demo">Operator &middot; contoh pilihan</div></div>
+    <div class="field"><b>Status akun</b><div class="input-demo">Aktif</div></div>
+    <div class="role-note"><b>Admin:</b> seluruh fitur dan Setup User.<br><b>Operator:</b> produk, stok, pesanan dan pembayaran sesuai izin.<br><b>Viewer:</b> dashboard dan laporan, tanpa mengubah data.</div>
+    <p class="privacy">Alur pemberian password awal dan reset akan ditetapkan dalam blueprint keamanan. Password lama tidak ditampilkan atau dibagikan dalam daftar.</p>
+    <span class="cta">Simpan User (mockup)</span><p class="privacy">Tidak ada akun yang dibuat. Kontrol di dalam preview tidak aktif.</p></aside></div></main>`;
+}
+function productSetup(){
+  return `<div class="mock-label">SETUP PRODUK / PREVIEW VISUAL, TIDAK MENGUNGGAH ATAU MENYIMPAN DATA</div>
+    <header class="header">${brand}<span class="pill">Admin / Operator</span></header>
+    <main class="admin-content product-setup">
+    <div class="admin-heading"><div><h1>Setup Produk &amp; Promo</h1><p>Foto, kategori, nama, harga, diskon dan voucher.</p></div><span class="pill">+ Tambah Produk</span></div>
+    <section class="checkout-panel">
+    <div class="editor-title"><h2>Tambah / Ubah Produk</h2><p>Contoh formulir pengelolaan produk. Semua kontrol di bawah hanya mockup.</p></div>
+    <div class="product-editor"><div>
+      <div class="upload-area"><strong>Upload foto produk</strong><p>Pilih foto dari galeri HP atau komputer.</p><span class="cta">Pilih Foto (mockup)</span><small>Foto belum dipilih</small></div>
+      <p class="hint">Usulan format: JPG, PNG atau WebP, maksimal 5 MB. Batas final akan divalidasi backend. Foto dioptimalkan dan disimpan di Google Drive.</p>
+    </div><div>
+      <div class="field"><b>Kategori *</b><div class="input-demo">Makanan &nbsp; &#9662;</div><p class="hint">Contoh pilihan: Makanan, Minuman, Paket.</p></div>
+      <div class="field"><b>Nama produk *</b><div class="input-demo">Chicken Veggie Bowl</div></div>
+      <div class="field"><b>Harga produk (Rp) *</b><div class="input-demo">35.000</div><p class="hint">Harga dalam rupiah, bukan teks bebas. Nilai ini hanya contoh.</p></div>
+      <div class="promo-box"><h3>Diskon produk (opsional)</h3><p class="hint">Usulan pengaturan, belum aturan final. Contoh diskon 10% dari Rp35.000 menjadi Rp31.500.</p>
+      <div class="promo-fields">
+      <div class="field"><b>Status diskon</b><div class="input-demo">Aktif &middot; contoh</div></div>
+      <div class="field"><b>Jenis potongan</b><div class="input-demo">Persen (%) / Nominal (Rp)</div></div>
+      <div class="field"><b>Nilai diskon</b><div class="input-demo">10% &middot; contoh</div></div>
+      <div class="field"><b>Periode berlaku (WITA)</b><div class="input-demo">Tanggal mulai - selesai</div></div>
+      </div></div>
+      <div class="checkout-actions"><span>Batal</span><span class="forward">Simpan Produk (mockup)</span></div>
+      <p class="privacy">Belum ada produk yang disimpan. Pada aplikasi final, foto dan data dapat diganti sesuai hak akses. Perubahan harga tidak mengubah transaksi yang sudah tersimpan.</p>
+      <div class="catalog-preview"><h3>Contoh tampilan harga promo</h3><article class="product"><span class="category">Makanan &middot; diskon contoh 10%</span><h3>Chicken Veggie Bowl</h3><span class="old-price">Rp35.000</span><div class="price promo-price"><b>Rp31.500</b></div></article><p class="hint">Foto akan tampil setelah diunggah; tidak memakai gambar sementara. Promo ini hanya contoh visual.</p></div>
+    </div></div></section>
+    <section class="panel setup-list"><h2>Daftar produk</h2><div class="filters"><span class="filter">Cari nama produk...</span><span class="filter">Kategori: Semua</span><span class="filter">Urut: Nama produk</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Nama produk</th><th>Kategori</th><th>Harga</th><th>Foto</th><th>Aksi</th></tr></thead><tbody>${products.map(p=>`<tr><td>${p[1]}</td><td>${p[0]}</td><td>${p[3]}</td><td>Belum diunggah</td><td>Ubah / Nonaktifkan</td></tr>`).join('')}</tbody></table></div>
+    <div class="admin-cards">${products.map(p=>`<article class="order-card"><span class="category">${p[0]}</span><p><b>${p[1]}</b></p><div class="price"><b>${p[3]}</b></div><small>Foto belum diunggah &middot; data contoh</small><div class="account-actions"><span>Ubah</span><span>Nonaktifkan</span></div></article>`).join('')}</div>
+    </section>
+    <section class="checkout-panel setup-list"><div class="editor-title"><h2>Setup Voucher</h2><p>Usulan voucher tingkat pesanan; berbeda dari diskon produk. Seluruh nilai berikut contoh, tidak tersimpan.</p></div>
+      <div class="promo-fields">
+      <div class="field"><b>Kode voucher unik</b><div class="input-demo">SEHAT10 &middot; contoh</div></div>
+      <div class="field"><b>Status voucher</b><div class="input-demo">Aktif / Nonaktif</div></div>
+      <div class="field"><b>Jenis dan nilai potongan</b><div class="input-demo">Persen / Rupiah &middot; contoh 10%</div></div>
+      <div class="field"><b>Minimum belanja produk</b><div class="input-demo">Rp50.000 &middot; contoh</div></div>
+      <div class="field"><b>Maksimum potongan</b><div class="input-demo">Rp10.000 &middot; contoh</div></div>
+      <div class="field"><b>Periode berlaku (WITA)</b><div class="input-demo">Tanggal mulai - selesai</div></div>
+      <div class="field"><b>Kuota penggunaan total</b><div class="input-demo">100 pesanan &middot; contoh</div></div>
+      <div class="field"><b>Berlaku untuk</b><div class="input-demo">Langsung / Preorder / Keduanya</div></div>
+      </div>
+      <div class="checkout-actions"><span>Batal</span><span class="forward">Simpan Voucher (mockup)</span></div>
+      <p class="privacy"><b>Aturan disetujui: voucher tidak dapat digabung dengan diskon produk.</b> Rekomendasi: voucher memotong nilai produk, bukan ongkir GoSend. Perlakuan keranjang campuran, izin pengelola promo dan aturan kuota belum disepakati. Kuota, masa berlaku dan hitungan harus diperiksa backend, termasuk saat pemesanan bersamaan.</p>
+    </section></main>`;
+}
+const frame=document.getElementById('preview'), wrap=document.getElementById('frame-wrap');
+const sizes={desktop:[1280,850],tablet:[820,1000],mobile:[390,844],small:[320,740]};
+const modeLabels={shop:'Toko pelanggan',admin:'Panel pengelola',checkout:'Checkout',login:'Login',users:'Setup User',productSetup:'Setup Produk'};
+let mode='productSetup',device='mobile',landscape=false,checkoutStep=1,scenario='preorder';
+function fit(){
+  let [w,h]=sizes[device];if(landscape && device!=='desktop') [w,h]=[h,w];
+  const available=wrap.parentElement.clientWidth- (matchMedia('(max-width:650px)').matches?16:36);
+  const scale=Math.min(1,available/w);
+  frame.style.width=w+'px';frame.style.height=h+'px';frame.style.transform=`scale(${scale})`;
+  wrap.style.width=Math.min(w,available)+'px';wrap.style.height=h*scale+'px';
+  document.getElementById('size-label').textContent=`${modeLabels[mode]} / ${w} x ${h} px / ${landscape?'Landscape':'Portrait'}${scale<1?' / Diperkecil agar muat di layar preview':''}`;
+  frame.title=`Preview ${modeLabels[mode]} ${w} x ${h} px`;
+}
+function render(){
+  const views={shop,admin,checkout,login,users,productSetup};
+  frame.srcdoc=`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${shared}</style></head><body>${views[mode]()}</body></html>`;
+  document.getElementById('checkout-tools').hidden=mode!=='checkout';
+  document.querySelectorAll('[data-step]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.step)===checkoutStep)));
+  document.querySelectorAll('[data-scenario]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scenario===scenario)));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+  document.querySelectorAll('[data-device]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.device===device)));
+  document.getElementById('rotate').setAttribute('aria-pressed',String(landscape));fit();
+}
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;render()}));
+document.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{checkoutStep=Number(b.dataset.step);render()}));
+document.querySelectorAll('[data-scenario]').forEach(b=>b.addEventListener('click',()=>{scenario=b.dataset.scenario;render()}));
+document.querySelectorAll('[data-device]').forEach(b=>b.addEventListener('click',()=>{device=b.dataset.device;landscape=false;render()}));
+document.getElementById('rotate').addEventListener('click',()=>{if(device==='desktop')device='tablet';landscape=!landscape;render()});
+window.addEventListener('resize',fit);render();
+</script>
+</body>
+</html>
