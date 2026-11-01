@@ -8,18 +8,18 @@ Keputusan bisnis yang sudah disetujui tetap mengikuti acuan-desain.md. Dokumen i
 - Yang sudah tepat: Bootstrap, tampilan mobile, source code GitHub, backend Apps Script, Sheets/Drive, pembayaran manual, pemisahan stok dan preorder.
 - Yang perlu diperbaiki: hosting bukan GitHub Pages; akses database tidak boleh publik; login akun Admin tidak boleh hanya diperiksa browser.
 - Yang ditunda (rekomendasi): AI, WhatsApp API, payment gateway dan transaksi offline. Tidak menambah integrasi tanpa persetujuan.
-- Solusi awal: hosting HTTPS yang mendukung toko, Apps Script untuk aturan bisnis dan Sheets privat untuk data. Uji koneksi dan autentikasi sebelum implementasi penuh.
+- Pilihan akses terbaru SETUJU: https://www.beratidealku.com -> tombol pemesanan -> URL web app Apps Script. Frontend HTML Service, backend Apps Script, source GitHub, data Sheets/Drive. Cloudflare/penghubung tidak dipilih. URL nyata belum tersedia; bukan izin build, perubahan website atau deployment. Uji koneksi dan autentikasi sebelum implementasi penuh.
 
-## Arsitektur yang Diusulkan
+## Arsitektur yang Dipilih dan Batas Verifikasi
 
 | Bagian | Rekomendasi | Batas verifikasi |
 | --- | --- | --- |
 | Source code | HTML/CSS/JavaScript + Bootstrap dan script backend di GitHub; rahasia tidak masuk repository. | Belum membuat commit/push/repository. |
-| Hosting | Pilihan awal Cloudflare Pages dengan domain bawaan; provider/ketentuan paket harus diperiksa sebelum dipilih. Domain khusus opsional. | Bukan layanan yang sudah disetujui atau dipasang; biaya/kuota belum ditetapkan. |
+| Hosting / frontend | Apps Script HTML Service menyajikan HTML/CSS/JavaScript/Bootstrap. Tombol website beratidealku.com menuju URL web app Apps Script. | Alur disetujui; URL deployment nyata belum dibuat. GitHub Pages bukan tujuan toko; Cloudflare tidak dipilih. |
 | Backend | Google Apps Script memvalidasi role, jadwal WITA, wilayah, harga, promo dan perubahan status. | Belum ada deployment atau endpoint nyata. |
 | Database | Google Sheets privat; Drive memisahkan foto katalog, bukti transaksi dan backup. | Foto publik hanya aset katalog yang diizinkan, bukan folder database/bukti. |
-| Komunikasi | Uji request/redirect/error lintas domain dengan data sintetis. | Content Service mengalihkan respons ke googleusercontent.com; jangan menganggap fetch selalu berhasil. |
-| Alternatif koneksi | Bila koneksi langsung tidak memenuhi kebutuhan, usulkan gateway kecil satu origin untuk sesi dan penerusan request. | Komponen tambahan memerlukan persetujuan; bukan perubahan arsitektur otomatis. |
+| Komunikasi | Rancang dan uji panggilan frontend HTML Service ke backend Apps Script, termasuk error, otorisasi dan retry. | Belum diuji runtime; bukti Content Service bukan bukti otomatis untuk komunikasi HTML Service. |
+| Penghubung tambahan | Cloudflare Pages/Pages Functions dan gateway tambahan tidak dipilih untuk saat ini. | Bila kelayakan Apps Script tidak terbukti, jelaskan kendala dan minta persetujuan sebelum perubahan arsitektur. |
 
 GitHub Pages secara resmi tidak diperbolehkan menjadi hosting bisnis online/e-commerce. Menyimpan source code di GitHub tetap sesuai kebutuhan pengguna.
 Apps Script bukan database transaksi penuh: Sheet tidak memiliki transaksi ACID. LockService saja tidak menjamin semua penulisan berhasil bersama.
@@ -31,7 +31,7 @@ Apps Script bukan database transaksi penuh: Sheet tidak memiliki transaksi ACID.
 - Password memakai algoritme khusus password, salt unik dan faktor kerja terukur. Dilarang password polos, enkripsi yang bisa dibalik atau SHA-256 sekali saja.
 - Kelayakan pustaka password hashing, sumber acak kriptografis dan biaya runtime pada Apps Script harus dibuktikan. Jangan menurunkan keamanan demi platform; ajukan layanan autentikasi/gateway jika diperlukan tanpa mengubah kepemilikan akun oleh Admin.
 - Rekomendasi: batas percobaan login per akun dan mekanisme pencegahan spam; hindari penguncian permanen yang bisa disalahgunakan.
-- Jika gateway dipilih, sesi memakai cookie Secure, HttpOnly, SameSite yang tepat dan perlindungan CSRF. Jika koneksi langsung dipilih, rancangan penyimpanan token/XSS harus diselesaikan; jangan menaruh token dalam query URL atau log.
+- Pada HTML Service yang dipilih, rancangan sesi, penyimpanan token, XSS dan perlindungan request harus diselesaikan dan diuji; jangan menaruh token dalam query URL atau log. Rancangan cookie gateway sebelumnya bukan rancangan aktif dan tidak otomatis tersedia di Apps Script.
 - Admin pertama dibuat melalui proses instalasi oleh pemilik; tidak ada password default publik. Password awal/reset bersifat sementara dan wajib diganti. Jangan menampilkan password lama.
 - Status pelanggan: usulan akses privat dengan token acak berentropi tinggi per pesanan, backend menyimpan hash token; nomor pesanan/HP saja tidak cukup. Token tidak muncul di URL query/log/referer. Usulan kedaluwarsa 30 hari setelah selesai; pemulihan melalui verifikasi pengelola.
 - Dataset dan laporan dipilih backend sesuai izin. Jangan mengirim semua data ke browser lalu menyembunyikannya dengan filter.
@@ -84,5 +84,5 @@ Tabel yang diusulkan: Users, Sessions, Categories, Products, ProductDiscounts, V
 3. GoSend COD: https://www.gojek.com/blog/gosend/cod
 
 Dokumen 1 dan 2 dibaca pada sesi ini; dokumen 3 dibaca pada pembahasan pengiriman sebelumnya. Panduan COD bukan bukti layanan ongkir saja tersedia di Makassar.
-Sebelum izin build final: persetujuan layout lengkap, paket rekomendasi, pilihan hosting dan kelayakan autentikasi/koneksi. Logo/foto aktual masih menunggu; jangan menganggap preview tanpa foto sebagai visual final berfoto.
+Sebelum izin build final: persetujuan layout lengkap, rincian rekomendasi dan kelayakan autentikasi/koneksi Apps Script. Alur akses/hosting sudah dipilih. Logo/foto aktual masih menunggu; jangan menganggap preview tanpa foto sebagai visual final berfoto.
 Persetujuan paket rekomendasi tidak otomatis menyetujui layanan berbayar, gateway tambahan atau membuka pengantaran yang belum diverifikasi.

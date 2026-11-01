@@ -1,6 +1,9 @@
 # Healthy Vibes: Checklist Review Terpadu
 
-Status: DRAF REVIEW. Persetujuan menyusun paket ini bukan persetujuan rekomendasi atau izin build.
+Status terbaru: IZIN BUILD DITERIMA melalui "SETUJU - GENERATE FINAL BUILD" pada 1 November 2026.
+Source dibuat di `apps-script` dengan installer database/folder PRODUK, INVOICE, STRUK dan TANDATERIMA.
+Lihat `hasil-pengujian-build.md` untuk tes lokal/browser dan batas NOT TESTED.
+Pemasangan Google belum dilakukan. Catatan review/belum izin build di bawah adalah riwayat sebelum persetujuan terbaru, bukan permintaan persetujuan ulang.
 
 | Bagian | Status | Ringkasan |
 | --- | --- | --- |
@@ -21,7 +24,7 @@ Status: DRAF REVIEW. Persetujuan menyusun paket ini bukan persetujuan rekomendas
 | Checkout / akun / produk | SETUJU / REVISI | Susunan disetujui; preview diperbarui untuk keputusan terbaru, perlu review perubahannya. |
 | Desktop / tablet / HP / landscape | BELUM DIPUTUSKAN | Tombol perangkat tersedia; pemeriksaan visual otomatis belum berhasil, bukan UI Design Lock final. |
 | Logo / foto aktual | BELUM DIPUTUSKAN | Belum tersedia; tidak menggunakan foto sementara. |
-| Hosting / domain | BELUM DIPUTUSKAN | GitHub untuk source code, bukan GitHub Pages untuk toko. Usulan hosting HTTPS lain, domain bawaan dahulu; tanpa pembelian layanan. |
+| Hosting / alur akses | SETUJU | Tombol pemesanan di https://www.beratidealku.com menuju langsung URL web app Apps Script. Frontend HTML/CSS/JavaScript/Bootstrap melalui HTML Service; backend Apps Script; database Sheets/Drive; source tetap GitHub. Cloudflare/penghubung tidak dipilih dan GitHub Pages bukan tujuan toko. URL deployment nyata belum tersedia; bukan izin mengubah website atau deployment. |
 | Backup / keamanan data | SETUJU / BELUM DIPUTUSKAN | Backup masuk cakupan; jadwal harian/retensi 30 hari dan pemulihan staging masih usulan. |
 | Perhitungan / penerimaan | BELUM DIPUTUSKAN | Usulan pembulatan, satu voucher, KPI, audit, uji request ganda/stok bersamaan, laporan, keamanan dan restore. |
 
@@ -29,6 +32,7 @@ Status: DRAF REVIEW. Persetujuan menyusun paket ini bukan persetujuan rekomendas
 
 - preview-gabungan-responsive.html: Toko, Panel, Checkout (empat skenario), Login, Setup User, Produk/Promo, Stok/Preorder, Pengaturan, Laporan, Status Pesanan. Pilih desktop/tablet/HP/HP kecil dan landscape.
 - rekomendasi-teknis.md: rincian rekomendasi, batas platform, keamanan dan pengujian. Semua rekomendasi baru tetap belum disetujui.
+- hasil-verifikasi-teknis.md: pilihan Apps Script dicatat; keamanan dan uji runtime belum dilakukan. Bukti Cloudflare adalah referensi opsi sebelumnya yang tidak dipilih, bukan bukti keamanan Apps Script.
 - blueprint-ringkas.md dan acuan-desain.md: keputusan bisnis yang sudah dicatat.
 
 ## Hasil Pemeriksaan Saat Ini
@@ -36,6 +40,7 @@ Status: DRAF REVIEW. Persetujuan menyusun paket ini bukan persetujuan rekomendas
 - PASS: server lokal mengirim preview terbaru (HTTP 200, memuat fungsi tampilan baru).
 - NOT TESTED: rendering seluruh tampilan, interaksi tombol dan overflow tiap viewport; browser gagal mengambil snapshot. HTTP 200 bukan bukti UI lulus.
 - NOT TESTED: login, upload, transaksi, stok, PDF/.xlsx, backup dan deployment; belum ada aplikasi utama.
-- NEED REVIEW: kesesuaian desain/rekomendasi, logo/foto, pilihan hosting dan dukungan GoSend.
+- NEED REVIEW: kesesuaian desain/rekomendasi, logo/foto, kelayakan autentikasi/koneksi Apps Script dan dukungan GoSend. Alur akses sudah disetujui.
+- Dokumentasi diperiksa: Pages Functions mendukung autentikasi/middleware; Workers memiliki kriptografi server. Ini bukan PASS runtime login/koneksi aplikasi.
 
 Review paket sekaligus: setuju arah rekomendasi atau sebutkan bagian revisi. Keputusan kritis dan kelayakan teknis masih harus ditutup sebelum meminta **SETUJU - GENERATE FINAL BUILD**. Tidak ada build, push GitHub, transaksi, pesan atau deployment nyata pada tahap ini.
