@@ -47,6 +47,10 @@ h1{font:36px/1.15 Georgia,serif;margin:12px 0}p{margin:8px 0}
       <button type="button" data-mode="login" aria-pressed="false">Login</button>
       <button type="button" data-mode="users" aria-pressed="false">Setup User</button>
       <button type="button" data-mode="productSetup" aria-pressed="false">Setup Produk</button>
+      <button type="button" data-mode="stock" aria-pressed="false">Stok &amp; Preorder</button>
+      <button type="button" data-mode="settings" aria-pressed="false">Pengaturan</button>
+      <button type="button" data-mode="reports" aria-pressed="false">Laporan</button>
+      <button type="button" data-mode="orderStatus" aria-pressed="false">Status Pesanan</button>
     </div>
     <span class="separator"></span>
     <div class="group" aria-label="Pilih ukuran perangkat">
@@ -68,6 +72,8 @@ h1{font:36px/1.15 Georgia,serif;margin:12px 0}p{margin:8px 0}
       <div class="group" aria-label="Contoh skenario">
         <button type="button" data-scenario="preorder" aria-pressed="true">Preorder / Antar</button>
         <button type="button" data-scenario="direct" aria-pressed="false">Langsung / Ambil</button>
+        <button type="button" data-scenario="directDelivery" aria-pressed="false">Langsung / Antar</button>
+        <button type="button" data-scenario="preorderPickup" aria-pressed="false">Preorder / Ambil</button>
       </div>
     </div>
   </div>
@@ -204,6 +210,10 @@ const shared = `
   .promo-box h3{font-size:16px;margin-bottom:8px}.promo-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .promo-fields .field{margin-bottom:0}.old-price{font-size:12px;color:var(--muted);text-decoration:line-through}.promo-price{color:var(--green)}
   @media(max-width:600px){.promo-fields{grid-template-columns:1fr}}
+  .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.review-grid .panel{height:100%}
+  .review-grid .field{margin:14px 0}.review-grid .wide{grid-column:1/-1}
+  .timeline{border-left:3px solid var(--green);padding-left:16px;margin:14px 0}.timeline p{margin:12px 0}
+  @media(max-width:800px){.review-grid{grid-template-columns:1fr}}
 `;
 const brand = '<span class="brand" aria-label="Healthy Vibes, logo akan ditambahkan">Healthy Vibes<span class="brand-note">Logo akan ditambahkan</span></span>';
 const products = [
@@ -224,15 +234,15 @@ return `<div class="mock-label">DATA CONTOH UNTUK DESAIN</div>
 <section class="hero"><small>Makanan &amp; minuman sehat</small><h1>Sehat itu bisa nikmat.</h1><p>Pilih menu favorit. Pesan hari ini atau siapkan untuk besok.</p></section>
 <div class="layout"><section>
 <div class="controls"><div class="toggle"><span class="choice active">Pesan langsung</span><span class="choice">Preorder besok</span></div><span class="delivery">Diantar &middot; Atur alamat &gt;</span></div>
-<div class="cutoff">Preorder besok ditutup <b>17.00 waktu toko</b>. Dibayar di muka.</div>
+<div class="cutoff">Makassar &amp; wilayah aktif sekitarnya. Preorder besok ditutup <b>17.00 WITA</b>; pembayaran produk maksimal <b>18.00 WITA</b>.</div>
 <div class="search">Cari makanan atau minuman...</div>
 <div class="chips"><span class="chip selected">Semua</span><span class="chip">Makanan</span><span class="chip">Minuman</span><span class="chip">Paket</span></div>
 <div class="section-title"><h2>Menu pilihan</h2><small>Contoh produk &amp; harga</small></div>
 <div class="products">${products.map(p=>`<article class="product"><span class="category">${p[0]}</span><h3>${p[1]}</h3><p>${p[2]}</p><div class="price"><b>${p[3]}</b><span class="plus">+</span></div></article>`).join('')}</div>
-<p class="payment">Transfer bank / QRIS manual atau bayar saat diterima / diambil. Pembayaran manual diverifikasi pengelola. Ketersediaan mengikuti stok dan kuota.</p>
+<p class="payment">Transfer bank / QRIS manual diverifikasi pengelola. Bayar saat diambil hanya untuk pesanan langsung ambil sendiri. Produk antar dan preorder dibayar di muka. Stok langsung terpisah dari kuota preorder per tanggal.</p>
 </section><aside class="basket"><h2>Keranjang Anda</h2><small>Contoh ringkasan pesanan</small>
 <div class="basket-line"><span>1 &times; Chicken Bowl</span><b>Rp35.000</b></div><div class="basket-line"><span>1 &times; Green Juice</span><b>Rp22.000</b></div>
-<div class="total"><b>Subtotal</b><b>Rp57.000</b></div><small>Ongkir dihitung setelah alamat dipilih.</small><span class="cta">Lanjut checkout &gt;</span><p class="payment">Tahap berikut: data penerima, antar/ambil, pembayaran, lalu tinjau pesanan.</p></aside></div>
+<div class="total"><b>Subtotal produk</b><b>Rp57.000</b></div><small>Ongkir GoSend terpisah, dikonfirmasi pengelola. Bukan tarif tetap per wilayah.</small><span class="cta">Lanjut checkout &gt;</span><p class="payment">Tahap berikut: data penerima, antar/ambil, pembayaran, lalu tinjau pesanan.</p></aside></div>
 </main><div class="mobile-cart"><div><b>2 item &middot; Rp57.000</b><br><small>Contoh subtotal, belum ongkir</small></div><span class="continue">Keranjang &gt;</span></div>
 <nav class="mobile-nav"><b>Menu</b><span>Pesanan</span><span>Bantuan</span></nav>`;
 }
@@ -241,52 +251,55 @@ return `<div class="mock-label">PANEL PENGELOLA / SEMUA KPI DAN PESANAN ADALAH C
 <div class="admin-shell"><aside class="sidebar">${brand}${['Dashboard','Pesanan','Produk & Stok','Laporan','Setup User','Pengaturan','Keluar'].map((x,i)=>`<div class="side-item ${i===0?'on':''}">${x}</div>`).join('')}<small style="color:#e5f5f3">Contoh tampilan Admin. Menu final mengikuti izin pengguna.</small></aside>
 <div><header class="compact-header">${brand}<span class="pill">Menu &equiv;</span></header>
 <nav class="tablet-nav"><b>Dashboard</b><span>Pesanan</span><span>Produk &amp; Stok</span><span>Laporan</span><span>Setup User</span><span>Pengaturan</span><span>Keluar</span></nav>
-<main class="admin-content"><div class="admin-heading"><div><h1>Ringkasan toko</h1><p>Operasional hari ini &middot; waktu lokal toko</p></div><span class="pill">Pengelola</span></div>
+<main class="admin-content"><div class="admin-heading"><div><h1>Ringkasan toko</h1><p>Operasional hari ini &middot; WITA</p></div><span class="pill">Pengelola</span></div>
 <div class="kpis">${[['Pesanan hari ini','12','Contoh seluruh status'],['Preorder besok','8','Contoh pesanan H-1'],['Belum lunas','3','Perlu verifikasi'],['Penjualan lunas','Rp420.000','Contoh total terverifikasi']].map(k=>`<div class="kpi"><small>${k[0]}</small><strong>${k[1]}</strong><small>${k[2]}</small></div>`).join('')}</div>
 <div class="work"><section class="panel"><h2>Pesanan terbaru</h2><div class="filters"><span class="filter">Cari nomor / nama...</span><span class="filter">Periode: Hari ini</span><span class="filter">Status: Semua</span><span class="filter">Jenis: Semua</span><span class="filter">Urut: Terbaru</span><span class="filter">PDF / Excel</span></div>
 <div class="table-wrap"><table><thead><tr><th>Pesanan</th><th>Pelanggan</th><th>Jenis</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${orders.map(o=>`<tr><td>${o[0]}</td><td>${o[1]}</td><td>${o[2]}</td><td>${o[3]}</td><td><span class="badge ${o[5]}">${o[4]}</span></td><td>Detail &gt;</td></tr>`).join('')}</tbody></table></div>
 <div class="admin-cards">${orders.map(o=>`<article class="order-card"><div class="order-top"><b>${o[0]} &middot; ${o[1]}</b><span class="badge ${o[5]}">${o[4]}</span></div><p>${o[2]} &middot; <b>${o[3]}</b></p><small>Data contoh, bukan transaksi nyata</small><span class="order-action">Lihat detail / kelola &gt;</span></article>`).join('')}</div>
-<p class="payment">Menampilkan 3 contoh pesanan. Hapus/ubah sesuai izin; riwayat transaksi tetap tersimpan. Ekspor mengikuti filter dan hak akses.</p></section>
-<aside class="panel"><h2>Prioritas operasional</h2><div class="queue"><b>Verifikasi pembayaran</b><small>3 contoh pesanan perlu diperiksa.</small></div><div class="queue"><b>Siapkan preorder besok</b><small>Batas masuk 17.00 waktu toko.</small></div><div class="queue"><b>Periksa stok &amp; kuota</b><small>Pisahkan stok langsung dan kuota preorder.</small></div><p class="payment">Status pembayaran dan pemenuhan ditampilkan terpisah pada detail pesanan.</p></aside></div></main></div></div>`;
+<p class="payment">Menampilkan 3 contoh pesanan. Transaksi tidak dihapus permanen; riwayat tetap tersimpan. Ekspor mengikuti filter dan hak akses.</p></section>
+<aside class="panel"><h2>Prioritas operasional</h2><div class="queue"><b>Verifikasi pembayaran</b><small>Periksa transaksi masuk, bukan foto saja.</small></div><div class="queue"><b>Preorder besok</b><small>Masuk sebelum 17.00, pembayaran maksimal 18.00 WITA. Periksa sebelum membatalkan.</small></div><div class="queue"><b>Refund tertunda</b><small>Contoh Rp90.000 &middot; tenggat 1 x 24 jam sejak konfirmasi pembatalan.</small></div><div class="queue"><b>Periksa stok &amp; kuota</b><small>Pisahkan stok langsung dan kuota preorder.</small></div><p class="payment">Pembayaran, pemenuhan dan refund terpisah. Ongkir dibayar ke kurir bukan kas toko.</p></aside></div></main></div></div>`;
 }
 function checkout(){
-  const pre=scenario==='preorder';
-  const receipt=pre?'Diantar ke alamat':'Ambil sendiri di toko';
-  const payment=pre?'Transfer bank / QRIS manual':'Bayar saat diambil';
-  const total=pre?'Rp67.000':'Rp57.000';
+  const pre=scenario==='preorder'||scenario==='preorderPickup';
+  const delivery=scenario==='preorder'||scenario==='directDelivery';
+  const receipt=delivery?'Diantar via GoSend':'Ambil sendiri di toko';
+  const payment=pre||delivery?'Transfer bank / QRIS manual':'Bayar saat diambil';
+  const total='Rp57.000';
   const summary=`<aside class="checkout-summary"><h2>Ringkasan pesanan</h2><small>Seluruh nilai adalah contoh desain</small>
     <div class="summary-item">1 &times; Chicken Veggie Bowl<br><b>Rp35.000</b></div>
     <div class="summary-item">1 &times; Green Fresh Juice<br><b>Rp22.000</b></div>
     <div class="summary-row"><span>Subtotal</span><b>Rp57.000</b></div>
-    <div class="promo-box"><h3>Punya voucher?</h3><div class="input-demo">Masukkan kode voucher</div><span class="cta">Gunakan (mockup)</span><p class="hint">Voucher tidak dapat digabung dengan diskon produk. Belum ada voucher diterapkan. Syarat dan potongan diverifikasi backend pada aplikasi final.</p></div>
-    <div class="summary-row"><span>Ongkir contoh</span><b>${pre?'Rp10.000':'Rp0'}</b></div>
-    <div class="summary-row grand"><span>Total contoh</span><b>${total}</b></div>
-    <p class="payment">${pre?'Preorder besok, diantar.':'Pesanan langsung, ambil sendiri.'} Total final dihitung backend sesuai produk, alamat, dan tarif toko.</p></aside>`;
+    <div class="promo-box"><h3>Punya voucher?</h3><div class="input-demo">Masukkan kode voucher</div><span class="cta">Gunakan (mockup)</span><p class="hint">Minimum belanja dihitung dari seluruh subtotal produk sebelum voucher, termasuk harga promo produk diskon, tanpa ongkir. Voucher hanya memotong produk non-diskon. Belum ada voucher diterapkan. Syarat dan potongan diverifikasi backend pada aplikasi final.</p></div>
+    <div class="summary-row"><span>Ongkir GoSend</span><b>${delivery?'Belum dikonfirmasi':'Tidak ada'}</b></div>
+    <div class="summary-row grand"><span>Pembayaran produk</span><b>${total}</b></div>
+    <p class="payment">Contoh sebelum voucher. Nilai produk dihitung ulang backend; ongkir bukan bagian pembayaran produk.</p>
+    ${delivery?'<div class="cutoff" style="margin-top:14px">Pilihan Anda: ongkir dibayar ke kurir saat tiba. Dukungan layanan di Makassar masih perlu dicek sebelum pengantaran dibuka.</div>':''}</aside>`;
   let body='';
   if(checkoutStep===1)body=`<h2>Data penerima</h2><div class="fields">
     <div class="field"><b>Nama penerima *</b><div class="input-demo">Pelanggan Contoh</div></div>
     <div class="field"><b>Nomor HP *</b><div class="input-demo">08xx xxxx xxxx</div><p class="hint">Digunakan untuk koordinasi pesanan.</p></div>
-    <div class="field wide"><b>Cara menerima pesanan</b><div class="toggle"><span class="choice ${pre?'active':''}">Diantar</span><span class="choice ${pre?'':'active'}">Ambil sendiri</span></div></div>
-    ${pre?`<div class="field wide"><b>Wilayah pengantaran *</b><div class="input-demo">Wilayah contoh &middot; ongkir Rp10.000</div></div>
+    <div class="field wide"><b>Cara menerima pesanan</b><div class="toggle"><span class="choice ${delivery?'active':''}">Diantar</span><span class="choice ${delivery?'':'active'}">Ambil sendiri</span></div></div>
+    ${delivery?`<div class="field wide"><b>Wilayah pengantaran *</b><div class="input-demo">Pilih wilayah aktif dari pengaturan Admin</div><p class="hint">Makassar dan sekitarnya, bukan seluruh Sulawesi Selatan. Wilayah tidak menentukan tarif ongkir.</p></div>
     <div class="field wide"><b>Alamat lengkap *</b><div class="input-demo address">Alamat contoh, nomor rumah dan patokan.</div><p class="hint">Alamat wajib untuk pengantaran; wilayah harus dilayani toko.</p></div>`:
     `<div class="field wide"><b>Lokasi pengambilan</b><div class="input-demo">Healthy Vibes &middot; alamat toko akan diatur</div><p class="hint">Tidak perlu alamat pengantaran. Jam layanan mengikuti pengaturan toko.</p></div>`}
-    <div class="field wide"><b>Waktu penerimaan</b><div class="input-demo">${pre?'Besok &middot; slot contoh 11.00-12.00':'Hari ini &middot; slot tersedia dari toko'}</div><p class="hint">Slot dan jam operasional ini usulan, belum ditetapkan.</p></div>
+    <div class="field wide"><b>Waktu ${delivery?'penerimaan yang diminta':'pengambilan'} (WITA)</b><div class="input-demo">${pre?'Besok &middot; pilih waktu tersedia':'Hari ini &middot; pilih waktu tersedia'}</div><p class="hint">Daftar mengikuti hari/jam layanan dan interval Admin${pre?'':', serta minimal persiapan pesanan langsung'}. ${delivery?'Waktu tiba GoSend tidak dijamin.':''} Nilai jadwal nyata belum diisi.</p></div>
     <div class="field wide"><b>Catatan (opsional)</b><div class="input-demo address">Contoh: dressing dipisah.</div></div></div>`;
   if(checkoutStep===2)body=`<h2>Pilih pembayaran</h2>
-    <div class="option ${pre?'selected':''}"><b>Transfer bank / QRIS manual</b><p>Instruksi rekening atau QRIS toko ditampilkan setelah pesanan tersimpan. Bukan pembayaran otomatis.</p></div>
-    <div class="option ${pre?'unavailable':'selected'}"><b>Bayar saat ${pre?'diterima / diambil':'diambil'}</b><p>${pre?'Tidak tersedia untuk preorder: pembayaran wajib di muka.':'Tersedia untuk pesanan langsung; pengelola mencatat pembayaran yang benar-benar diterima.'}</p></div>
-    <div class="cutoff">${pre?'Preorder untuk besok ditutup pukul 17.00 waktu toko.':'Pesanan langsung mengikuti stok dan jam layanan.'}</div>
-    <p class="payment">Bukti transfer tidak otomatis membuat pesanan lunas. Pengelola harus memeriksa transaksi masuk. Batas pembayaran dan penahanan stok/kuota perlu disepakati dalam blueprint.</p>`;
+    <div class="option ${pre||delivery?'selected':''}"><b>Transfer bank / QRIS manual</b><p>Instruksi rekening atau QRIS toko ditampilkan setelah pesanan tersimpan. Bukan pembayaran otomatis.</p></div>
+    <div class="option ${pre||delivery?'unavailable':'selected'}"><b>Bayar produk saat diambil</b><p>${pre||delivery?'Tidak tersedia: preorder wajib dibayar di muka dan produk antar harus lunas sebelum dikirim.':'Tersedia hanya untuk pesanan langsung ambil sendiri; pengelola mencatat pembayaran yang diterima.'}</p></div>
+    <div class="cutoff">${pre?'Preorder besok ditutup 17.00 WITA; pembayaran produk maksimal 18.00 WITA pada hari pemesanan.':'Pesanan langsung mengikuti stok, jam layanan dan minimal persiapan.'}</div>
+    <p class="payment">Bukti transfer bukan bukti lunas. Pengelola memeriksa transaksi masuk. Stok/kuota ditahan saat pesanan berhasil dibuat, bukan saat masuk keranjang. Preorder belum terverifikasi diperiksa setelah 18.00 WITA sebelum dibatalkan.</p>`;
   if(checkoutStep===3)body=`<h2>Tinjau sebelum memesan</h2>
     <div class="review-section"><b>Penerima</b><p>Pelanggan Contoh &middot; 08xx xxxx xxxx</p></div>
-    <div class="review-section"><b>${receipt}</b><p>${pre?'Alamat contoh dalam wilayah yang dilayani.':'Alamat dan petunjuk lokasi toko akan ditampilkan.'}</p></div>
-    <div class="review-section"><b>${pre?'Preorder besok':'Pesanan langsung hari ini'}</b><p>${pre?'Slot contoh 11.00-12.00, waktu lokal toko.':'Slot pengambilan mengikuti konfirmasi toko.'}</p></div>
-    <div class="review-section"><b>Pembayaran: ${payment}</b><p>${pre?'Status awal belum lunas; instruksi pembayaran ditampilkan setelah tersimpan.':'Status awal belum lunas; dibayar saat diambil.'}</p></div>
+    <div class="review-section"><b>${receipt}</b><p>${delivery?'Alamat contoh dalam wilayah aktif; tarif GoSend dikonfirmasi pengelola.':'Alamat dan petunjuk lokasi toko akan ditampilkan.'}</p></div>
+    <div class="review-section"><b>${pre?'Preorder besok':'Pesanan langsung hari ini'}</b><p>Waktu dipilih dari jadwal yang diatur Admin, WITA. ${delivery?'Penerimaan merupakan waktu yang diminta, bukan jaminan tiba kurir.':''}</p></div>
+    <div class="review-section"><b>Pembayaran: ${payment}</b><p>${pre||delivery?'Status awal belum lunas; instruksi pembayaran ditampilkan setelah tersimpan.':'Status awal belum lunas; dibayar saat diambil.'}</p></div>
     <div class="cutoff" style="margin-top:16px">Setelah tersimpan, pelanggan mendapat nomor pesanan dan akses status pribadi. Status pemenuhan dan pembayaran ditampilkan terpisah.</div>
-    <p class="privacy">Kebijakan perubahan, pembatalan dan pembayaran perlu ditetapkan sebelum build. Pada aplikasi final, pelanggan dapat kembali memperbaiki data sebelum konfirmasi.</p>`;
+    <div class="promo-box"><h3>Kebijakan pembatalan</h3><p>Sebelum persiapan: permintaan pelanggan harus disetujui pengelola, pengembalian 90% dari pembayaran produk yang diterima. Setelah persiapan dimulai: pembatalan pelanggan tidak diperbolehkan.</p><p>Jika toko membatalkan karena tidak dapat memenuhi pesanan: pengembalian produk 100%. Refund manual maksimal 1 x 24 jam sejak pembatalan dikonfirmasi; ongkir terpisah.</p></div>
+    <p class="privacy">Pada aplikasi final, kebijakan tampil sebelum pemesanan; pelanggan dapat kembali memperbaiki data. Tidak ada pesanan yang dibuat melalui mockup ini.</p>`;
   return `<div class="mock-label">CHECKOUT CONTOH / TIDAK ADA PESANAN ATAU PEMBAYARAN NYATA</div>
     <header class="header">${brand}<span class="pill">Checkout</span></header><main class="content checkout-content">
-    <h1 class="checkout-title">Selesaikan pesanan Anda.</h1><small>${pre?'Contoh preorder / antar':'Contoh pesanan langsung / ambil sendiri'}</small>
+    <h1 class="checkout-title">Selesaikan pesanan Anda.</h1><small>Contoh ${pre?'preorder':'langsung'} / ${delivery?'antar':'ambil sendiri'}</small>
     <nav class="progress">${['Penerima','Pembayaran','Tinjau pesanan'].map((s,i)=>`<span class="${checkoutStep===i+1?'current':''}">${i+1}. ${s}</span>`).join('')}</nav>
     <div class="checkout-layout"><section class="checkout-panel">${body}
     <div class="checkout-actions"><span>Kembali</span><span class="forward">${checkoutStep===3?'Buat pesanan (mockup)':'Lanjut (mockup)'}</span></div>
@@ -337,7 +350,7 @@ function productSetup(){
       <div class="field"><b>Kategori *</b><div class="input-demo">Makanan &nbsp; &#9662;</div><p class="hint">Contoh pilihan: Makanan, Minuman, Paket.</p></div>
       <div class="field"><b>Nama produk *</b><div class="input-demo">Chicken Veggie Bowl</div></div>
       <div class="field"><b>Harga produk (Rp) *</b><div class="input-demo">35.000</div><p class="hint">Harga dalam rupiah, bukan teks bebas. Nilai ini hanya contoh.</p></div>
-      <div class="promo-box"><h3>Diskon produk (opsional)</h3><p class="hint">Usulan pengaturan, belum aturan final. Contoh diskon 10% dari Rp35.000 menjadi Rp31.500.</p>
+      <div class="promo-box"><h3>Diskon produk (opsional) &middot; khusus Admin</h3><p class="hint">Kontrol promo hanya tersedia untuk Admin pada aplikasi final; Operator tidak dapat mengubah diskon melalui penyimpanan produk. Contoh diskon 10% dari Rp35.000 menjadi Rp31.500.</p>
       <div class="promo-fields">
       <div class="field"><b>Status diskon</b><div class="input-demo">Aktif &middot; contoh</div></div>
       <div class="field"><b>Jenis potongan</b><div class="input-demo">Persen (%) / Nominal (Rp)</div></div>
@@ -352,25 +365,68 @@ function productSetup(){
     <div class="table-wrap"><table><thead><tr><th>Nama produk</th><th>Kategori</th><th>Harga</th><th>Foto</th><th>Aksi</th></tr></thead><tbody>${products.map(p=>`<tr><td>${p[1]}</td><td>${p[0]}</td><td>${p[3]}</td><td>Belum diunggah</td><td>Ubah / Nonaktifkan</td></tr>`).join('')}</tbody></table></div>
     <div class="admin-cards">${products.map(p=>`<article class="order-card"><span class="category">${p[0]}</span><p><b>${p[1]}</b></p><div class="price"><b>${p[3]}</b></div><small>Foto belum diunggah &middot; data contoh</small><div class="account-actions"><span>Ubah</span><span>Nonaktifkan</span></div></article>`).join('')}</div>
     </section>
-    <section class="checkout-panel setup-list"><div class="editor-title"><h2>Setup Voucher</h2><p>Usulan voucher tingkat pesanan; berbeda dari diskon produk. Seluruh nilai berikut contoh, tidak tersimpan.</p></div>
+    <section class="checkout-panel setup-list"><div class="editor-title"><h2>Setup Voucher &middot; khusus Admin</h2><p>Hanya Admin dapat membuat, mengubah, mengaktifkan atau menonaktifkan voucher. Seluruh nilai berikut contoh, tidak tersimpan.</p></div>
       <div class="promo-fields">
       <div class="field"><b>Kode voucher unik</b><div class="input-demo">SEHAT10 &middot; contoh</div></div>
       <div class="field"><b>Status voucher</b><div class="input-demo">Aktif / Nonaktif</div></div>
       <div class="field"><b>Jenis dan nilai potongan</b><div class="input-demo">Persen / Rupiah &middot; contoh 10%</div></div>
-      <div class="field"><b>Minimum belanja produk</b><div class="input-demo">Rp50.000 &middot; contoh</div></div>
+      <div class="field"><b>Minimum belanja produk</b><div class="input-demo">Rp50.000 &middot; contoh</div><p class="hint">Seluruh subtotal produk sebelum voucher, termasuk harga promo produk diskon; tidak termasuk ongkir.</p></div>
       <div class="field"><b>Maksimum potongan</b><div class="input-demo">Rp10.000 &middot; contoh</div></div>
       <div class="field"><b>Periode berlaku (WITA)</b><div class="input-demo">Tanggal mulai - selesai</div></div>
-      <div class="field"><b>Kuota penggunaan total</b><div class="input-demo">100 pesanan &middot; contoh</div></div>
       <div class="field"><b>Berlaku untuk</b><div class="input-demo">Langsung / Preorder / Keduanya</div></div>
       </div>
       <div class="checkout-actions"><span>Batal</span><span class="forward">Simpan Voucher (mockup)</span></div>
-      <p class="privacy"><b>Aturan disetujui: voucher tidak dapat digabung dengan diskon produk.</b> Rekomendasi: voucher memotong nilai produk, bukan ongkir GoSend. Perlakuan keranjang campuran, izin pengelola promo dan aturan kuota belum disepakati. Kuota, masa berlaku dan hitungan harus diperiksa backend, termasuk saat pemesanan bersamaan.</p>
+      <p class="privacy"><b>Aturan disetujui: voucher tanpa kuota penggunaan, mengikuti masa berlaku dan syarat promo. Minimum belanja dari seluruh subtotal produk sebelum voucher, termasuk harga promo produk diskon, tanpa ongkir. Voucher hanya memotong produk non-diskon. Pengaturan diskon dan voucher hanya untuk Admin.</b> Rekomendasi: voucher tidak memotong ongkir GoSend. Izin, syarat, masa berlaku dan hitungan harus diperiksa backend. Batas stok/kuota produksi produk tetap berlaku.</p>
     </section></main>`;
+}
+function reviewPage(title,description,body,role='Admin'){
+  return `<div class="mock-label">PREVIEW REVIEW / DATA CONTOH / KONTROL TIDAK AKTIF</div><header class="header">${brand}<span class="pill">${role}</span></header><main class="admin-content product-setup"><div class="admin-heading"><div><h1>${title}</h1><p>${description}</p></div></div>${body}</main>`;
+}
+function stock(){
+  return reviewPage('Stok & Preorder','Ketersediaan terpisah per produk dan tanggal. Contoh angka, bukan stok nyata.',`
+  <div class="review-grid"><section class="panel"><h2>Stok siap jual hari ini</h2><div class="field"><b>Produk</b><div class="input-demo">Chicken Veggie Bowl</div></div>
+  <div class="kpis"><div class="kpi"><small>Stok contoh</small><strong>20</strong></div><div class="kpi"><small>Ditahan pesanan</small><strong>4</strong></div></div><p>Tersedia: <b>16 porsi</b></p>
+  <div class="field"><b>Penyesuaian stok</b><div class="input-demo">Tambah / Kurangi &middot; jumlah dan alasan</div></div><span class="cta">Simpan penyesuaian (mockup)</span></section>
+  <section class="panel"><h2>Kuota preorder per tanggal</h2><div class="field"><b>Produk</b><div class="input-demo">Chicken Veggie Bowl</div></div>
+  <div class="field"><b>Tanggal penerimaan (WITA)</b><div class="input-demo">Besok &middot; contoh tanggal</div></div>
+  <div class="kpis"><div class="kpi"><small>Kuota contoh</small><strong>30</strong></div><div class="kpi"><small>Ditahan pesanan</small><strong>8</strong></div></div><p>Tersedia: <b>22 porsi</b></p><span class="cta">Atur kuota (mockup)</span></section>
+  <section class="panel wide"><h2>Riwayat perubahan</h2><article class="order-card"><b>Contoh: tambah stok 20 porsi</b><p>Admin Contoh &middot; alasan: produksi siap jual</p></article>
+  <p class="payment">Stok/kuota ditahan saat pesanan berhasil dibuat. Pembayaran tidak mengurangi lagi. Pembatalan dikonfirmasi melepas penahanan satu kali; produk terpakai tidak otomatis menjadi stok siap jual. Riwayat dan pencegahan pesanan berlebih diperiksa backend.</p></section></div>`,'Admin / Operator');
+}
+function settings(){
+  return reviewPage('Pengaturan Toko','Khusus Admin. Nilai nyata harus diisi sebelum toko dibuka.',`
+  <div class="review-grid"><section class="panel"><h2>Identitas & pembayaran</h2>
+  <div class="upload-area"><strong>Upload logo Healthy Vibes</strong><p>File logo belum tersedia; proporsi asli dipertahankan.</p><span class="cta">Pilih Logo (mockup)</span></div>
+  <div class="field"><b>Alamat toko</b><div class="input-demo address">Alamat pengambilan dan titik jemput kurir</div></div>
+  <div class="field"><b>Kontak toko</b><div class="input-demo">Nomor kontak akan diisi</div></div>
+  <div class="field"><b>Rekening / QRIS manual</b><div class="input-demo">Data pembayaran usaha akan diisi</div></div></section>
+  <section class="panel"><h2>Jadwal & cakupan</h2><div class="field"><b>Zona waktu</b><div class="input-demo">WITA &middot; Asia/Makassar</div></div>
+  <div class="field"><b>Hari dan jam layanan</b><div class="input-demo">Pilih hari &middot; jam buka / tutup</div></div>
+  <div class="field"><b>Interval pilihan waktu (menit)</b><div class="input-demo">Diatur Admin &middot; nilai belum diisi</div></div>
+  <div class="field"><b>Minimal persiapan langsung (menit)</b><div class="input-demo">Diatur Admin &middot; nilai belum diisi</div></div>
+  <div class="field"><b>Daftar wilayah aktif</b><div class="input-demo">Tambah wilayah Makassar dan sekitarnya</div></div><p class="hint">Tidak memuat tarif wilayah. Ongkir mengikuti GoSend.</p></section>
+  <section class="panel"><h2>Aturan yang disetujui</h2><p>Preorder: batas 17.00 WITA; bayar maksimal 18.00 WITA.</p><p>Refund pelanggan sebelum persiapan: 90%. Toko membatalkan: 100%. Tenggat 1 x 24 jam.</p><p>Setelah persiapan: tidak menerima pembatalan pelanggan.</p><p class="hint">Ini tampilan ringkasan, bukan izin mengubah aturan bisnis.</p></section>
+  <section class="panel"><h2>Backup & kesiapan layanan</h2><p class="hint">Rekomendasi baru: backup harian, retensi 30 hari; belum disetujui.</p><span class="cta">Buat Backup (mockup)</span><div class="field"><b>Backup terakhir</b><div class="input-demo">Belum ada &middot; tidak tersambung database</div></div><div class="cutoff">GoSend: pembayaran ongkir langsung ke kurir belum diverifikasi di Makassar. Jangan buka alur pengantaran ini sebelum dukungan dipastikan.</div><p class="privacy">Restore hanya Admin, dengan konfirmasi dan pengujian salinan dahulu; tidak ada backup atau restore nyata dalam preview.</p></section></div><span class="cta">Simpan Pengaturan (mockup)</span>`);
+}
+function reports(){
+  return reviewPage('Laporan Penjualan','Usulan kolom dan ringkasan. Semua angka sintetis untuk review.',`
+  <section class="panel"><div class="filters"><span class="filter">Periode WITA: contoh hari ini</span><span class="filter">Kategori: Semua</span><span class="filter">Jenis: Semua</span><span class="filter">Status: Semua</span><span class="filter">PDF (mockup)</span><span class="filter">Excel .xlsx (mockup)</span><span class="filter">Cetak (mockup)</span></div>
+  <div class="kpis"><div class="kpi"><small>Produk sebelum voucher</small><strong>Rp50.000</strong></div><div class="kpi"><small>Voucher</small><strong>Rp2.000</strong></div><div class="kpi"><small>Pembayaran diterima</small><strong>Rp48.000</strong></div><div class="kpi"><small>Refund selesai</small><strong>Rp43.200</strong></div></div>
+  <article class="order-card"><b>HV-DEMO &middot; contoh pembatalan pelanggan</b><p>Produk diskon Rp30.000 + non-diskon Rp20.000. Voucher 10% hanya memotong Rp20.000.</p><p>Pembayaran produk Rp48.000; refund 90% Rp43.200.</p><div class="summary-row"><span>Penerimaan dikurangi refund</span><b>Rp4.800</b></div><p class="hint">Bukan laba dan bukan nilai produk terjual; status pesanan batal. Ongkir ke kurir tidak dihitung sebagai kas toko.</p></article>
+  <p class="payment">PDF, .xlsx dan cetak memakai data, filter dan izin yang sama. Usulan laporan tambahan: pembayaran, refund, preorder/produksi, mutasi stok. Kontrol belum mengekspor file nyata.</p></section>`,'Admin / Viewer');
+}
+function orderStatus(){
+  return reviewPage('Status Pesanan','Contoh tampilan pelanggan melalui akses privat, bukan pencarian publik.',`
+  <div class="review-grid"><section class="panel"><h2>HV-DEMO &middot; Preorder antar</h2><p>Pembayaran produk: <span class="badge">Lunas terverifikasi</span></p><p>Pemenuhan: <span class="badge wait">Dikonfirmasi &middot; belum disiapkan</span></p><p>Waktu diminta: besok, dari jadwal toko (WITA).</p>
+  <div class="timeline"><p>Pesanan berhasil dibuat &middot; kuota ditahan.</p><p>Pembayaran diperiksa pengelola.</p><p>Menunggu persiapan &middot; contoh tahap aktif.</p></div>
+  <h2>Pengantaran</h2><p>GoSend dipesan pengelola. Tarif: belum dikonfirmasi.</p><p class="hint">Pilihan: ongkir dibayar pelanggan ke kurir saat tiba. Dukungan Makassar masih perlu diperiksa. Tiba tidak otomatis berarti ongkir lunas.</p></section>
+  <section class="panel"><h2>Permintaan Pembatalan</h2><div class="field"><b>Alasan pelanggan</b><div class="input-demo address">Tuliskan alasan &middot; mockup</div></div><span class="cta">Ajukan Pembatalan (mockup)</span><p class="payment">Hanya sebelum persiapan; memerlukan persetujuan pengelola. Permintaan tidak otomatis membatalkan atau melepas kuota.</p><div class="promo-box"><h3>Ringkasan kebijakan</h3><p>Refund pelanggan 90% sebelum persiapan, refund toko 100% bila tidak dapat memenuhi pesanan. Manual maksimal 1 x 24 jam setelah pembatalan dikonfirmasi.</p><p>Setelah persiapan dimulai, pembatalan pelanggan tidak diperbolehkan.</p></div></section>
+  <section class="panel wide"><h2>Contoh refund pesanan lain</h2><p>HV-REFUND &middot; pembayaran Rp100.000; refund pelanggan Rp90.000.</p><p>Status pesanan: batal. Status refund: <span class="badge wait">Menunggu transfer manual</span></p><p>Jatuh tempo: 24 jam setelah waktu pembatalan dikonfirmasi, WITA.</p><p class="privacy">Nomor pesanan saja bukan bukti akses. Rancangan akses privat masih perlu verifikasi keamanan. Tidak ada data pelanggan atau token nyata dalam preview.</p></section></div>`,'Pelanggan / akses privat');
 }
 const frame=document.getElementById('preview'), wrap=document.getElementById('frame-wrap');
 const sizes={desktop:[1280,850],tablet:[820,1000],mobile:[390,844],small:[320,740]};
-const modeLabels={shop:'Toko pelanggan',admin:'Panel pengelola',checkout:'Checkout',login:'Login',users:'Setup User',productSetup:'Setup Produk'};
-let mode='productSetup',device='mobile',landscape=false,checkoutStep=1,scenario='preorder';
+const modeLabels={shop:'Toko pelanggan',admin:'Panel pengelola',checkout:'Checkout',login:'Login',users:'Setup User',productSetup:'Setup Produk',stock:'Stok & Preorder',settings:'Pengaturan',reports:'Laporan',orderStatus:'Status Pesanan'};
+let mode='shop',device='mobile',landscape=false,checkoutStep=1,scenario='preorder';
 function fit(){
   let [w,h]=sizes[device];if(landscape && device!=='desktop') [w,h]=[h,w];
   const available=wrap.parentElement.clientWidth- (matchMedia('(max-width:650px)').matches?16:36);
@@ -381,7 +437,7 @@ function fit(){
   frame.title=`Preview ${modeLabels[mode]} ${w} x ${h} px`;
 }
 function render(){
-  const views={shop,admin,checkout,login,users,productSetup};
+  const views={shop,admin,checkout,login,users,productSetup,stock,settings,reports,orderStatus};
   frame.srcdoc=`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${shared}</style></head><body>${views[mode]()}</body></html>`;
   document.getElementById('checkout-tools').hidden=mode!=='checkout';
   document.querySelectorAll('[data-step]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.step)===checkoutStep)));
