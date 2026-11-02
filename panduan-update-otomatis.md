@@ -1,7 +1,9 @@
 # Healthy Vibes: Update Otomatis dari GitHub Desktop
 
 Keputusan terbaru: frontend terpisah, mengikuti pola Berat Idealku.
-Source sudah disesuaikan. Belum ada Push atau deployment nyata.
+Source sudah disesuaikan dan URL API sudah terisi pada `js/config.js`.
+Status pemasangan akun Google dan publikasi Pages belum diverifikasi di sini.
+Untuk instalasi awal, ikuti `panduan-pemasangan.md` dari tahap 1 sampai 6.
 
 ## Alur yang Digunakan
 
