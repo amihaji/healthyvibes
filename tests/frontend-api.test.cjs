@@ -1,0 +1,348 @@
+'use strict';
+
+// Pengujian memakai layanan tiruan, tanpa request atau transaksi Google nyata.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const crypto = require('node:crypto').webcrypto;
+const root = path.resolve(__dirname, '..');
+const source = function (name) {
+  return fs.readFileSync(path.join(root, name), 'utf8');
+};
+const channel = 'a'.repeat(32);
+const origin = 'https://amihaji.github.io';
+
+// Keluaran Google ditampung di memori agar target postMessage dapat diperiksa.
+function backend(configuredOrigins) {
+  function output(text, kind) {
+    return {
+      text: text,
+      kind: kind,
+      setMimeType: function () { return this; },
+      setXFrameOptionsMode: function (mode) {
+        this.frameMode = mode;
+        return this;
+      }
+    };
+  }
+  const context = vm.createContext({
+    PropertiesService: {
+      getScriptProperties: function () {
+        return { getProperty: function () { return configuredOrigins || ''; } };
+      }
+    },
+    ContentService: {
+      MimeType: { JSON: 'JSON' },
+      createTextOutput: function (text) { return output(text, 'json'); }
+    },
+    HtmlService: {
+      XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
+      createHtmlOutput: function (text) { return output(text, 'html'); }
+    }
+  });
+  vm.runInContext(source('apps-script/Store.gs'), context);
+  vm.runInContext(source('apps-script/Api.gs'), context);
+  context.withLock_ = function (operation) { return operation(); };
+  return context;
+}
+
+function post(context, request, options) {
+  return context.doPost({
+    parameter: Object.assign({
+      clientOrigin: origin,
+      channel: channel,
+      payload: JSON.stringify(request)
+    }, options)
+  });
+}
+
+// Evaluasi hanya tag script respons untuk memeriksa hasil dan tujuan balasan.
+function readReply(output) {
+  let received;
+  vm.runInNewContext(output.text.match(/<script>\n([\s\S]*?)<\/script>/)[1], {
+    window: {
+      top: {
+        postMessage: function (message, target) {
+          received = { message: message, target: target };
+        }
+      }
+    }
+  });
+  return received;
+}
+
+test('GET API tidak membagikan database atau konfigurasi rahasia', function () {
+  const result = JSON.parse(backend().doGet().text);
+  assert.deepEqual(result, {
+    service: 'Healthy Vibes API',
+    protocol: 'healthyvibes-api-v1'
+  });
+});
+
+test('POST publik memberikan hasil server dengan target origin tepat', function () {
+  const context = backend();
+  context.catalog_ = function () { return { products: [] }; };
+  const output = post(context, { action: 'catalog', data: {} });
+  const reply = readReply(output);
+  assert.equal(reply.target, origin);
+  assert.equal(reply.message.channel, channel);
+  assert.equal(reply.message.response.ok, true);
+  assert.equal(output.frameMode, 'ALLOWALL');
+});
+
+test('Login membaca password dari badan POST, bukan query event', function () {
+  const context = backend();
+  let supplied;
+  context.login_ = function (data) {
+    supplied = data;
+    return { token: 'server-session' };
+  };
+  const output = post(context, {
+    action: 'login',
+    data: { username: 'admin', password: 'Password-hanya-POST-123' }
+  }, { password: 'query-diabaikan' });
+  assert.equal(supplied.password, 'Password-hanya-POST-123');
+  assert.equal(readReply(output).message.response.data.token, 'server-session');
+  assert.ok(!output.text.includes(supplied.password));
+});
+
+test('POST origin asing dan kanal salah tidak menjalankan operasi', function () {
+  const context = backend();
+  context.api_ = function () { throw new Error('Operasi tidak boleh dijalankan'); };
+  for (const options of [
+    { clientOrigin: 'https://evil.example' },
+    { channel: 'invalid' }
+  ]) {
+    const output = post(context, { action: 'catalog' }, options);
+    assert.equal(output.kind, 'json');
+    assert.equal(JSON.parse(output.text).ok, false);
+    assert.ok(!output.text.includes('Operasi tidak boleh'));
+  }
+});
+
+test('Origin konfigurasi bersifat exact, bukan prefix atau wildcard', function () {
+  const context = backend('https://amihaji.github.io');
+  context.catalog_ = function () { return {}; };
+  assert.equal(post(context, { action: 'catalog' }, {
+    clientOrigin: 'https://amihaji.github.io.evil.example'
+  }).kind, 'json');
+  assert.throws(function () { backend('*').frontendOrigins_(); });
+  assert.throws(function () {
+    backend('https://amihaji.github.io/healthyvibes/').frontendOrigins_();
+  });
+});
+
+test('Payload JSON rusak dan bentuk request salah mendapat error server', function () {
+  const context = backend();
+  for (const payload of ['{', '[]', 'null', '{"action":"catalog","data":[]}']) {
+    const result = readReply(post(context, {}, { payload: payload }));
+    assert.equal(result.message.response.ok, false);
+  }
+});
+
+test('Operasi staf tetap memeriksa sesi dan level backend', function () {
+  const context = backend();
+  let calls = 0;
+  context.authorize_ = function (token, roles) {
+    calls += 1;
+    assert.equal(token, 'invalid-session');
+    assert.deepEqual(Array.from(roles), ['Admin']);
+    throw new Error('Sesi ditolak');
+  };
+  const result = readReply(post(context, {
+    action: 'saveSettings', token: 'invalid-session', data: {}
+  }));
+  assert.equal(calls, 1);
+  assert.equal(result.message.response.ok, false);
+  assert.equal(result.message.response.message, 'Sesi ditolak');
+});
+
+test('Aksi internal tidak dapat dipanggil melalui nama action', function () {
+  const result = readReply(post(backend(), {
+    action: 'createFirstAdmin_', data: {}
+  }));
+  assert.equal(result.message.response.ok, false);
+});
+
+test('Data berbahaya tidak dapat menutup tag script respons', function () {
+  const context = backend();
+  const value = '</script><script>alert("x")</script>&\u2028\u2029';
+  context.catalog_ = function () { return { name: value }; };
+  const output = post(context, { action: 'catalog' });
+  assert.equal((output.text.match(/<\/script>/g) || []).length, 1);
+  assert.equal(readReply(output).message.response.data.name, value);
+});
+
+// DOM dan jam tiruan memastikan payload dibersihkan tanpa membuat file debug.
+function transportFixture(config) {
+  const listeners = new Set();
+  const timers = new Map();
+  const elements = [];
+  let timerId = 0;
+  let submission;
+  function element(tag) {
+    const item = {
+      tag: tag,
+      children: [],
+      contentWindow: {},
+      appendChild: function (child) { this.children.push(child); },
+      remove: function () { this.removed = true; }
+    };
+    Object.defineProperty(item, 'elements', {
+      get: function () { return item.children; }
+    });
+    elements.push(item);
+    return item;
+  }
+  const window = {
+    HV_CONFIG: Object.assign({
+      apiUrl: 'https://script.google.com/macros/s/test-deployment/exec',
+      requestTimeoutMs: 5000
+    }, config),
+    addEventListener: function (type, callback) { listeners.add(callback); },
+    removeEventListener: function (type, callback) { listeners.delete(callback); }
+  };
+  window.self = window;
+  window.top = window;
+  vm.runInNewContext(source('js/transport.js'), {
+    window: window,
+    location: { origin: origin },
+    crypto: crypto,
+    document: {
+      createElement: element,
+      body: { appendChild: function () {} }
+    },
+    HTMLFormElement: {
+      prototype: {
+        submit: function () {
+          submission = Object.fromEntries(this.children.map(function (input) {
+            return [input.name, input.value];
+          }));
+        }
+      }
+    },
+    setTimeout: function (callback, delay) {
+      timers.set(++timerId, { callback: callback, delay: delay });
+      return timerId;
+    },
+    clearTimeout: function (id) { timers.delete(id); }
+  });
+  function respond(options) {
+    const frame = elements.find(function (item) { return item.tag === 'iframe'; });
+    const event = Object.assign({
+      origin: 'https://test-script.googleusercontent.com',
+      source: { parent: frame.contentWindow },
+      data: {
+        protocol: 'healthyvibes-api-v1',
+        channel: submission.channel,
+        response: { ok: true, data: 'confirmed' }
+      }
+    }, options);
+    Array.from(listeners).forEach(function (callback) { callback(event); });
+  }
+  return {
+    api: window.HealthyVibesApi,
+    listeners: listeners,
+    timers: timers,
+    elements: elements,
+    window: window,
+    respond: respond,
+    submitted: function () { return submission; }
+  };
+}
+
+test('Transport memakai POST dan membersihkan elemen setelah konfirmasi', async function () {
+  const fixture = transportFixture();
+  const pending = fixture.api.request({
+    action: 'login', data: { password: 'Tidak-di-URL-123' }
+  });
+  const form = fixture.elements.find(function (item) { return item.tag === 'form'; });
+  assert.equal(form.method, 'POST');
+  assert.ok(!form.action.includes('Tidak-di-URL'));
+  assert.equal(JSON.parse(fixture.submitted().payload).data.password, 'Tidak-di-URL-123');
+  fixture.respond();
+  assert.equal((await pending).data, 'confirmed');
+  assert.equal(fixture.listeners.size, 0);
+  assert.equal(fixture.timers.size, 0);
+  assert.ok(fixture.elements.filter(function (item) {
+    return ['form', 'iframe'].includes(item.tag);
+  }).every(function (item) { return item.removed; }));
+  assert.ok(form.children.every(function (input) { return input.value === ''; }));
+});
+
+test('Pesan palsu ditolak sampai origin, iframe, dan kanal cocok', async function () {
+  const fixture = transportFixture();
+  const pending = fixture.api.request({ action: 'catalog' });
+  fixture.respond({ origin: 'https://evil.example' });
+  fixture.respond({ source: {} });
+  fixture.respond({
+    data: {
+      protocol: 'healthyvibes-api-v1',
+      channel: 'wrong-channel',
+      response: { ok: true }
+    }
+  });
+  assert.equal(fixture.listeners.size, 1);
+  fixture.respond();
+  assert.equal((await pending).ok, true);
+});
+
+test('Respons tanpa status server ditolak, bukan dianggap berhasil', async function () {
+  const fixture = transportFixture();
+  const pending = fixture.api.request({ action: 'createOrder' });
+  fixture.respond({
+    data: {
+      protocol: 'healthyvibes-api-v1',
+      channel: fixture.submitted().channel,
+      response: {}
+    }
+  });
+  await assert.rejects(pending, /belum dipastikan/);
+  assert.equal(fixture.listeners.size, 0);
+});
+
+test('Timeout tidak mengakui transaksi sukses dan tetap membersihkan DOM', async function () {
+  const fixture = transportFixture();
+  const pending = fixture.api.request({ action: 'createOrder' });
+  Array.from(fixture.timers.values())[0].callback();
+  await assert.rejects(pending, /belum mengonfirmasi hasil/);
+  assert.equal(fixture.listeners.size, 0);
+  assert.equal(fixture.timers.size, 0);
+});
+
+test('Konfigurasi kosong dan aplikasi dalam iframe ditolak', async function () {
+  await assert.rejects(
+    transportFixture({ apiUrl: '' }).api.request({ action: 'catalog' }),
+    /Isi URL API/
+  );
+  const fixture = transportFixture();
+  fixture.window.top = {};
+  await assert.rejects(fixture.api.request({ action: 'catalog' }), /langsung/);
+});
+
+test('Semua source dapat diparse dan frontend tidak memakai template Google', function () {
+  for (const directory of ['js', 'apps-script']) {
+    for (const file of fs.readdirSync(path.join(root, directory))) {
+      if (/\.(js|gs)$/.test(file)) {
+        new vm.Script(source(directory + '/' + file), { filename: file });
+      }
+    }
+  }
+  assert.ok(!source('index.html').includes('<?'));
+  assert.ok(!source('js/client.js').includes('google.script.run'));
+  assert.ok(!fs.readdirSync(path.join(root, 'apps-script')).some(function (file) {
+    return file.endsWith('.html');
+  }));
+});
+
+test('Aturan WITA, voucher, refund, dan reservasi tetap lulus', function () {
+  const context = vm.createContext({});
+  for (const file of ['Store.gs', 'Rules.gs', 'Orders.gs', 'Tests.gs']) {
+    vm.runInContext(source('apps-script/' + file), context);
+  }
+  const results = context.runRuleTests_();
+  assert.ok(results.length >= 12);
+  assert.ok(results.every(function (result) { return result.status === 'PASS'; }));
+});

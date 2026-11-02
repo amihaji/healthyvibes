@@ -1,7 +1,11 @@
 # Healthy Vibes: Blueprint Ringkas
 
 Status terbaru: IZIN BUILD DITERIMA pada 1 November 2026 melalui "SETUJU - GENERATE FINAL BUILD".
-Source implementasi tersedia pada `apps-script`; pemasangan Google dan pengujian integrasi belum selesai.
+Keputusan terbaru 2 November 2026: frontend statis di GitHub Pages,
+backend API Apps Script, database Google Sheets/Drive, mengikuti pola Berat Idealku.
+Source frontend: `index.html`, `css`, dan `js`; source backend: `apps-script`.
+Push frontend menerbitkan Pages; revisi backend memperbarui deployment Google terpisah.
+Pemasangan Google dan pengujian integrasi belum selesai.
 Catatan "belum izin build" di bagian historis di bawah telah digantikan oleh persetujuan terbaru ini.
 Lihat `panduan-pemasangan.md`, `struktur-database.md` dan `hasil-pengujian-build.md`.
 Tambahan disetujui: foto produk di PRODUK, invoice di INVOICE, bukti transfer di STRUK, foto tanda terima di TANDATERIMA.
@@ -10,7 +14,12 @@ SETUJU berarti keputusan pengguna; rekomendasi yang belum diterima tetap BELUM D
 
 Pengguna menyetujui penyusunan rekomendasi teknis dan preview terbaru sekaligus untuk review, bukan izin build. Lihat `checklist-review.md` (ringkasan) dan `rekomendasi-teknis.md` (rincian usulan). Rekomendasi baru tetap BELUM DIPUTUSKAN.
 
-Arah paket SETUJU untuk finalisasi desain dan verifikasi teknis. Pilihan A terakhir menyetujui tombol pemesanan di https://www.beratidealku.com menuju langsung URL web app Apps Script. Frontend disajikan melalui HTML Service, backend Apps Script, database Sheets/Drive, source tetap GitHub. Cloudflare/penghubung tidak dipilih; GitHub Pages bukan tujuan toko. Lihat `hasil-verifikasi-teknis.md` untuk batas pengujian. Persetujuan ini bukan izin build, perubahan website atau deployment.
+Alur terbaru: https://www.beratidealku.com -> tombol pemesanan ->
+https://amihaji.github.io/healthyvibes/ -> API Apps Script.
+Pengguna meminta pola frontend/backend terpisah setelah penjelasan batas
+penggunaan GitHub Pages untuk toko online. Implementasi teknis bukan bukti
+kesesuaian ketentuan hosting atau kesiapan produksi.
+Cloudflare tidak digunakan. Website utama dan deployment nyata belum diubah.
 
 | Checklist | Status | Keputusan / Rekomendasi |
 | --- | --- | --- |
@@ -33,7 +42,7 @@ Arah paket SETUJU untuk finalisasi desain dan verifikasi teknis. Pilihan A terak
 | PDF / Excel | SETUJU (CAKUPAN) | Laporan PDF/Excel masuk versi pertama; detail kolom, periode, filter dan format .xlsx perlu dirancang sesuai izin pengguna. |
 | Login dan level | SETUJU | Setup User oleh Admin; Admin seluruh fitur, Operator operasional sesuai izin, Viewer hanya dashboard/laporan. Susunan Login dan Setup User disetujui. |
 | Keamanan | BELUM DIPUTUSKAN | Rekomendasi: verifikasi backend, password hash dengan algoritme khusus password, sesi kedaluwarsa, batas percobaan, reset aman, larangan menonaktifkan admin terakhir. Kelayakan implementasi pada Apps Script perlu diverifikasi. |
-| Platform | SETUJU | HTML, CSS, JavaScript, Bootstrap; source code GitHub; frontend melalui Apps Script HTML Service; backend Apps Script; database Sheets di Drive. |
+| Platform | SETUJU | HTML, CSS, JavaScript, Bootstrap; frontend statis di GitHub Pages; backend API Apps Script; database Sheets di Drive. Source seluruhnya di GitHub. |
 | Mode operasional | SETUJU | Seluruh aplikasi versi pertama bekerja online. Tidak mengonfirmasi pesanan cloud saat koneksi terputus. |
 | Offline / auto-sync | DI LUAR CAKUPAN | Mode transaksi offline dan sinkronisasi pesanan offline tidak termasuk paket online yang disetujui. |
 | Integrasi tambahan | BELUM DIPUTUSKAN | Rekomendasi SKIP AI, WhatsApp API dan payment gateway versi pertama. GoSend tetap manual. |
@@ -42,7 +51,7 @@ Arah paket SETUJU untuk finalisasi desain dan verifikasi teknis. Pilihan A terak
 | Desktop / tablet / mobile | BELUM DIPUTUSKAN | Preview tersedia; persetujuan keseluruhan layout, portrait dan landscape belum final. |
 | Logo / foto | BELUM DIPUTUSKAN | Logo akan ditambahkan; aset belum tersedia. Foto belum ditinjau. Jangan menganggap tampilan tanpa foto sebagai desain final berfoto. |
 | Database / backup | SETUJU (CAKUPAN BACKUP) | Database Sheets/Drive dan fitur backup masuk versi pertama. Rancangan privasi, audit, pencegahan duplikat, penguncian stok, jadwal/retensi backup dan pemulihan belum final. |
-| Hosting / alur akses | SETUJU | https://www.beratidealku.com -> tombol pemesanan -> URL web app Apps Script. Tidak menggunakan GitHub Pages sebagai tujuan toko atau Cloudflare/penghubung tambahan. URL deployment nyata belum dibuat; perubahan tombol website dan deployment belum diizinkan. |
+| Hosting / alur akses | PILIHAN TERBARU PENGGUNA | https://www.beratidealku.com -> tombol pemesanan -> https://amihaji.github.io/healthyvibes/ -> API Apps Script. Batas ketentuan GitHub Pages telah dijelaskan; deployment dan transaksi nyata belum dijalankan. |
 | Batas versi pertama | SETUJU | Toko/checkout sesuai keputusan sebelumnya; dashboard, produk/stok termasuk promo yang disepakati, pesanan, Setup User, laporan PDF/Excel, pengaturan dan backup. Seluruhnya online. Ini persetujuan cakupan, bukan izin coding utama, deployment atau pembelian layanan. |
 | Pengujian / penerimaan | BELUM DIPUTUSKAN | Login/izin, CRUD, filter, laporan, hitungan, batas WITA, stok bersamaan, pembatalan, responsivitas dan regresi. Belum ada tes aplikasi final yang dijalankan. |
 
@@ -53,8 +62,10 @@ Arah paket SETUJU untuk finalisasi desain dan verifikasi teknis. Pilihan A terak
 - Susunan preview Setup Produk dengan upload foto, kategori, nama, harga, diskon dan voucher disetujui. Pengaturan promo hanya Admin. Voucher tanpa kuota penggunaan, hanya memotong produk non-diskon; minimum belanja dari seluruh subtotal produk sebelum voucher, termasuk harga promo produk diskon, tanpa ongkir. Pastikan izin, syarat, masa berlaku, harga dan potongan valid di backend; perubahan promo/harga tidak mengubah transaksi yang sudah tersimpan. Batas stok/kuota produksi tetap terpisah. Verifikasi penyajian foto Drive tanpa membuka data privat.
 - Finalkan alamat/nilai jadwal toko, nominal interval menit, nominal menit persiapan langsung, daftar aktual wilayah Makassar dan sekitarnya, penagihan/perubahan ongkir dan ketentuan pengembalian. Pengaturan daftar wilayah oleh Admin serta pilihan wilayah pelanggan disetujui, terpisah dari tarif GoSend. Admin mengatur hari/rentang layanan, interval serta minimal persiapan sudah disetujui. Uji waktu pilihan yang menjadi kedaluwarsa selama checkout dan ketiadaan waktu valid hari ini; jangan menggeser waktu atau jenis pesanan tanpa persetujuan pelanggan. Data operasional dapat diisi di pengaturan sebelum go live, tetapi aturan inti harus jelas sebelum build.
 - Pemisahan stok langsung dan kuota preorder per produk/tanggal serta penahanan saat pesanan berhasil dibuat disetujui. Rancang dan uji konsistensi pencatatan pesanan/penahanan pada Apps Script, pencegahan kelebihan pesanan bersamaan, duplikasi saat retry dan pelepasan berulang saat pembatalan. Tidak ada pembatalan otomatis yang disetujui.
-- Verifikasi autentikasi akun buatan Admin, sesi dan komunikasi frontend HTML Service dengan backend Apps Script sebelum meminta izin build. Persetujuan platform bukan bukti keamanan atau kelayakan runtime.
-- Alur akses sudah disetujui: website beratidealku.com menuju web app Apps Script; source tetap GitHub. GitHub Pages tidak digunakan untuk toko. URL nyata baru dapat dicatat setelah deployment yang diizinkan.
+- Verifikasi autentikasi akun buatan Admin, sesi, dan transport POST/postMessage
+  lintas origin antara Pages dan Apps Script. Uji lokal bukan bukti runtime Google.
+- Pasang API Google, isi URL `/exec` pada `js/config.js`, dan atur Pages memakai
+  GitHub Actions. Frontend dan backend dipublikasikan terpisah.
 
 Setelah desain dan keputusan kritis lengkap, ajukan persetujuan:
 **SETUJU - GENERATE FINAL BUILD**

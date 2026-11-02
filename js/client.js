@@ -1,4 +1,3 @@
-<script>
   'use strict';
 
   // Sesi pengelola hanya di memori; tidak ditaruh di URL atau penyimpanan browser.
@@ -49,25 +48,20 @@
   function rpc(action, data) {
     pending += 1;
     document.getElementById('busy').classList.remove('d-none');
-    return new Promise(function (resolve, reject) {
-      if (!window.google || !google.script || !google.script.run) {
-        reject(new Error('Halaman ini harus dibuka dari deployment Apps Script.'));
-        return;
+    return Promise.resolve().then(function () {
+      return HealthyVibesApi.request({
+        action: action,
+        data: data || {},
+        token: state.token
+      });
+    }).then(function (response) {
+      if (!response || typeof response.ok !== 'boolean') {
+        throw new Error('Respons server tidak valid. Keberhasilan belum dapat dipastikan.');
       }
-      google.script.run
-        .withSuccessHandler(function (response) {
-          if (response.ok) {
-            resolve(response.data);
-          } else {
-            reject(new Error(response.message));
-          }
-        })
-        .withFailureHandler(function () {
-          reject(new Error(
-            'Koneksi terputus. Jangan membuat pesanan baru; ulangi dengan ID permintaan yang sama.'
-          ));
-        })
-        .api({ action: action, data: data || {}, token: state.token });
+      if (!response.ok) {
+        throw new Error(response.message || 'Operasi ditolak server.');
+      }
+      return response.data;
     }).finally(function () {
       pending -= 1;
       document.getElementById('busy').classList.toggle('d-none', pending === 0);
@@ -1132,7 +1126,8 @@
   navigate('shop').catch(function (error) {
     app.innerHTML = '<section class="panel"><h1>Healthy Vibes</h1>' +
       '<p>Aplikasi belum terhubung ke database yang terpasang.</p>' +
-      '<p>Ikuti panduan pemasangan, lalu buka URL deployment Apps Script.</p></section>';
+      '<p>Isi URL API pada js/config.js dan pasang backend sesuai panduan.</p>' +
+      '<button class="btn btn-primary" data-nav="shop" type="button">' +
+      'Coba Hubungkan Lagi</button></section>';
     notify(error.message, true);
   });
-</script>

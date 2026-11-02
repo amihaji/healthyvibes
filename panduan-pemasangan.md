@@ -5,7 +5,8 @@ Persetujuan pembangunan diterima pada 1 November 2026. Tidak ada transaksi nyata
 
 ## Berkas Aplikasi
 
-Source berada dalam folder `apps-script`:
+Frontend berada di `index.html`, `css`, dan `js`; hanya backend berikut
+yang dipasang ke project Google dalam folder `apps-script`:
 
 - `Schema.gs`: struktur database dan pemasang folder Drive.
 - `Store.gs`: akses Sheets, validasi input, penguncian dan audit.
@@ -16,10 +17,14 @@ Source berada dalam folder `apps-script`:
 - `Admin.gs`: master, pengaturan, laporan dan pengiriman.
 - `Files.gs`: foto, invoice PDF, bukti transfer, tanda terima dan backup.
 - `Recovery.gs`: pemulihan ke staging dan backup harian opsional.
-- `Api.gs`: halaman web dan pintu request yang memeriksa izin.
+- `Api.gs`: API POST, respons lintas situs, dan pemeriksaan izin.
 - `Tests.gs`: pengujian aturan tanpa transaksi produksi.
-- `Index.html`, `Styles.html`, `Client.html`: antarmuka Bootstrap.
 - `appsscript.json`: manifest izin Drive/Sheets dan zona waktu Makassar.
+
+`Index`, `Styles`, dan `Client` tidak perlu dibuat di editor Google lagi.
+Jika salinan lama sudah dimasukkan ke Google, hapus tiga file HTML lama itu
+setelah memastikan source frontend tersedia di komputer.
+Tampilan kini diperbarui melalui GitHub Desktop, bukan template Google.
 
 Komentar kode aplikasi ditulis dalam Bahasa Indonesia dan kode dipisahkan per baris.
 Library bcrypt bawaan vendor mempertahankan komentar/lisensi aslinya.
@@ -27,9 +32,11 @@ Library bcrypt bawaan vendor mempertahankan komentar/lisensi aslinya.
 ## 1. Buat Project
 
 1. Masuk ke https://script.google.com dengan akun Google pemilik usaha.
-2. Pilih **New project / Project baru**, beri nama **Healthy Vibes**.
-3. Tambahkan seluruh berkas `.gs` dan tiga berkas HTML sesuai nama source di atas.
-4. Di **Project Settings / Setelan project**, aktifkan tampilan manifest `appsscript.json`; gunakan manifest yang tersedia.
+2. Buka project **Healthy Vibes** yang sudah dibuat; Script ID tercantum pada `.clasp.json`.
+3. Tambahkan seluruh berkas `.gs` sesuai nama source di atas, tanpa membuat
+   file HTML frontend.
+4. Di **Setelan project**, aktifkan tampilan manifest `appsscript.json`,
+   lalu gunakan isi manifest dari source.
 
 Jangan membagikan password, token atau kunci keamanan melalui chat/GitHub.
 Source boleh disimpan di GitHub, tetapi Script Properties dan file credential tidak boleh.
@@ -71,13 +78,36 @@ Jangan mengganti kunci keamanan ketika sistem sedang digunakan tanpa prosedur mi
 Kunci diperlukan untuk generator token/salt berkunci; simpan cadangan terpisah di pengelola password pemilik.
 Uji bcrypt lokal bukan bukti performa runtime Google. Fungsi verifikasi Google wajib dijalankan.
 
-## 4. Deployment Web App
+## 4. Deployment API dan Frontend
 
 1. **Deploy > New deployment > Web app**.
 2. **Execute as / Jalankan sebagai:** pemilik project.
 3. **Who has access / Siapa yang dapat mengakses:** **Anyone**, bila diizinkan akun Anda, agar guest checkout bekerja.
-4. Gunakan URL berakhiran `/exec`. URL ini yang nantinya ditautkan dari tombol `beratidealku.com`.
-5. Setelah perubahan source, perbarui versi deployment; menyimpan editor saja tidak memperbarui versi produksi.
+4. Masukkan URL berakhiran `/exec` ke `apiUrl` pada `js/config.js`.
+5. Buka URL Google langsung: hasilnya identitas API, bukan katalog pelanggan.
+6. Di GitHub **Settings > Pages**, pilih **Source: GitHub Actions**.
+7. Commit dan Push frontend ke `main`; tunggu workflow Pages berhasil.
+8. Buka https://amihaji.github.io/healthyvibes/ untuk katalog dan pengelola.
+
+Tombol di `beratidealku.com` nantinya mengarah ke URL frontend, bukan URL API.
+Ikuti `panduan-update-otomatis.md`; ketentuan GitHub Pages untuk toko online
+tetap perlu dipertimbangkan sebelum memakai layanan untuk transaksi nyata.
+
+Origin default yang diizinkan: `https://amihaji.github.io` dan
+`https://www.beratidealku.com`. Bila perlu, isi Script Property
+`FRONTEND_ORIGINS` berupa daftar origin dipisahkan koma, tanpa path atau slash
+di akhir. Contoh: `https://amihaji.github.io`.
+Untuk uji lokal saja, tambahkan `http://localhost:8080` secara eksplisit,
+kemudian hapus setelah pengujian. Jangan memakai wildcard `*`.
+
+Sesi/token tetap diperiksa backend; origin bukan bukti hak akses.
+Respons HTML API sengaja bisa dimuat dalam iframe, tetapi balasan hanya
+ditujukan ke origin yang diizinkan dengan kanal request yang sesuai.
+
+Perubahan frontend: cukup Commit dan Push, tidak perlu memperbarui Google.
+Perubahan backend: masukkan `.gs` terbaru ke Google, lalu perbarui versi
+deployment lama melalui **Deploy > Manage deployments**.
+Menyimpan editor Google saja tidak memperbarui versi API `/exec`.
 
 Pilihan akses publik hanya untuk aplikasi. Sheets/Drive tetap privat dan server memeriksa semua operasi staf.
 Jika akun organisasi melarang akses anonim, jangan mengubah kebijakan organisasi; evaluasi deployment dengan pemilik akun.

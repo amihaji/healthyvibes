@@ -1,20 +1,81 @@
-name: Jekyll site CI
+# Publikasikan hanya frontend; kode backend dan dokumen tidak masuk website.
+name: Publikasikan Frontend Healthy Vibes
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+    paths:
+      - "index.html"
+      - "css/**"
+      - "js/**"
+      - "tests/**"
+      - ".github/workflows/jekyll-docker.yml"
+  workflow_dispatch:
+
+# Izin deployment diberikan hanya pada job publikasi.
+permissions:
+  contents: read
+
+# Deployment dijalankan bergantian agar versi publik tidak saling menimpa.
+concurrency:
+  group: healthyvibes-pages
+  cancel-in-progress: false
 
 jobs:
   build:
-
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the site in the jekyll/builder container
-      run: |
-        docker run \
-        -v ${{ github.workspace }}:/srv/jekyll -v ${{ github.workspace }}/_site:/srv/jekyll/_site \
-        jekyll/builder:latest /bin/bash -c "chmod -R 777 /srv/jekyll && jekyll build --future"
+      - name: Ambil source dari GitHub
+        uses: actions/checkout@v4
+
+      - name: Siapkan Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Periksa sintaks JavaScript frontend
+        shell: bash
+        run: |
+          # Berhenti sebelum publikasi jika source memiliki kesalahan sintaks.
+          for source in js/*.js; do
+            node --check "$source"
+          done
+
+      - name: Uji transport API dan aturan backend secara lokal
+        run: node --test tests/frontend-api.test.cjs
+
+      - name: Siapkan GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Susun berkas website publik
+        shell: bash
+        run: |
+          # Salin daftar frontend saja, bukan seluruh isi repository.
+          site="$RUNNER_TEMP/healthyvibes-pages"
+          mkdir -p "$site"
+          cp index.html "$site/"
+          cp -R css js "$site/"
+
+      - name: Unggah artifact frontend
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/healthyvibes-pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - name: Publikasikan frontend ke GitHub Pages
+        id: publish
+        uses: actions/deploy-pages@v4

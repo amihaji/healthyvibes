@@ -4,7 +4,11 @@
 
 - Pengguna memberikan "SETUJU - GENERATE FINAL BUILD" pada 1 November 2026 setelah menerima preview terbaru. Implementasi mengikuti palet dan komposisi preview; bukan redesign.
 - Struktur database Google Sheets dan folder Drive disetujui: PRODUK (foto produk), INVOICE (invoice), STRUK (foto bukti transfer), TANDATERIMA (foto penyerahan).
-- Source implementasi di apps-script. Pemasangan Google belum dilakukan; status tes ada pada hasil-pengujian-build.md.
+- Source frontend: index.html, css, js. Source backend: apps-script.
+  Keputusan 2 November 2026 mengikuti pola Berat Idealku: frontend di GitHub
+  Pages, backend API Apps Script, database Sheets/Drive. Revisi frontend cukup
+  Commit dan Push; revisi backend memperbarui deployment Google terpisah.
+  Pemasangan Google belum dilakukan; status tes ada pada hasil-pengujian-build.md.
 - Keterangan menunggu izin build di bagian historis berikut telah digantikan; tes teknis, dukungan GoSend dan kesiapan produksi tetap harus dibuktikan.
 - Kode aplikasi ditulis per baris dengan komentar singkat Bahasa Indonesia. Vendor mempertahankan lisensi aslinya.
 
@@ -36,8 +40,13 @@
 - Setelah persiapan dimulai, pembatalan atas permintaan pelanggan tidak diperbolehkan, sesuai ketentuan terbaru pengguna, menggantikan pilihan sebelumnya yang sempat membolehkan pembatalan pada tahap ini. Backend memeriksa tahap pesanan saat permintaan dan keputusan pembatalan; riwayat waktu mulai persiapan disimpan. Permintaan pembatalan tidak boleh otomatis melepas stok atau menghasilkan refund. Kebijakan ditampilkan sebelum pemesanan. Larangan ini tidak menetapkan kebijakan pembatalan oleh toko atau penanganan produk bermasalah.
 - Jika toko membatalkan karena pesanan tidak dapat dipenuhi, pembayaran produk yang diterima dikembalikan 100% tanpa potongan, sesuai pilihan A pengguna. Dasar hitung adalah pembayaran produk setelah diskon/voucher; contoh Rp100.000 dikembalikan Rp100.000. Proses pengembalian tetap manual; alasan/pihak pembatal, nominal, status dan bukti dicatat. Larangan pembatalan pelanggan setelah persiapan tidak menghilangkan kewajiban pengembalian ini. Ongkir ke kurir bukan pembayaran produk atau kas toko dan penanganannya tetap terpisah. Tenggat maksimal 1 x 24 jam sejak pembatalan dikonfirmasi.
 - Tenggat pengembalian 90% maupun 100% disetujui maksimal 1 x 24 jam sejak pembatalan dikonfirmasi, bukan sejak permintaan pelanggan atau dalam hari kerja. Simpan waktu konfirmasi, jatuh tempo dan penyelesaian aktual. Tenggat tidak berarti transfer otomatis atau status lunas otomatis; proses tetap manual dan keterlambatan harus terlihat oleh pengelola.
-- Platform: HTML, CSS, JavaScript, Bootstrap; source tetap GitHub; frontend disajikan melalui Apps Script HTML Service; backend Google Apps Script; database Google Sheets di Google Drive.
-- Alur akses disetujui melalui pilihan A terakhir: tombol pemesanan di https://www.beratidealku.com mengarah langsung ke URL web app Apps Script. Ini menggantikan permintaan tujuan https://amihaji.github.io/healthyvibes. Cloudflare/Pages Functions dan penghubung tambahan tidak dipilih. URL deployment nyata belum dibuat; bukan izin mengubah website, coding utama atau deployment.
+- Platform terbaru: HTML, CSS, JavaScript, Bootstrap; frontend statis GitHub
+  Pages; backend API Google Apps Script; database Google Sheets dan Drive.
+- Alur terbaru: tombol di www.beratidealku.com menuju
+  https://amihaji.github.io/healthyvibes/, lalu frontend menghubungi API Google.
+  Ketentuan GitHub Pages yang membatasi toko online sudah dijelaskan kepada
+  pengguna; konfigurasi teknis bukan persetujuan penyedia hosting.
+  Cloudflare tidak dipilih. Website utama dan deployment belum diubah.
 - Akun pengelola dibuat dan dikelola admin melalui menu Setup User, sesuai level pengguna. Login Google bukan pilihan yang disetujui. Level Admin, Operator dan Viewer disetujui.
 - Admin: seluruh fitur, Setup User, pengaturan toko dan laporan. Operator: produk, stok, pesanan, verifikasi pembayaran serta pembatalan sesuai izin. Viewer: melihat dashboard dan laporan, tanpa mengubah data. Semua izin divalidasi backend; Operator dan Viewer tidak boleh mengelola akun atau meningkatkan level sendiri.
 - Pengaturan diskon dan voucher hanya untuk Admin, sesuai pilihan A pengguna. Operator tidak boleh membuat, mengubah, mengaktifkan atau menonaktifkan promo, termasuk melalui payload perubahan produk. Hak ini wajib diperiksa backend.
@@ -66,8 +75,11 @@
 - Alamat usaha, nilai jadwal layanan, nominal interval menit, nominal menit persiapan pesanan langsung dan daftar wilayah pengantaran Makassar dan sekitarnya. Pengaturan hari/rentang layanan, interval pilihan waktu serta minimal persiapan oleh Admin sudah disetujui. GoSend dipesan pengelola dan ongkir ditanggung pelanggan; penanganan perubahan tarif serta cara penagihan ongkir perlu disepakati. Jangan menganggap layanan kurir menyediakan penagihan harga produk/COD atau API publik tanpa verifikasi. Zona waktu WITA sudah disetujui.
 - Detail penahanan stok/kuota, kelayakan dan nominal pengembalian dana. Alur pembatalan oleh pelanggan melalui persetujuan pengelola dan pengembalian manual sudah disetujui. Batas pembayaran preorder 18.00 dan pemeriksaan pengelola sebelum pembatalan sudah disetujui. Jangan menganggap status belum diverifikasi sebagai bukti tidak ada pembayaran.
 - Setup User dan tiga level sudah disetujui; finalkan autentikasi backend, pengamanan credential, sesi, reset akses dan penyiapan admin pertama. Jangan menyimpan password polos atau mengandalkan validasi browser. Penonaktifan akun/perubahan izin harus berlaku di backend; cegah hilangnya seluruh akses admin aktif. Akses status pesanan pelanggan harus privat.
-- Hosting frontend sudah dipilih: Apps Script HTML Service, diakses melalui tombol website beratidealku.com menuju URL web app. GitHub tetap penyimpanan source code, bukan hosting toko. Uji kelayakan platform sebelum build; URL deployment belum tersedia.
-- Verifikasi komunikasi HTML Service dengan backend Apps Script serta autentikasi/sesi; penyimpanan rahasia hanya di backend. Tidak memakai rancangan penghubung Cloudflare yang ditolak.
+- Hosting frontend pilihan terbaru: GitHub Pages. Pastikan batas penggunaan
+  hosting dipertimbangkan sebelum transaksi nyata dan uji API lintas origin.
+- Verifikasi transport POST/postMessage dengan Apps Script dan autentikasi/sesi;
+  password tidak di URL, respons tidak dianggap sukses tanpa konfirmasi server.
+  Rahasia tetap di backend, tanpa penghubung Cloudflare.
 - Backup, audit transaksi, laporan PDF/Excel dan pengujian harus dimasukkan blueprint.
 
 Palet disetujui tidak berarti persetujuan seluruh layout atau pembangunan aplikasi.
@@ -75,7 +87,9 @@ Coding aplikasi utama menunggu blueprint dan perintah persetujuan final pengguna
 
 ## Paket Review Terpadu
 
-- Keputusan akses terbaru SETUJU: https://www.beratidealku.com -> tombol pemesanan -> URL web app Apps Script. Frontend HTML Service dan backend Apps Script, database Sheets/Drive, source GitHub. GitHub Pages bukan tujuan toko; Cloudflare Pages/Pages Functions dan penghubung tambahan tidak dipilih. Keamanan akun buatan Admin tetap wajib diverifikasi, tanpa mengganti login dengan Google.
+- Keputusan akses terbaru: www.beratidealku.com -> frontend GitHub Pages ->
+  API Apps Script -> Sheets/Drive. Akun tetap dibuat Admin, bukan login Google.
+  Keamanan dan runtime lintas origin tetap wajib diverifikasi.
 - Arah paket disetujui untuk finalisasi desain dan verifikasi teknis, bukan izin coding atau seluruh detail rekomendasi. Hasil dokumentasi dicatat dalam hasil-verifikasi-teknis.md; bukti Cloudflare hanya referensi opsi yang tidak dipilih. URL web app nyata, perubahan website dan deployment belum dibuat atau diizinkan.
 - Pengguna menyetujui penyusunan rekomendasi teknis dan preview terbaru sekaligus. Ini bukan persetujuan isi rekomendasi, seluruh layout atau izin coding utama.
 - Checklist-review.md merangkum keputusan; rekomendasi-teknis.md memuat usulan keamanan, hosting, laporan, backup dan penerimaan. Rekomendasi baru tetap belum diputuskan.

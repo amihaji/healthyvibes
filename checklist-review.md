@@ -1,7 +1,9 @@
 # Healthy Vibes: Checklist Review Terpadu
 
 Status terbaru: IZIN BUILD DITERIMA melalui "SETUJU - GENERATE FINAL BUILD" pada 1 November 2026.
-Source dibuat di `apps-script` dengan installer database/folder PRODUK, INVOICE, STRUK dan TANDATERIMA.
+Keputusan 2 November 2026: frontend statis di GitHub Pages, backend API
+Apps Script, data Sheets/Drive. Source frontend di `index.html`, `css`, `js`;
+source backend di `apps-script`.
 Lihat `hasil-pengujian-build.md` untuk tes lokal/browser dan batas NOT TESTED.
 Pemasangan Google belum dilakukan. Catatan review/belum izin build di bawah adalah riwayat sebelum persetujuan terbaru, bukan permintaan persetujuan ulang.
 
@@ -24,7 +26,7 @@ Pemasangan Google belum dilakukan. Catatan review/belum izin build di bawah adal
 | Checkout / akun / produk | SETUJU / REVISI | Susunan disetujui; preview diperbarui untuk keputusan terbaru, perlu review perubahannya. |
 | Desktop / tablet / HP / landscape | BELUM DIPUTUSKAN | Tombol perangkat tersedia; pemeriksaan visual otomatis belum berhasil, bukan UI Design Lock final. |
 | Logo / foto aktual | BELUM DIPUTUSKAN | Belum tersedia; tidak menggunakan foto sementara. |
-| Hosting / alur akses | SETUJU | Tombol pemesanan di https://www.beratidealku.com menuju langsung URL web app Apps Script. Frontend HTML/CSS/JavaScript/Bootstrap melalui HTML Service; backend Apps Script; database Sheets/Drive; source tetap GitHub. Cloudflare/penghubung tidak dipilih dan GitHub Pages bukan tujuan toko. URL deployment nyata belum tersedia; bukan izin mengubah website atau deployment. |
+| Hosting / alur akses | PILIHAN TERBARU PENGGUNA | Tombol www.beratidealku.com menuju frontend GitHub Pages, lalu API Apps Script. Batas ketentuan Pages untuk toko online telah dijelaskan. Deployment serta perubahan website utama belum dilakukan. |
 | Backup / keamanan data | SETUJU / BELUM DIPUTUSKAN | Backup masuk cakupan; jadwal harian/retensi 30 hari dan pemulihan staging masih usulan. |
 | Perhitungan / penerimaan | BELUM DIPUTUSKAN | Usulan pembulatan, satu voucher, KPI, audit, uji request ganda/stok bersamaan, laporan, keamanan dan restore. |
 
@@ -35,7 +37,7 @@ Pemasangan Google belum dilakukan. Catatan review/belum izin build di bawah adal
 - hasil-verifikasi-teknis.md: pilihan Apps Script dicatat; keamanan dan uji runtime belum dilakukan. Bukti Cloudflare adalah referensi opsi sebelumnya yang tidak dipilih, bukan bukti keamanan Apps Script.
 - blueprint-ringkas.md dan acuan-desain.md: keputusan bisnis yang sudah dicatat.
 
-## Hasil Pemeriksaan Saat Ini
+## Hasil Pemeriksaan Sebelum Build (Historis)
 
 - PASS: server lokal mengirim preview terbaru (HTTP 200, memuat fungsi tampilan baru).
 - NOT TESTED: rendering seluruh tampilan, interaksi tombol dan overflow tiap viewport; browser gagal mengambil snapshot. HTTP 200 bukan bukti UI lulus.

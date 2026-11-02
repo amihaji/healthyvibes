@@ -1,5 +1,39 @@
 # Healthy Vibes: Hasil Pengujian Build
 
+## Pemisahan Frontend: 2 November 2026
+
+Frontend sekarang statis (`index.html`, `css`, `js`); backend API berada di
+`apps-script`. Hasil di bawah berlaku untuk perubahan terbaru:
+
+- PASS: 16 pengujian Node 22.23.4 dalam `tests/frontend-api.test.cjs`.
+- PASS: seluruh 12 pemeriksaan aturan WITA, voucher, refund, reservasi, dan
+  input lama dijalankan kembali melalui suite tersebut.
+- PASS: syntax semua `.gs`/`.js`, tidak ada template frontend Google tersisa.
+- PASS: API POST memeriksa origin dan kanal; login menerima password dari
+  badan POST, bukan parameter URL.
+- PASS: data respons yang mengandung tag script dinetralkan; operasi staf
+  tetap melewati otorisasi dan aksi internal tidak bisa dipanggil sebagai action.
+- PASS: transport menolak pesan dengan origin, iframe, kanal, atau bentuk
+  respons salah; timeout tidak dianggap sukses; iframe dan payload dibersihkan.
+- PASS: YAML workflow Pages, izin deployment, dan artifact hanya berisi frontend.
+- PASS: browser Chrome pada 320x740, 390x844, 820x1180, 1280x900, dan 844x390.
+  Katalog -> keranjang -> tiga langkah checkout -> penolakan server ->
+  retry ID sama -> status pesanan berjalan tanpa error JavaScript atau
+  horizontal overflow pada tahap yang diperiksa.
+- PASS: browser memakai POST form dan respons iframe bersarang lintas origin
+  Google yang diintersep/disimulasikan, bukan sekadar mengganti fungsi rpc.
+- PASS: halaman tanpa URL API menampilkan petunjuk konfigurasi, bukan data contoh.
+
+Data browser seluruhnya sintetis, tanpa transaksi atau request Google nyata.
+NOT TESTED: deployment Google dan Pages, header/redirect HTML Service Google
+asli, izin akun, login runtime bcrypt, upload/download aktual, dan seluruh
+alur pengelola. Uji sandbox pada layanan nyata tetap wajib sebelum produksi.
+
+Perintah regresi: `node --test tests/frontend-api.test.cjs`.
+Hasil historis build sebelumnya berikut tidak menggantikan batas tersebut.
+
+## Riwayat Build Sebelumnya
+
 Tanggal: 1 November 2026. Status: build source untuk pemasangan dan pengujian integrasi.
 Belum siap produksi dan belum terpasang pada akun Google pengguna.
 

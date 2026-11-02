@@ -1,5 +1,11 @@
 # Healthy Vibes: Hasil Verifikasi Teknis
 
+Catatan 2 November 2026: dokumen berikut merekam verifikasi sebelum build.
+Arsitektur aktif kini frontend statis GitHub Pages dengan API Apps Script,
+sesuai pilihan terbaru pengguna. Lihat `hasil-pengujian-build.md` untuk
+pengujian terbaru dan `panduan-pemasangan.md` untuk pemasangan.
+Hasil/keputusan historis HTML Service di bawah bukan petunjuk deployment aktif.
+
 Tanggal: 1 November 2026. Status: dokumentasi diperiksa, belum uji deployment.
 Pengguna menyetujui arah paket untuk finalisasi desain dan verifikasi teknis, bukan izin build, persetujuan seluruh detail atau pembelian layanan.
 

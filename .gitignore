@@ -1,0 +1,12 @@
+# Token Google hanya disimpan di komputer pengguna atau GitHub Secrets.
+.clasprc.json
+.clasprc-*.json
+**/.clasprc.json
+client_secret*.json
+credentials*.json
+
+# Dependensi dan konfigurasi rahasia tidak masuk ke repository.
+node_modules/
+.env
+.env.*
+!.env.example

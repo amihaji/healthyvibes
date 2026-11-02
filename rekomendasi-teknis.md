@@ -1,5 +1,10 @@
 # Healthy Vibes: Rekomendasi Teknis untuk Review
 
+Catatan 2 November 2026: rekomendasi hosting di bawah adalah riwayat.
+Pengguna kini memilih frontend GitHub Pages dan backend API Apps Script,
+setelah batas penggunaan Pages dijelaskan. Acuan pemasangan aktif ada di
+`panduan-pemasangan.md` dan `panduan-update-otomatis.md`.
+
 Status: DRAF / BELUM DIPUTUSKAN untuk rekomendasi baru. Bukan izin coding, deployment atau pembelian layanan.
 Keputusan bisnis yang sudah disetujui tetap mengikuti acuan-desain.md. Dokumen ini melengkapi, bukan menggantikannya.
 

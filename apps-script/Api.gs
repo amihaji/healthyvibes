@@ -1,21 +1,100 @@
-// Halaman publik tidak menerima ID database, rahasia atau sesi dari template.
+// URL Google sekarang menjadi API; tampilan pelanggan disajikan dari GitHub.
 function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
-    .setTitle('Healthy Vibes')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return ContentService.createTextOutput(JSON.stringify({
+    service: 'Healthy Vibes API',
+    protocol: 'healthyvibes-api-v1'
+  })).setMimeType(ContentService.MimeType.JSON);
 }
 
-// Hanya berkas frontend tetap yang boleh disertakan; tidak dipanggil browser.
-function include_(name) {
-  if (!['Styles', 'Client'].includes(name)) {
-    throw new Error('Berkas frontend tidak dikenal.');
+// Origin menentukan tujuan balasan, bukan bukti login atau hak akses pengguna.
+function frontendOrigins_() {
+  const configured = PropertiesService.getScriptProperties()
+    .getProperty('FRONTEND_ORIGINS');
+  const origins = configured
+    ? configured.split(',').map(function (origin) { return origin.trim(); })
+    : ['https://amihaji.github.io', 'https://www.beratidealku.com'];
+  if (origins.some(function (origin) {
+    return !/^https:\/\/[a-z0-9.-]+(?::[0-9]+)?$/i.test(origin) &&
+      !/^http:\/\/(?:localhost|127\.0\.0\.1)(?::[0-9]+)?$/.test(origin);
+  })) {
+    throw new Error('FRONTEND_ORIGINS harus berisi origin tanpa path.');
   }
-  return HtmlService.createHtmlOutputFromFile(name).getContent();
+  return origins;
 }
 
-// Satu-satunya pintu operasi browser. Fungsi internal berakhiran _ tidak RPC publik.
-function api(request) {
+// Mencegah data pelanggan menutup tag script pada respons HTML.
+function jsonForHtml_(value) {
+  return JSON.stringify(value)
+    .replace(/&/g, '\\u0026')
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+// Balasan dibaca oleh transport frontend, bukan dianggap sukses karena POST terkirim.
+function transportReply_(origin, channel, response) {
+  const envelope = {
+    protocol: 'healthyvibes-api-v1',
+    channel: channel,
+    response: response
+  };
+  const html = [
+    '<!doctype html>',
+    '<html lang="id"><head><meta charset="utf-8">',
+    '<meta name="referrer" content="no-referrer">',
+    '<title>Respons API Healthy Vibes</title></head><body>',
+    '<script>',
+    '"use strict";',
+    'window.top.postMessage(',
+    jsonForHtml_(envelope),
+    ',',
+    jsonForHtml_(origin),
+    ');',
+    '</script>',
+    '</body></html>'
+  ].join('\n');
+  return HtmlService.createHtmlOutput(html)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Password dan token diterima melalui badan POST, tidak melalui query URL.
+function doPost(event) {
+  const params = event && event.parameter || {};
+  const origin = String(params.clientOrigin || '');
+  const channel = String(params.channel || '');
+  try {
+    if (frontendOrigins_().indexOf(origin) < 0 || !/^[a-f0-9]{32}$/.test(channel)) {
+      throw new Error('Asal frontend atau kanal respons tidak diizinkan.');
+    }
+  } catch {
+    // Tidak mengirim payload atau data privat ke origin yang belum diizinkan.
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: false,
+      message: 'Asal frontend atau kanal respons tidak diizinkan.'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  let response;
+  try {
+    const request = JSON.parse(text_(params.payload, 'Payload', 8000000));
+    if (
+      !request || typeof request !== 'object' || Array.isArray(request) ||
+      typeof request.action !== 'string' ||
+      (request.data !== undefined &&
+        (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)))
+    ) {
+      throw new Error('Format permintaan tidak valid.');
+    }
+    response = api_(request);
+  } catch (error) {
+    response = { ok: false, message: String(error.message || 'Permintaan tidak valid.') };
+  }
+  return transportReply_(origin, channel, response);
+}
+
+// Dispatcher tetap memeriksa sesi, level, harga, dan stok di backend.
+function api_(request) {
   try {
     if (!request || typeof request !== 'object') {
       throw new Error('Permintaan tidak valid.');

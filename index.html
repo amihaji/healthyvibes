@@ -1,9 +1,10 @@
 <!doctype html>
 <html lang="id">
   <head>
-    <base target="_top">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Jangan membawa URL halaman pelanggan saat menghubungi layanan lain. -->
+    <meta name="referrer" content="no-referrer">
     <title>Healthy Vibes</title>
     <!-- Bootstrap dipatok versinya agar perubahan CDN tidak mengubah tampilan. -->
     <link
@@ -12,7 +13,8 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     >
-    <?!= include_('Styles'); ?>
+    <!-- Frontend statis dimuat dari repository, bukan template Apps Script. -->
+    <link href="css/styles.css" rel="stylesheet">
   </head>
   <body>
     <header class="site-header">
@@ -43,6 +45,9 @@
       </div>
       <div id="editor-content"></div>
     </dialog>
-    <?!= include_('Client'); ?>
+    <!-- Konfigurasi endpoint harus dimuat sebelum transport dan aplikasi. -->
+    <script src="js/config.js"></script>
+    <script src="js/transport.js"></script>
+    <script src="js/client.js"></script>
   </body>
 </html>
