@@ -447,7 +447,15 @@ test('Salt dan bcrypt cost 12 tetap berjalan sinkron tanpa timer', function () {
 
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
+  let callbackCalled = false;
   assert.throws(function () {
-    bcrypt.genSalt(4, function () {});
-  }, /asinkron.*Apps Script/);
+    bcrypt.genSalt(4, function () { callbackCalled = true; });
+  }, function (error) {
+    // Periksa penolakan yang benar, bukan kalimat pesan versi tertentu.
+    assert.equal(error.name, 'Error');
+    assert.match(error.message, /Apps Script/);
+    assert.match(error.message, /hashSync\/compareSync/);
+    return true;
+  });
+  assert.equal(callbackCalled, false);
 });
