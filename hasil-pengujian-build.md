@@ -1,5 +1,17 @@
 # Healthy Vibes: Hasil Pengujian Build
 
+## Kompatibilitas Bcrypt Tanpa Timer
+
+- Error pengguna `setTimeout is not defined` direproduksi saat evaluasi
+  `VendorBcrypt.gs:353` dalam VM tanpa process, setTimeout, atau setImmediate.
+- Scheduler library kini memeriksa ketersediaan timer sebelum mengaksesnya.
+  API asinkron ditolak secara eksplisit di Apps Script; aplikasi tetap memakai
+  `hashSync` dan `compareSync`, bukan pengganti algoritma atau timer palsu.
+- PASS: 22 tes lokal. Hash acuan identik, password salah ditolak, dan salt/hash
+  cost 12 berfungsi tanpa timer. Tidak mengubah sumber randomness produksi.
+- Runtime Google setelah penggantian file belum diuji; jalankan setup kembali
+  dan tetap lakukan `verifyAuthRuntime` sebelum membuat Admin.
+
 ## Perbaikan Setup Editor
 
 - Fungsi yang dipilih di editor: `installHealthyVibes`, `verifyAuthRuntime`,

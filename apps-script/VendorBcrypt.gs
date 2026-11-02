@@ -348,9 +348,12 @@
      * @param {function(...[*])} callback Callback to execute
      * @inner
      */
+    // Apps Script tidak memiliki timer; aplikasi hanya memakai API sinkron.
     var nextTick = typeof process !== 'undefined' && process && typeof process.nextTick === 'function'
         ? (typeof setImmediate === 'function' ? setImmediate : process.nextTick)
-        : setTimeout;
+        : (typeof setTimeout === 'function' ? setTimeout : function() {
+            throw Error('Bcrypt asinkron tidak tersedia di Apps Script. Gunakan hashSync/compareSync.');
+        });
 
     /**
      * Converts a JavaScript string to UTF8 bytes.

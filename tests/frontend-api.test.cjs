@@ -323,10 +323,14 @@ test('Konfigurasi kosong dan aplikasi dalam iframe ditolak', async function () {
 });
 
 test('Semua source dapat diparse dan frontend tidak memakai template Google', function () {
+  const backendRuntime = vm.createContext({});
   for (const directory of ['js', 'apps-script']) {
     for (const file of fs.readdirSync(path.join(root, directory))) {
       if (/\.(js|gs)$/.test(file)) {
         new vm.Script(source(directory + '/' + file), { filename: file });
+        if (directory === 'apps-script') {
+          vm.runInContext(source(directory + '/' + file), backendRuntime);
+        }
       }
     }
   }
@@ -409,4 +413,41 @@ test('Run aturan menampilkan error jika implementasi mengembalikan FAIL', functi
     return [{ name: 'Aturan uji', status: 'FAIL' }];
   };
   assert.throws(function () { context.runRuleTests(); }, /aturan yang gagal/);
+});
+
+// VM sengaja tidak menyediakan process, setTimeout, atau setImmediate seperti GAS.
+function bcryptWithoutTimers() {
+  const context = vm.createContext({});
+  vm.runInContext(source('apps-script/VendorBcrypt.gs'), context);
+  return context.dcodeIO.bcrypt;
+}
+
+test('Bcrypt dimuat tanpa timer dan menghasilkan hash acuan yang sama', function () {
+  const bcrypt = bcryptWithoutTimers();
+  const expected = '$2a$04$abcdefghijklmnopqrstuughE8Ev8uGFaUgY2cNEySvxngrb/Jzdm';
+  assert.equal(bcrypt.hashSync('password', '$2a$04$abcdefghijklmnopqrstuu'), expected);
+  assert.equal(bcrypt.compareSync('password', expected), true);
+  assert.equal(bcrypt.compareSync('wrong-password', expected), false);
+});
+
+test('Salt dan bcrypt cost 12 tetap berjalan sinkron tanpa timer', function () {
+  const bcrypt = bcryptWithoutTimers();
+  const lengths = [];
+  // Byte deterministik hanya untuk fixture; produksi tetap memakai secureBytes_.
+  bcrypt.setRandomFallback(function (length) {
+    lengths.push(length);
+    return Array.from({ length: length }, function (_, index) { return index; });
+  });
+  const hash = bcrypt.hashSync('Password-sandbox-123', 12);
+  assert.ok(hash.startsWith('$2a$12$'));
+  assert.deepEqual(lengths, [16]);
+  assert.equal(bcrypt.compareSync('Password-sandbox-123', hash), true);
+  assert.equal(bcrypt.compareSync('Password-salah-123', hash), false);
+});
+
+test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
+  const bcrypt = bcryptWithoutTimers();
+  assert.throws(function () {
+    bcrypt.genSalt(4, function () {});
+  }, /asinkron.*Apps Script/);
 });

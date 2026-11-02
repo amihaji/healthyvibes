@@ -47,6 +47,13 @@ Urutan file di panel editor tidak perlu disamakan dengan tabel.
 Jangan menjalankan `doPost` langsung dari tombol Run karena fungsi itu memerlukan
 request browser.
 
+Gunakan `VendorBcrypt.gs` dari source aplikasi terbaru: pemuatan library sudah
+disesuaikan untuk runtime Apps Script yang tidak memiliki `setTimeout`.
+Jika Run menampilkan `ReferenceError: setTimeout is not defined`, ganti seluruh
+isi VendorBcrypt di Google dengan file tersebut, simpan, lalu ulangi fungsi
+setup yang tadi dipilih. Jangan menambahkan timer palsu atau menurunkan cost
+password untuk mengatasi error pemuatan library.
+
 Untuk manifest:
 
 1. Buka **Setelan project** melalui ikon roda gigi.
