@@ -368,6 +368,28 @@ Pengaturan retensi adalah target operasional; penghapusan backup dilakukan manua
 Backup penuh memakai kuota/runtime Google; data besar memerlukan penjadwalan bertahap sebelum go live.
 Rahasia keamanan tidak disalin ke backup.
 
+## Memperbaiki Tampilan Tanggal dan Jam yang Sudah Terpasang
+
+Jika Jam Layanan menampilkan tahun `1899`, Google Sheets telah membaca jam
+sebagai tanggal dasar. Ini bukan tanggal pesanan dan tidak perlu menghapus data.
+
+1. Buka `apps-script/Store.gs` di komputer dan salin seluruh isinya.
+2. Di Google Apps Script, buka `Store.gs`, pilih seluruh kode lama, lalu ganti
+   dengan kode yang disalin. Simpan.
+3. Pada pilihan fungsi di atas editor, pilih `formatHealthyVibesDates`.
+4. Klik Run dengan akun pemilik. Tunggu pesan
+   `Format tanggal dan jam selesai: DD/MM/YYYY dan HH:mm WITA.`
+5. Perbarui deployment yang dipakai: Deploy, Manage deployments, ikon pensil,
+   Version: New version, lalu Deploy. Jangan membuat deployment baru.
+6. Commit dan Push perubahan frontend melalui GitHub Desktop.
+7. Setelah Actions hijau, muat ulang website dengan Ctrl+Shift+R.
+
+Jam buka/tutup tampil seperti `08:00` dan `22:00`; tanggal seperti `02/11/2026`.
+Waktu transaksi tampil seperti `02/11/2026 17:00`, seluruhnya dalam WITA.
+Perbaikan tidak menghapus ID, stok, akun, atau pesanan; formula yang sudah ada
+dipertahankan. Nilai transaksi tetap dibaca API sebagai ISO UTC untuk perhitungan.
+Tidak perlu menjalankan installer atau membuat Admin ulang.
+
 ## Sebelum Go Live
 
 Periksa berurutan:

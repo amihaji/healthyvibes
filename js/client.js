@@ -43,6 +43,33 @@
     }).format(Number(value || 0));
   }
 
+  function dateText(value) {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match ? match[3] + '/' + match[2] + '/' + match[1] : String(value || '');
+  }
+
+  function dateTimeText(value) {
+    if (!value) { return ''; }
+    const date = new Date(value);
+    if (isNaN(date.getTime())) { return String(value); }
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Makassar', day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(date);
+    const get = function (name) { return parts.find(function (part) { return part.type === name; }).value; };
+    return get('day') + '/' + get('month') + '/' + get('year') +
+      ' ' + get('hour') + ':' + get('minute');
+  }
+
+  function masterText(key, value) {
+    if (key === 'weekday' && value !== '') {
+      return ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][Number(value)] ?? value;
+    }
+    if (key === 'active') { return value === true || value === 'true' ? 'Ya' : 'Tidak'; }
+    if (key === 'date') { return dateText(value); }
+    return /(?:At|Deadline)$/.test(key) ? dateTimeText(value) : value;
+  }
+
   // Loading dihitung agar request foto bersamaan tidak mematikan indikator lebih awal.
   let pending = 0;
   function rpc(action, data) {
@@ -84,10 +111,16 @@
       ? ' placeholder="HH:mm" maxlength="5" pattern="([01][0-9]|2[0-3]):[0-5][0-9]"' +
         ' title="Format 24 jam, misalnya 08:00 atau 17:00"'
       : '';
+    const dateClock = type === 'datetime-local';
+    const dateClockAttributes = dateClock
+      ? ' placeholder="DD/MM/YYYY HH:mm" maxlength="16"' +
+        ' pattern="[0-9]{2}/[0-9]{2}/[0-9]{4} ([01][0-9]|2[0-3]):[0-5][0-9]"' +
+        ' title="Tanggal dan jam WITA, misalnya 02/11/2026 17:00"'
+      : '';
     return '<div class="mb-3"><label class="form-label" for="f-' + name + '">' +
       safe(label) + '</label><input class="form-control" id="f-' + name +
-      '" name="' + name + '" type="' + (clock ? 'text' : type || 'text') + '" value="' +
-      safe(value || '') + '"' + minimum + clockAttributes +
+      '" name="' + name + '" type="' + (clock || dateClock ? 'text' : type || 'text') + '" value="' +
+      safe(value || '') + '"' + minimum + clockAttributes + dateClockAttributes +
       (required === false ? '' : ' required') + '></div>';
   }
 
@@ -301,7 +334,7 @@
         '<label class="form-label" for="address">Alamat lengkap (untuk antar)</label>' +
         '<textarea class="form-control mb-3" id="address" name="address">' +
         safe(recipient.address || '') + '</textarea>' +
-        '<p>Tanggal: <strong>' + safe(schedule.date) + '</strong> WITA</p>' +
+        '<p>Tanggal: <strong>' + safe(dateText(schedule.date)) + '</strong> WITA</p>' +
         selectField('Waktu penerimaan/pengambilan', 'time', schedule.times.map(function (time) {
           return [time, time + ' WITA'];
         }), recipient.time);
@@ -324,7 +357,7 @@
     } else {
       content = '<h2 class="h5">Tinjau Pesanan</h2><p>' + safe(recipient.name) +
         ' | ' + safe(recipient.phone) + '</p><p>' + safe(recipient.receipt) +
-        ' | ' + safe(schedule.date + ' ' + recipient.time) + ' WITA</p>' +
+        ' | ' + safe(dateText(schedule.date) + ' ' + recipient.time) + ' WITA</p>' +
         '<p>' + safe(recipient.address || state.catalog.settings.address) + '</p>' +
         '<p>Pembayaran: ' + safe(recipient.paymentMethod) + '</p>' +
         '<div class="alert alert-warning small">Pembatalan pelanggan sebelum persiapan ' +
@@ -404,13 +437,13 @@
       safe(state.accessToken) + '</code></div><p>Pembayaran: <span class="status-tag">' +
       safe(order.paymentStatus) + '</span> | Pemenuhan: <span class="status-tag">' +
       safe(order.fulfillment) + '</span></p>' +
-      '<p>' + safe(order.date + ' ' + order.time) + ' WITA</p>' +
+      '<p>' + safe(dateText(order.date) + ' ' + order.time) + ' WITA</p>' +
       order.items.map(function (item) {
         return '<p>' + safe(item.name) + ' x ' + item.quantity + ' — ' +
           rupiah(item.unitPrice) + '</p>';
       }).join('') + '<h2 class="h4">Total produk ' + rupiah(order.total) + '</h2>' +
       '<p>Batas pembayaran: ' + (order.paymentDeadline
-        ? safe(new Date(order.paymentDeadline).toLocaleString('id-ID', { timeZone: 'Asia/Makassar' })) +
+        ? safe(dateTimeText(order.paymentDeadline)) +
         ' WITA' : 'Sebelum dikirim; langsung ambil dapat bayar saat diambil.') +
       '</p><p>Refund: ' + safe(order.refundStatus) + ' ' + rupiah(order.refundAmount) +
       '</p><div class="d-flex gap-2 flex-wrap"><button class="btn btn-outline-dark" ' +
@@ -557,14 +590,14 @@
       '<th>Nomor</th><th>Pelanggan</th><th>Jadwal</th><th>Total</th><th>Status</th><th></th>' +
       '</tr></thead><tbody>' + orders.map(function (order) {
         return '<tr><td>' + safe(order.id) + '</td><td>' + safe(order.name) +
-          '</td><td>' + safe(order.date + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
+          '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
           '</td><td>' + safe(order.paymentStatus + ' / ' + order.fulfillment) +
           '</td><td><button class="btn btn-outline-dark" data-order="' + safe(order.id) +
           '" type="button">Detail</button></td></tr>';
       }).join('') + '</tbody></table></div><div class="order-mobile">' +
       orders.map(function (order) {
         return '<article class="panel"><strong>' + safe(order.name) + '</strong><p class="text-break">' +
-          safe(order.id) + '</p><p>' + safe(order.date + ' ' + order.time) +
+          safe(order.id) + '</p><p>' + safe(dateText(order.date) + ' ' + order.time) +
           ' WITA</p><p>' + rupiah(order.total) + '</p><p>' +
           safe(order.paymentStatus + ' / ' + order.fulfillment) + '</p>' +
           '<button class="btn btn-outline-dark" data-order="' + safe(order.id) +
@@ -691,10 +724,18 @@
   }
 
   function toWitaInput(value) {
-    if (!value) {
-      return '';
+    return dateTimeText(value);
+  }
+
+  function fromWitaInput(value) {
+    const match = String(value).match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
+    if (!match) { throw new Error('Gunakan tanggal dan jam DD/MM/YYYY HH:mm.'); }
+    const date = new Date(match[3] + '-' + match[2] + '-' + match[1] +
+      'T' + match[4] + ':' + match[5] + ':00+08:00');
+    if (isNaN(date.getTime()) || dateTimeText(date) !== value) {
+      throw new Error('Tanggal atau jam tidak valid.');
     }
-    return new Date(Date.parse(value) + 8 * 3600000).toISOString().slice(0, 16);
+    return date.toISOString();
   }
 
   function renderMaster(table) {
@@ -708,14 +749,18 @@
       safe(table) + '" type="button">Tambah</button></div>' +
       '<input class="form-control mb-3" id="master-search" placeholder="Cari data..." aria-label="Cari data">' +
       '<div class="table-wrap"><table class="table"><thead><tr>' +
-      keys.map(function (key) { return '<th>' + safe(key) + '</th>'; }).join('') +
+      keys.map(function (key) {
+        const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
+          active: 'Aktif', date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA' };
+        return '<th>' + safe(label[key] || key) + '</th>';
+      }).join('') +
       '<th>Aksi</th></tr></thead><tbody id="master-rows">' +
       rows.map(function (row) {
         return '<tr>' + keys.map(function (key) {
           const product = (state.admin.tables.Products || []).find(function (item) {
             return item.id === row[key];
           });
-          return '<td>' + safe(product ? product.name : row[key]) + '</td>';
+          return '<td>' + safe(masterText(key, product ? product.name : row[key])) + '</td>';
         }).join('') + '<td><button class="btn btn-outline-dark" data-edit="' +
           safe(row.id) + '" data-table="' + safe(table) + '" type="button">Edit</button>' +
           (table === 'Products' ? ' <button class="btn btn-outline-dark" data-product-upload="' +
@@ -1096,7 +1141,7 @@
       data.active = data.active !== 'false';
       ['startsAt', 'endsAt'].forEach(function (key) {
         if (data[key]) {
-          data[key] = new Date(data[key] + ':00+08:00').toISOString();
+          data[key] = fromWitaInput(data[key]);
         }
       });
       await rpc('saveMaster', { table: form.dataset.table, record: data });

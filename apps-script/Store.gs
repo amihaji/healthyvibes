@@ -16,20 +16,135 @@ function database_() {
   return SpreadsheetApp.openById(id);
 }
 
+// Jenis kolom tanggal mengikuti skema; kolom lain tidak diubah formatnya.
+function temporalKind_(key) {
+  if (['opens', 'closes', 'time'].includes(key)) { return 'time'; }
+  if (key === 'date') { return 'date'; }
+  return /(?:At|Deadline)$/.test(key) ? 'timestamp' : '';
+}
+
+function temporalFormat_(kind) {
+  return { time: '@', date: 'dd/MM/yyyy', timestamp: 'dd/MM/yyyy HH:mm' }[kind];
+}
+
+// Jam Sheets memakai tanggal dasar 1899 dan offset historis, bukan tanggal transaksi.
+function sheetTime_(value, display, timezone) {
+  const match = String(display || value).trim()
+    .match(/^(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*(AM|PM)?$/i);
+  if (match) {
+    let hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (match[3]) {
+      if (hour < 1 || hour > 12) { return value; }
+      hour = hour % 12 + (match[3].toUpperCase() === 'PM' ? 12 : 0);
+    }
+    if (hour < 24 && minute < 60) {
+      return String(hour).padStart(2, '0') + ':' + match[2];
+    }
+  }
+  const date = value instanceof Date ? value :
+    /^\d{4}-\d{2}-\d{2}T/.test(String(value)) ? new Date(value) : null;
+  if (date && !isNaN(date.getTime())) {
+    return Utilities.formatDate(date, timezone, 'HH:mm');
+  }
+  return value;
+}
+
+function sheetReadValue_(key, value, display, timezone) {
+  const kind = temporalKind_(key);
+  if (kind === 'time') { return sheetTime_(value, display, timezone); }
+  if (value instanceof Date) {
+    return kind === 'date'
+      ? Utilities.formatDate(value, timezone, 'yyyy-MM-dd') : value.toISOString();
+  }
+  return value;
+}
+
+// API tetap memakai ISO UTC; Sheet memakai tanggal asli dengan tampilan 24 jam.
+function sheetWriteValue_(key, value) {
+  const kind = temporalKind_(key);
+  if (typeof value === 'string' && value) {
+    const date = kind === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? new Date(value + 'T00:00:00+08:00')
+      : kind === 'timestamp' && /^\d{4}-\d{2}-\d{2}T/.test(value)
+        ? new Date(value) : null;
+    if (date && !isNaN(date.getTime())) { return date; }
+  }
+  return cell_(value);
+}
+
+function writeSheetRow_(sheet, row, headers, record) {
+  const range = sheet.getRange(row, 1, 1, headers.length);
+  if (headers.some(function (key) { return temporalKind_(key); })) {
+    const formats = range.getNumberFormats()[0];
+    range.setNumberFormats([headers.map(function (key, index) {
+      return temporalFormat_(temporalKind_(key)) || formats[index];
+    })]);
+  }
+  range.setValues([headers.map(function (key) {
+    return sheetWriteValue_(key, record[key]);
+  })]);
+}
+
+// Memperbaiki tampilan database yang sudah terpasang, tanpa membuat ulang data.
+function formatHealthyVibesDates() {
+  requireSetupAccess_();
+  return withLock_(function () {
+    const db = database_();
+    const timezone = 'Asia/Makassar';
+    db.setSpreadsheetTimeZone(timezone);
+    db.setSpreadsheetLocale('id_ID');
+    Object.keys(HV_SCHEMA).forEach(function (name) {
+      const sheet = db.getSheetByName(name);
+      if (!sheet) { return; }
+      const headers = HV_SCHEMA[name];
+      const actual = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+      if (JSON.stringify(actual) !== JSON.stringify(headers)) {
+        throw new Error('Kolom ' + name + ' berbeda; format dihentikan.');
+      }
+      headers.forEach(function (key, index) {
+        const kind = temporalKind_(key);
+        if (!kind) { return; }
+        const count = sheet.getLastRow() - 1;
+        if (count > 0) {
+          const range = sheet.getRange(2, index + 1, count, 1);
+          const values = range.getValues();
+          const display = range.getDisplayValues();
+          const formulas = range.getFormulas();
+          const converted = values.map(function (row, position) {
+            if (formulas[position][0]) { return [formulas[position][0]]; }
+            const value = sheetReadValue_(key, row[0], display[position][0], timezone);
+            return [sheetWriteValue_(key, value)];
+          });
+          range.setNumberFormat(temporalFormat_(kind));
+          range.setValues(converted);
+        }
+      });
+    });
+    SpreadsheetApp.flush();
+    console.info('Format tanggal dan jam selesai: DD/MM/YYYY dan HH:mm WITA.');
+    return true;
+  });
+}
+
 // Membaca baris sebagai objek; nomor baris hanya dipakai di backend.
 function rows_(name) {
-  const sheet = database_().getSheetByName(name);
+  const db = database_();
+  const sheet = db.getSheetByName(name);
   if (!sheet || sheet.getLastRow() < 2) {
     return [];
   }
   const headers = HV_SCHEMA[name];
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length)
-    .getValues()
+  const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length);
+  const display = headers.some(function (key) { return temporalKind_(key) === 'time'; })
+    ? range.getDisplayValues() : null;
+  const timezone = db.getSpreadsheetTimeZone();
+  return range.getValues()
     .map(function (values, index) {
       const result = { _row: index + 2 };
       headers.forEach(function (key, position) {
         const value = values[position];
-        result[key] = value instanceof Date ? value.toISOString() : value;
+        result[key] = sheetReadValue_(key, value, display && display[index][position], timezone);
       });
       return result;
     });
@@ -50,20 +165,14 @@ function cell_(value) {
 function append_(name, record) {
   const sheet = database_().getSheetByName(name);
   const row = sheet.getLastRow() + 1;
-  sheet.getRange(row, 1, 1, HV_SCHEMA[name].length).setValues([
-    HV_SCHEMA[name].map(function (key) { return cell_(record[key]); })
-  ]);
+  writeSheetRow_(sheet, row, HV_SCHEMA[name], record);
   return Object.assign({}, record, { _row: row });
 }
 
 // Mengubah kolom yang dikenal saja, tanpa menulis objek tak dikenal ke database.
 function patch_(name, record, changes) {
   const merged = Object.assign({}, record, changes);
-  database_().getSheetByName(name)
-    .getRange(record._row, 1, 1, HV_SCHEMA[name].length)
-    .setValues([
-      HV_SCHEMA[name].map(function (key) { return cell_(merged[key]); })
-    ]);
+  writeSheetRow_(database_().getSheetByName(name), record._row, HV_SCHEMA[name], merged);
   return merged;
 }
 

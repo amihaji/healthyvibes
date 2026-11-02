@@ -346,6 +346,11 @@ test('Kolom Jam Layanan selalu memakai format 24 jam tanpa kontrol AM/PM', funct
   assert.ok(password.includes('type="password"'));
   assert.ok(password.includes('minlength="6"'));
   assert.ok(!password.includes('pattern='));
+  const dateClock = context.field('Mulai WITA', 'startsAt', '02/11/2026 17:00', 'datetime-local');
+  assert.ok(dateClock.includes('type="text"'));
+  assert.ok(dateClock.includes('value="02/11/2026 17:00"'));
+  assert.ok(dateClock.includes('placeholder="DD/MM/YYYY HH:mm"'));
+  assert.ok(!dateClock.includes('type="datetime-local"'));
 });
 
 test('Semua source dapat diparse dan frontend tidak memakai template Google', function () {
@@ -365,6 +370,163 @@ test('Semua source dapat diparse dan frontend tidak memakai template Google', fu
   assert.ok(!fs.readdirSync(path.join(root, 'apps-script')).some(function (file) {
     return file.endsWith('.html');
   }));
+});
+
+function sheetDateContext() {
+  const context = vm.createContext({
+    Date: Date,
+    Utilities: {
+      formatDate: function (date, timezone, format) {
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).formatToParts(date);
+        const get = function (key) { return parts.find(function (part) { return part.type === key; }).value; };
+        return format === 'HH:mm' ? get('hour') + ':' + get('minute')
+          : get('year') + '-' + get('month') + '-' + get('day');
+      }
+    }
+  });
+  for (const file of ['Store.gs', 'Schema.gs', 'Rules.gs']) {
+    vm.runInContext(source('apps-script/' + file), context);
+  }
+  return context;
+}
+
+test('Jam 1899 dari Sheets memakai tampilan asli, tanpa selisih offset historis', function () {
+  const context = sheetDateContext();
+  const legacy = new Date('1899-12-30T00:02:24.000Z');
+  assert.equal(context.sheetReadValue_('opens', legacy, '08:00:00', 'Asia/Makassar'), '08:00');
+  assert.equal(context.sheetReadValue_('closes', legacy, '10:00:00 PM', 'Asia/Makassar'), '22:00');
+  assert.equal(context.sheetReadValue_('opens', legacy, '12:00 AM', 'Asia/Makassar'), '00:00');
+  assert.equal(context.sheetReadValue_('opens', legacy, '08.00.00', 'Asia/Makassar'), '08:00');
+  assert.equal(context.sheetReadValue_('opens', '08:00', '08:00', 'Asia/Makassar'), '08:00');
+  const schedule = [{
+    weekday: 1, active: true,
+    opens: context.sheetReadValue_('opens', legacy, '08:00', 'Asia/Makassar'),
+    closes: context.sheetReadValue_('closes', legacy, '22:00', 'Asia/Makassar')
+  }];
+  const slots = context.slots_('DIRECT',
+    { intervalMinutes: '30', preparationMinutes: '30' }, schedule,
+    new Date('2026-11-02T07:49:00Z'));
+  assert.equal(slots.times[0], '16:30');
+});
+
+test('Tanggal Sheet kembali ke format API, timestamp tetap ISO UTC', function () {
+  const context = sheetDateContext();
+  const date = new Date('2026-11-01T16:00:00Z');
+  assert.equal(context.sheetReadValue_('date', date, '', 'Asia/Makassar'), '2026-11-02');
+  assert.equal(context.sheetReadValue_('createdAt', date, '', 'Asia/Makassar'), date.toISOString());
+  assert.equal(context.sheetWriteValue_('date', '2026-11-02').toISOString(), date.toISOString());
+  assert.equal(context.sheetWriteValue_('createdAt', date.toISOString()).toISOString(), date.toISOString());
+  assert.equal(context.sheetWriteValue_('opens', '08:00'), '08:00');
+  assert.equal(context.temporalFormat_('timestamp'), 'dd/MM/yyyy HH:mm');
+  assert.equal(context.temporalFormat_('time'), '@');
+  assert.equal(context.sheetWriteValue_('name', '=IMPORTDATA("url")'), "'=IMPORTDATA(\"url\")");
+});
+
+test('Penulisan baris menjaga format kolom lain dan mencegah konversi jam ke 1899', function () {
+  const context = sheetDateContext();
+  const calls = [];
+  const range = {
+    getNumberFormats: function () { return [['General', 'General', '0.00']]; },
+    setNumberFormats: function (value) { calls.push(['formats', value]); },
+    setValues: function (value) { calls.push(['values', value]); }
+  };
+  context.writeSheetRow_({ getRange: function () { return range; } }, 2,
+    ['opens', 'createdAt', 'price'], {
+      opens: '08:00', createdAt: '2026-11-02T09:00:00Z', price: 25000
+    });
+  assert.equal(JSON.stringify(calls[0][1]), JSON.stringify([['@', 'dd/MM/yyyy HH:mm', '0.00']]));
+  assert.equal(calls[1][1][0][0], '08:00');
+  assert.equal(calls[1][1][0][1].toISOString(), '2026-11-02T09:00:00.000Z');
+  assert.equal(calls[1][1][0][2], 25000);
+});
+
+test('Perbaikan Sheet mempertahankan ID, formula, dan hasil saat dijalankan ulang', function () {
+  const context = sheetDateContext();
+  const data = {
+    ServiceHours: {
+      headers: ['id', 'weekday', 'opens', 'closes', 'active'],
+      rows: [['jam-1', 1, new Date('1899-12-30T00:02:24Z'),
+        new Date('1899-12-30T14:02:24Z'), true]],
+      display: [['jam-1', '1', '08:00:00', '22:00:00', 'TRUE']],
+      formulas: [['', '', '', '', '']]
+    },
+    AuditLog: {
+      headers: ['id', 'createdAt', 'actorId', 'action', 'entityId', 'detail'],
+      rows: [
+        ['log-1', '2026-11-02T09:00:00Z', 'admin-1', 'SAVE', 'jam-1', 'Asli'],
+        ['log-2', new Date('2026-11-02T09:00:00Z'), 'admin-1', 'SAVE', 'jam-1', 'Formula']
+      ],
+      display: [
+        ['log-1', '2026-11-02T09:00:00Z', 'admin-1', 'SAVE', 'jam-1', 'Asli'],
+        ['log-2', '02/11/2026 17:00', 'admin-1', 'SAVE', 'jam-1', 'Formula']
+      ],
+      formulas: [['', '', '', '', '', ''], ['', '=NOW()', '', '', '', '']]
+    }
+  };
+  const formats = [];
+  context.requireSetupAccess_ = function () {};
+  context.withLock_ = function (operation) { return operation(); };
+  context.console = { info: function () {} };
+  context.SpreadsheetApp = { flush: function () {} };
+  context.database_ = function () {
+    return {
+      setSpreadsheetTimeZone: function (value) { assert.equal(value, 'Asia/Makassar'); },
+      setSpreadsheetLocale: function (value) { assert.equal(value, 'id_ID'); },
+      getSheetByName: function (name) {
+        const table = data[name];
+        if (!table) { return null; }
+        return {
+          getLastRow: function () { return table.rows.length + 1; },
+          getRange: function (row, column, count, width) {
+            const read = function (rows) {
+              return rows.slice(row - 2, row - 2 + count)
+                .map(function (values) { return values.slice(column - 1, column - 1 + width); });
+            };
+            return {
+              getValues: function () { return row === 1 ? [table.headers] : read(table.rows); },
+              getDisplayValues: function () { return read(table.display); },
+              getFormulas: function () { return read(table.formulas); },
+              setNumberFormat: function (format) { formats.push([name, column, format]); },
+              setValues: function (values) {
+                values.forEach(function (values, index) {
+                  table.rows[row - 2 + index][column - 1] = values[0];
+                });
+              }
+            };
+          }
+        };
+      }
+    };
+  };
+  assert.equal(context.formatHealthyVibesDates(), true);
+  assert.equal(data.ServiceHours.rows[0][0], 'jam-1');
+  assert.equal(data.ServiceHours.rows[0][2], '08:00');
+  assert.equal(data.ServiceHours.rows[0][3], '22:00');
+  assert.equal(data.AuditLog.rows[0][1].toISOString(), '2026-11-02T09:00:00.000Z');
+  assert.equal(data.AuditLog.rows[1][1], '=NOW()');
+  const snapshot = JSON.stringify(data);
+  assert.equal(context.formatHealthyVibesDates(), true);
+  assert.equal(JSON.stringify(data), snapshot);
+  assert.ok(formats.some(function (item) { return item[2] === 'dd/MM/yyyy HH:mm'; }));
+});
+
+test('Tampilan WITA memakai DD/MM/YYYY HH:mm dan menolak tanggal yang tidak ada', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({});
+  vm.runInContext(client.slice(client.indexOf('  function dateText('),
+    client.indexOf('  // Loading dihitung')), context);
+  vm.runInContext(client.slice(client.indexOf('  function toWitaInput('),
+    client.indexOf('  function renderMaster(')), context);
+  assert.equal(context.dateText('2026-11-02'), '02/11/2026');
+  assert.equal(context.dateTimeText('2026-11-02T09:00:00Z'), '02/11/2026 17:00');
+  assert.equal(context.dateTimeText('2026-11-01T16:00:00Z'), '02/11/2026 00:00');
+  assert.equal(context.masterText('weekday', 1), 'Senin');
+  assert.equal(context.fromWitaInput('02/11/2026 17:00'), '2026-11-02T09:00:00.000Z');
+  assert.throws(function () { context.fromWitaInput('31/02/2026 17:00'); }, /tidak valid/);
+  assert.throws(function () { context.fromWitaInput('02/11/2026 24:00'); }, /tidak valid/);
 });
 
 test('Aturan WITA, voucher, refund, dan reservasi tetap lulus', function () {
@@ -449,7 +611,8 @@ test('Setup menolak anonim dan akun berbeda sebelum mengubah data', function () 
   ]) {
     const context = setupContext(active, effective);
     for (const name of [
-      'installHealthyVibes', 'verifyAuthRuntime', 'createFirstAdmin', 'runRuleTests'
+      'installHealthyVibes', 'verifyAuthRuntime', 'createFirstAdmin', 'runRuleTests',
+      'formatHealthyVibesDates'
     ]) {
       let calls = 0;
       context[name + '_'] = function () { calls += 1; };
