@@ -348,12 +348,14 @@
      * @param {function(...[*])} callback Callback to execute
      * @inner
      */
-    // Apps Script tidak memiliki timer; aplikasi hanya memakai API sinkron.
-    var nextTick = typeof process !== 'undefined' && process && typeof process.nextTick === 'function'
-        ? (typeof setImmediate === 'function' ? setImmediate : process.nextTick)
-        : (typeof setTimeout === 'function' ? setTimeout : function() {
-            throw Error('Bcrypt asinkron tidak tersedia di Apps Script. Gunakan hashSync/compareSync.');
-        });
+    
+    // Apps Script memakai bcrypt sinkron tanpa timer.
+    var nextTick = typeof process !== 'undefined' &&
+    process && typeof process.nextTick === 'function'
+    ? (typeof setImmediate === 'function' ? setImmediate : process.nextTick)
+    : (typeof setTimeout === 'function' ? setTimeout : function () {
+        throw Error('Gunakan bcrypt hashSync/compareSync di Apps Script.');
+    });
 
     /**
      * Converts a JavaScript string to UTF8 bytes.
