@@ -64,7 +64,22 @@ function bcrypt_() {
   return library;
 }
 
-// Jalankan di editor: membuktikan bcrypt tersedia dan cukup cepat pada runtime Google.
+// Fungsi setup tanpa _ dapat dipilih di editor, bukan endpoint pelanggan.
+function verifyAuthRuntime() {
+  requireSetupAccess_();
+  const result = verifyAuthRuntime_();
+  console.info('Uji login lulus dalam ' + result.milliseconds + ' ms.');
+  return result;
+}
+
+function createFirstAdmin() {
+  requireSetupAccess_();
+  const result = createFirstAdmin_();
+  console.info(result);
+  return result;
+}
+
+// Membuktikan bcrypt tersedia dan cukup cepat pada runtime Google.
 function verifyAuthRuntime_() {
   return withLock_(function () {
     securityKey_();

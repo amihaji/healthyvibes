@@ -1,8 +1,17 @@
+// Setup editor tidak boleh dipicu pelanggan anonim lewat RPC HTML Service.
+function requireSetupAccess_() {
+  const active = Session.getActiveUser().getEmail();
+  const effective = Session.getEffectiveUser().getEmail();
+  if (!active || !effective || active !== effective) {
+    throw new Error('Jalankan setup dari editor dengan akun pemilik project.');
+  }
+}
+
 // Membuka database privat memakai ID dari Script Properties.
 function database_() {
   const id = PropertiesService.getScriptProperties().getProperty('DATABASE_ID');
   if (!id) {
-    throw new Error('Database belum dipasang. Jalankan installHealthyVibes_ dari editor.');
+    throw new Error('Database belum dipasang. Jalankan installHealthyVibes dari editor.');
   }
   return SpreadsheetApp.openById(id);
 }

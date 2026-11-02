@@ -85,8 +85,17 @@ const HV_DEFAULTS = {
   backupRetentionDays: '30'
 };
 
+// Pilih nama tanpa akhiran _ pada daftar fungsi editor Apps Script.
+function installHealthyVibes() {
+  requireSetupAccess_();
+  const result = installHealthyVibes_();
+  console.info('Database: ' + result.databaseUrl);
+  console.info('Folder Drive: ' + result.driveUrl);
+  return result;
+}
+
 /**
- * Jalankan sekali dari editor Apps Script dengan akun pemilik.
+ * Implementasi internal installer; jalankan melalui installHealthyVibes.
  * Install ulang memakai ID tersimpan dan tidak menghapus baris yang ada.
  */
 function installHealthyVibes_() {

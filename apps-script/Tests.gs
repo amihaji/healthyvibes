@@ -1,3 +1,16 @@
+// Pilih runRuleTests di editor; hasil tiap aturan tampil di Execution log.
+function runRuleTests() {
+  requireSetupAccess_();
+  const results = runRuleTests_();
+  results.forEach(function (result) {
+    console.info(result.status + ': ' + result.name);
+  });
+  if (results.some(function (result) { return result.status !== 'PASS'; })) {
+    throw new Error('Ada aturan yang gagal. Periksa hasil pengujian sebelum melanjutkan.');
+  }
+  return results;
+}
+
 // Uji murni tidak membuat akun, pesanan, pembayaran atau berkas produksi.
 function runRuleTests_() {
   const results = [];
