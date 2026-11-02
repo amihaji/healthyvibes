@@ -48,12 +48,21 @@ function equal_(left, right) {
   return difference === 0;
 }
 
-// Bcrypt maksimum 72 byte: tolak password panjang, jangan memotong diam-diam.
+// Nama login dipakai dengan aturan yang sama saat setup, login dan edit pengguna.
+function username_(value) {
+  const username = text_(value, 'Username', 60).toLowerCase();
+  if (username.length < 6) {
+    throw new Error('Username minimal 6 karakter.');
+  }
+  return username;
+}
+
+// Password minimal 6 karakter; batas 72 byte mencegah pemotongan oleh bcrypt.
 function password_(value) {
   const password = String(value || '');
   const size = Utilities.newBlob(password).getBytes().length;
-  if (password.length < 12 || size > 72) {
-    throw new Error('Password minimal 12 karakter dan maksimal 72 byte.');
+  if (password.length < 6 || size > 72) {
+    throw new Error('Password minimal 6 karakter dan maksimal 72 byte.');
   }
   return password;
 }
@@ -106,8 +115,7 @@ function createFirstAdmin_() {
       throw new Error('Akun sudah ada. Gunakan Setup User.');
     }
     const props = PropertiesService.getScriptProperties();
-    const username = text_(props.getProperty('INITIAL_ADMIN_USERNAME'), 'Username', 60)
-      .toLowerCase();
+    const username = username_(props.getProperty('INITIAL_ADMIN_USERNAME'));
     const password = password_(props.getProperty('INITIAL_ADMIN_PASSWORD'));
     append_('Users', {
       id: id_(),
@@ -138,7 +146,7 @@ function requireAuthRuntime_() {
 // Membatasi percobaan per akun dan secara global pada jendela satu menit.
 function login_(data) {
   requireAuthRuntime_();
-  const username = text_(data.username, 'Username', 60).toLowerCase();
+  const username = username_(data.username);
   const cache = CacheService.getScriptCache();
   const keys = ['login-global', 'login-' + digest_(username)];
   keys.forEach(function (key, index) {

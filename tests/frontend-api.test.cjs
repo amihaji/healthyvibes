@@ -370,6 +370,32 @@ function setupContext(activeEmail, effectiveEmail) {
   return context;
 }
 
+test('Password menerima 6 karakter dan tetap menolak lebih dari 72 byte', function () {
+  const context = setupContext('owner@example.com', 'owner@example.com');
+  context.Utilities = {
+    newBlob: function (value) {
+      return { getBytes: function () { return Array.from(Buffer.from(value, 'utf8')); } };
+    }
+  };
+  assert.equal(context.password_('Abc123'), 'Abc123');
+  assert.throws(function () { context.password_('Ab123'); }, /minimal 6 karakter/);
+  assert.throws(function () { context.password_(''); }, /minimal 6 karakter/);
+  assert.equal(context.password_('a'.repeat(72)), 'a'.repeat(72));
+  assert.throws(function () { context.password_('a'.repeat(73)); }, /maksimal 72 byte/);
+  const multibyte = String.fromCharCode(233);
+  assert.equal(context.password_(multibyte.repeat(36)), multibyte.repeat(36));
+  assert.throws(function () { context.password_(multibyte.repeat(37)); }, /maksimal 72 byte/);
+});
+
+test('Username menerima 6 karakter dengan normalisasi dan batas panjang tetap', function () {
+  const context = setupContext('owner@example.com', 'owner@example.com');
+  assert.equal(context.username_(' ADMIN1 '), 'admin1');
+  assert.throws(function () { context.username_('admin'); }, /minimal 6 karakter/);
+  assert.throws(function () { context.username_(''); }, /Username tidak valid/);
+  assert.equal(context.username_('a'.repeat(60)), 'a'.repeat(60));
+  assert.throws(function () { context.username_('a'.repeat(61)); }, /Username tidak valid/);
+});
+
 test('Fungsi setup tanpa underscore meneruskan operasi akun editor', function () {
   const context = setupContext('owner@example.com', 'owner@example.com');
   const operations = {

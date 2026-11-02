@@ -129,7 +129,7 @@ function saveMaster_(user, data) {
     }
   }
   if (table === 'Users') {
-    record.username = text_(input.username, 'Username', 60).toLowerCase();
+    record.username = username_(input.username);
     record.name = text_(input.name, 'Nama', 100);
     record.role = input.role;
     if (!['Admin', 'Operator', 'Viewer'].includes(record.role)) {

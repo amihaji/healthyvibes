@@ -76,10 +76,13 @@
   }
 
   function field(label, name, value, type, required) {
+    const minimum = ['username', 'password', 'newPassword'].includes(name)
+      ? ' minlength="6"' : '';
     return '<div class="mb-3"><label class="form-label" for="f-' + name + '">' +
       safe(label) + '</label><input class="form-control" id="f-' + name +
       '" name="' + name + '" type="' + (type || 'text') + '" value="' +
-      safe(value || '') + '"' + (required === false ? '' : ' required') + '></div>';
+      safe(value || '') + '"' + minimum +
+      (required === false ? '' : ' required') + '></div>';
   }
 
   function selectField(label, name, options, value) {
@@ -423,7 +426,7 @@
       '<div class="col-md-6"><section class="hero"><h1>Kelola toko,<br>dengan lebih teratur.</h1>' +
       '<p>Akses sesuai level Admin, Operator, atau Viewer.</p></section></div>' +
       '<div class="col-md-6"><section class="panel"><h2>Login Pengelola</h2>' +
-      '<form id="login-form">' + field('Username', 'username', '') +
+      '<form id="login-form">' + field('Username (minimal 6 karakter)', 'username', '') +
       field('Password', 'password', '', 'password') +
       '<button class="btn btn-primary w-100" type="submit">Masuk</button></form>' +
       '<p class="small mt-3">Lupa password? Hubungi Admin untuk reset password sementara.</p>' +
@@ -433,7 +436,7 @@
   function passwordDialog() {
     showEditor('Ganti Password', '<form id="password-form">' +
       field('Password saat ini', 'currentPassword', '', 'password') +
-      field('Password baru (minimal 12 karakter)', 'newPassword', '', 'password') +
+      field('Password baru (minimal 6 karakter)', 'newPassword', '', 'password') +
       '<p>Semua sesi akan dicabut; masuk kembali setelah perubahan.</p>' +
       '<button class="btn btn-primary" type="submit">Simpan Password</button></form>');
   }
@@ -666,11 +669,11 @@
       html += field('Jam tutup WITA', 'closes', row.closes, 'time');
     }
     if (table === 'Users') {
-      html += field('Username', 'username', row.username);
+      html += field('Username (minimal 6 karakter)', 'username', row.username);
       html += selectField('Level', 'role', [
         ['Admin', 'Admin'], ['Operator', 'Operator'], ['Viewer', 'Viewer']
       ], row.role);
-      html += field('Password sementara (isi untuk reset)', 'password', '', 'password', !row.id);
+      html += field('Password sementara (minimal 6 karakter; isi untuk reset)', 'password', '', 'password', !row.id);
     }
     if (!['ReadyStock', 'PreorderCapacity'].includes(table)) {
       html += selectField('Aktif', 'active', [['true', 'Ya'], ['false', 'Tidak']],

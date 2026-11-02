@@ -180,8 +180,8 @@ Jika Admin sudah ada, jangan membuat ulang Admin pertama.
 | Properti | Nilai | Penanganan |
 | --- | --- | --- |
 | SECURITY_KEY | Kunci hex 64 karakter dari 32 byte acak. | Rahasia permanen; jangan masuk frontend/GitHub. |
-| INITIAL_ADMIN_USERNAME | Username Admin pilihan Anda. | Sementara, dihapus fungsi setelah akun dibuat. |
-| INITIAL_ADMIN_PASSWORD | Password kuat minimal 12 karakter, maksimal 72 byte. | Sementara, dihapus fungsi setelah akun dibuat. |
+| INITIAL_ADMIN_USERNAME | Username Admin pilihan Anda, minimal 6 karakter, misalnya `admin1`. | Sementara, dihapus fungsi setelah akun dibuat. |
+| INITIAL_ADMIN_PASSWORD | Password minimal 6 karakter, maksimal 72 byte. Gunakan kombinasi huruf dan angka. | Sementara, dihapus fungsi setelah akun dibuat. |
 | FRONTEND_ORIGINS | `https://amihaji.github.io` | Opsional untuk membatasi tujuan respons; bukan password. |
 
 Jika file PowerShell tidak dapat dijalankan karena kebijakan komputer,
