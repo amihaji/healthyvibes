@@ -78,10 +78,16 @@
   function field(label, name, value, type, required) {
     const minimum = ['username', 'password', 'newPassword'].includes(name)
       ? ' minlength="6"' : '';
+    // Input teks menjaga tampilan 24 jam, terlepas dari bahasa browser.
+    const clock = type === 'time';
+    const clockAttributes = clock
+      ? ' placeholder="HH:mm" maxlength="5" pattern="([01][0-9]|2[0-3]):[0-5][0-9]"' +
+        ' title="Format 24 jam, misalnya 08:00 atau 17:00"'
+      : '';
     return '<div class="mb-3"><label class="form-label" for="f-' + name + '">' +
       safe(label) + '</label><input class="form-control" id="f-' + name +
-      '" name="' + name + '" type="' + (type || 'text') + '" value="' +
-      safe(value || '') + '"' + minimum +
+      '" name="' + name + '" type="' + (clock ? 'text' : type || 'text') + '" value="' +
+      safe(value || '') + '"' + minimum + clockAttributes +
       (required === false ? '' : ' required') + '></div>';
   }
 
@@ -665,8 +671,10 @@
         [0, 'Minggu'], [1, 'Senin'], [2, 'Selasa'], [3, 'Rabu'],
         [4, 'Kamis'], [5, 'Jumat'], [6, 'Sabtu']
       ], row.weekday);
-      html += field('Jam buka WITA', 'opens', row.opens, 'time');
-      html += field('Jam tutup WITA', 'closes', row.closes, 'time');
+      html += field('Jam buka WITA (24 jam)', 'opens', row.opens, 'time');
+      html += field('Jam tutup WITA (24 jam)', 'closes', row.closes, 'time');
+      html += '<p class="form-text">Gunakan format HH:mm, misalnya 08:00 untuk pagi ' +
+        'atau 17:00 untuk sore. Semua jam menggunakan WITA.</p>';
     }
     if (table === 'Users') {
       html += field('Username (minimal 6 karakter)', 'username', row.username);

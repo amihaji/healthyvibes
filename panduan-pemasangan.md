@@ -114,7 +114,7 @@ daftar kolom lengkap ada di `apps-script/Schema.gs`.
 | Vouchers | Kode voucher dan syarat pemakaian. | Opsional, diatur Admin. |
 | ReadyStock | Kapasitas total stok siap jual per produk. | Isi melalui menu stok. |
 | PreorderCapacity | Kuota preorder per produk dan tanggal. | Isi melalui menu kuota preorder. |
-| ServiceHours | Hari serta jam buka/tutup layanan WITA. | Isi melalui Jam Layanan. |
+| ServiceHours | Hari serta jam buka/tutup layanan WITA. | Isi melalui Jam Layanan dengan format 24 jam `HH:mm`, misalnya `08:00` dan `17:00`. |
 | ServiceAreas | Daftar wilayah pengantaran aktif. | Isi melalui Wilayah. |
 | Users | Akun pengelola dan hash password. | Admin pertama dibuat lewat fungsi khusus tahap 3. |
 | Sessions | Hash sesi login dan kedaluwarsa. | Otomatis saat login. |

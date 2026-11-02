@@ -322,6 +322,32 @@ test('Konfigurasi kosong dan aplikasi dalam iframe ditolak', async function () {
   await assert.rejects(fixture.api.request({ action: 'catalog' }), /langsung/);
 });
 
+test('Kolom Jam Layanan selalu memakai format 24 jam tanpa kontrol AM/PM', function () {
+  const client = source('js/client.js');
+  const start = client.indexOf('  function field(');
+  const end = client.indexOf('  function selectField(', start);
+  const context = vm.createContext({ safe: String });
+  vm.runInContext(client.slice(start, end), context);
+  const markup = context.field('Jam buka WITA (24 jam)', 'opens', '17:00', 'time');
+  assert.ok(markup.includes('type="text"'));
+  assert.ok(markup.includes('value="17:00"'));
+  assert.ok(markup.includes('placeholder="HH:mm"'));
+  assert.ok(markup.includes('maxlength="5"'));
+  assert.ok(markup.includes(' required'));
+  assert.ok(!markup.includes('type="time"'));
+  const pattern = new RegExp('^(?:' + markup.match(/pattern="([^"]+)"/)[1] + ')$');
+  for (const time of ['00:00', '08:00', '12:00', '17:00', '23:59']) {
+    assert.ok(pattern.test(time), time);
+  }
+  for (const time of ['8:00', '24:00', '17:60', '05:00 PM', '08.00']) {
+    assert.ok(!pattern.test(time), time);
+  }
+  const password = context.field('Password', 'password', '', 'password');
+  assert.ok(password.includes('type="password"'));
+  assert.ok(password.includes('minlength="6"'));
+  assert.ok(!password.includes('pattern='));
+});
+
 test('Semua source dapat diparse dan frontend tidak memakai template Google', function () {
   const backendRuntime = vm.createContext({});
   for (const directory of ['js', 'apps-script']) {
