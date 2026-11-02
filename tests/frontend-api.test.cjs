@@ -558,6 +558,121 @@ function setupContext(activeEmail, effectiveEmail) {
   return context;
 }
 
+function orderNumberContext(saved, locked) {
+  const properties = new Map(saved ? [['ORDER_NUMBER_COUNTER', saved]] : []);
+  const context = vm.createContext({
+    Date: Date,
+    LockService: { getScriptLock: function () {
+      return { hasLock: function () { return locked !== false; } };
+    } },
+    PropertiesService: { getScriptProperties: function () {
+      return {
+        getProperty: function (key) { return properties.get(key) || null; },
+        setProperty: function (key, value) { properties.set(key, value); }
+      };
+    } }
+  });
+  for (const file of ['Store.gs', 'Rules.gs', 'Orders.gs']) {
+    vm.runInContext(source('apps-script/' + file), context);
+  }
+  return { context: context, properties: properties };
+}
+
+test('Nomor pesanan memakai HV-ddMMYY-0001 dengan reset pada tengah malam WITA', function () {
+  const { context } = orderNumberContext();
+  assert.equal(context.nextOrderId_('2026-11-01T16:00:00Z', []), 'HV-021126-0001');
+  assert.equal(context.nextOrderId_('2026-11-02T15:59:59Z', []), 'HV-021126-0002');
+  assert.equal(context.nextOrderId_('2026-11-02T16:00:00Z', []), 'HV-031126-0001');
+  assert.equal(context.nextOrderId_('2028-02-28T16:00:00Z', []), 'HV-290228-0001');
+});
+
+test('Nomor pesanan membandingkan counter dan data, termasuk pesanan batal', function () {
+  const { context } = orderNumberContext(JSON.stringify({ date: '2026-11-02', sequence: 2 }));
+  const orders = [
+    { id: 'HV-021126-0007', fulfillment: 'CANCELLED' },
+    { id: 'HV-021126-0003', transactionState: 'PREPARING' },
+    { id: 'HV-031126-9999' }, { id: 'HV-uuid-lama' }
+  ];
+  assert.equal(context.nextOrderId_('2026-11-02T09:00:00Z', orders), 'HV-021126-0008');
+  assert.equal(context.nextOrderId_('2026-11-02T09:00:01Z', orders), 'HV-021126-0009');
+  const restored = orderNumberContext().context;
+  assert.equal(restored.nextOrderId_('2026-11-02T09:00:00Z', orders), 'HV-021126-0008');
+});
+
+test('Nomor pesanan menolak tanpa lock, counter rusak, dan nomor lebih dari 9999', function () {
+  const noLock = orderNumberContext(null, false);
+  assert.throws(function () {
+    noLock.context.nextOrderId_('2026-11-02T09:00:00Z', []);
+  }, /lock transaksi/);
+  assert.equal(noLock.properties.size, 0);
+  for (const saved of ['rusak', '{"date":"2026-11-02","sequence":-1}', 'null']) {
+    const { context } = orderNumberContext(saved);
+    assert.throws(function () { context.nextOrderId_('2026-11-02T09:00:00Z', []); }, /tidak valid/);
+  }
+  const { context, properties } = orderNumberContext(JSON.stringify({
+    date: '2026-11-02', sequence: 9998
+  }));
+  assert.equal(context.nextOrderId_('2026-11-02T09:00:00Z', []), 'HV-021126-9999');
+  const prior = properties.get('ORDER_NUMBER_COUNTER');
+  assert.throws(function () { context.nextOrderId_('2026-11-02T09:00:00Z', []); }, /9999/);
+  assert.equal(properties.get('ORDER_NUMBER_COUNTER'), prior);
+  assert.equal(context.nextOrderId_('2026-11-02T16:00:00Z', []), 'HV-031126-0001');
+});
+
+test('Retry pesanan mempertahankan nomor lama tanpa mengambil urutan baru', function () {
+  const { context, properties } = orderNumberContext();
+  context.recoverOrders_ = function () {};
+  context.settings_ = function () { return { ordersEnabled: 'true' }; };
+  context.digest_ = function () { return 'hash'; };
+  context.equal_ = function (left, right) { return left === right; };
+  context.rows_ = function () {
+    return [{ id: 'HV-021126-0001', requestId: 'retry-1', requestHash: 'hash', accessHash: 'hash' }];
+  };
+  context.customerOrder_ = function (order) { return { id: order.id }; };
+  context.nextOrderId_ = function () { throw new Error('Tidak boleh mengambil nomor baru saat retry.'); };
+  assert.equal(context.createOrder_({
+    requestId: 'retry-1', accessToken: 'a'.repeat(43), name: 'Pelanggan',
+    phone: '081234567890', acceptPolicy: true
+  }).id, 'HV-021126-0001');
+  assert.equal(properties.size, 0);
+  assert.ok(source('apps-script/Files.gs').includes("const name = order.id + '.pdf';"));
+});
+
+test('Pembuatan pesanan menyimpan nomor baru dan retry tidak menaikkan counter', function () {
+  const { context, properties } = orderNumberContext();
+  const orders = [];
+  context.recoverOrders_ = function () {};
+  context.settings_ = function () { return { ordersEnabled: 'true', refundRounding: 'NEAREST' }; };
+  context.rows_ = function () { return orders; };
+  context.now_ = function () { return '2026-11-02T09:00:00Z'; };
+  context.digest_ = function () { return 'hash'; };
+  context.equal_ = function (left, right) { return left === right; };
+  context.quote_ = function () { return {
+    subtotal: 25000, total: 25000, voucherDiscount: 0,
+    items: [{ name: 'Produk', quantity: 1, unitPrice: 25000 }]
+  }; };
+  context.append_ = function (table, record) {
+    assert.equal(table, 'Orders');
+    orders.push(record);
+    return record;
+  };
+  context.finishOrder_ = function (order) { order.transactionState = 'COMMITTED'; return order; };
+  context.audit_ = function () {};
+  context.SpreadsheetApp = { flush: function () {} };
+  const data = {
+    requestId: 'pesanan-1', accessToken: 'a'.repeat(43), name: 'Pelanggan',
+    phone: '081234567890', acceptPolicy: true, type: 'DIRECT',
+    receipt: 'PICKUP', paymentMethod: 'PICKUP_CASH', date: '2026-11-02', time: '17:00'
+  };
+  assert.equal(context.createOrder_(data).id, 'HV-021126-0001');
+  assert.equal(context.createOrder_(data).id, 'HV-021126-0001');
+  assert.equal(orders.length, 1);
+  assert.equal(JSON.parse(properties.get('ORDER_NUMBER_COUNTER')).sequence, 1);
+  assert.equal(context.createOrder_(Object.assign({}, data, { requestId: 'pesanan-2' })).id,
+    'HV-021126-0002');
+  assert.equal(orders.length, 2);
+});
+
 test('Password menerima 6 karakter dan tetap menolak lebih dari 72 byte', function () {
   const context = setupContext('owner@example.com', 'owner@example.com');
   context.Utilities = {

@@ -390,6 +390,25 @@ Perbaikan tidak menghapus ID, stok, akun, atau pesanan; formula yang sudah ada
 dipertahankan. Nilai transaksi tetap dibaca API sebagai ISO UTC untuk perhitungan.
 Tidak perlu menjalankan installer atau membuat Admin ulang.
 
+## Format Nomor Pesanan dan Invoice
+
+Nomor pesanan baru menggunakan `HV-ddMMYY-####`, misalnya `HV-021126-0001`.
+Tanggal adalah tanggal pembuatan pesanan dalam WITA, bukan tanggal pengambilan
+preorder. Urutan dimulai dari `0001` setiap hari dan memiliki batas `9999`.
+Nomor invoice sama dengan nomor pesanan; nama PDF mengikuti nomor tersebut.
+Nomor pesanan lama tidak diubah.
+
+Untuk aplikasi yang sudah terpasang, ganti seluruh isi `Orders.gs` di editor
+Google dengan `apps-script/Orders.gs` terbaru, simpan, lalu perbarui deployment
+yang dipakai melalui Manage deployments dan New version. Tidak perlu menjalankan
+installer atau membuat tab Sheet baru.
+
+Counter dibuat otomatis di Script Properties sebagai `ORDER_NUMBER_COUNTER`.
+Jangan mengedit atau menghapusnya. Pesanan batal tetap memakai nomor yang sudah
+diberikan. Pengulangan request yang sama tidak mengambil nomor baru.
+Jika penyimpanan terputus setelah nomor teralokasi, urutan dapat memiliki celah;
+nomor tersebut tidak digunakan ulang untuk menjaga keunikan.
+
 ## Sebelum Go Live
 
 Periksa berurutan:

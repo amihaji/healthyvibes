@@ -105,6 +105,43 @@ function recoverOrders_() {
   }).forEach(finishOrder_);
 }
 
+// Dipanggil di dalam lock transaksi; nomor yang teralokasi tidak dipakai ulang.
+function nextOrderId_(stamp, orders) {
+  if (!LockService.getScriptLock().hasLock()) {
+    throw new Error('Pembuatan nomor pesanan harus berada dalam lock transaksi.');
+  }
+  const date = clock_(new Date(stamp)).date;
+  const parts = date.split('-');
+  const prefix = 'HV-' + parts[2] + parts[1] + parts[0].slice(-2) + '-';
+  const props = PropertiesService.getScriptProperties();
+  const saved = props.getProperty('ORDER_NUMBER_COUNTER');
+  let counter = null;
+  if (saved) {
+    try { counter = JSON.parse(saved); } catch (error) {
+      throw new Error('Pengaturan urutan nomor pesanan tidak valid.');
+    }
+    if (!counter || !/^\d{4}-\d{2}-\d{2}$/.test(counter.date) ||
+      !Number.isSafeInteger(counter.sequence) || counter.sequence < 0 ||
+      counter.sequence > 9999) {
+      throw new Error('Pengaturan urutan nomor pesanan tidak valid.');
+    }
+  }
+  let sequence = counter && counter.date === date ? counter.sequence : 0;
+  // Data Orders menjadi pembanding bila counter belum ada atau berasal dari backup.
+  orders.forEach(function (order) {
+    const id = String(order.id || '');
+    if (id.startsWith(prefix) && /^\d{4}$/.test(id.slice(prefix.length))) {
+      sequence = Math.max(sequence, Number(id.slice(prefix.length)));
+    }
+  });
+  if (sequence >= 9999) {
+    throw new Error('Batas 9999 nomor pesanan hari ini sudah tercapai.');
+  }
+  sequence += 1;
+  props.setProperty('ORDER_NUMBER_COUNTER', JSON.stringify({ date: date, sequence: sequence }));
+  return prefix + String(sequence).padStart(4, '0');
+}
+
 // Request ID + token pelanggan + hash payload mencegah duplikasi retry.
 function createOrder_(data) {
   recoverOrders_();
@@ -134,7 +171,8 @@ function createOrder_(data) {
     throw new Error('Persetujuan kebijakan diperlukan.');
   }
   const requestHash = digest_(JSON.stringify(payload));
-  const prior = rows_('Orders').find(function (row) {
+  const orders = rows_('Orders');
+  const prior = orders.find(function (row) {
     return row.requestId === requestId;
   });
   if (prior) {
@@ -167,7 +205,7 @@ function createOrder_(data) {
   const priced = quote_(payload);
   const stamp = now_();
   const order = append_('Orders', Object.assign({}, payload, priced, {
-    id: 'HV-' + id_(),
+    id: nextOrderId_(stamp, orders),
     requestId: requestId,
     requestHash: requestHash,
     accessHash: digest_(accessToken),
