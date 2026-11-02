@@ -346,3 +346,67 @@ test('Aturan WITA, voucher, refund, dan reservasi tetap lulus', function () {
   assert.ok(results.length >= 12);
   assert.ok(results.every(function (result) { return result.status === 'PASS'; }));
 });
+
+// Fungsi setup yang dapat dipilih di editor tetap menolak identitas web anonim.
+function setupContext(activeEmail, effectiveEmail) {
+  const context = vm.createContext({
+    Session: {
+      getActiveUser: function () {
+        return { getEmail: function () { return activeEmail; } };
+      },
+      getEffectiveUser: function () {
+        return { getEmail: function () { return effectiveEmail; } };
+      }
+    },
+    console: { info: function () {} }
+  });
+  for (const file of ['Store.gs', 'Schema.gs', 'Auth.gs', 'Tests.gs']) {
+    vm.runInContext(source('apps-script/' + file), context);
+  }
+  return context;
+}
+
+test('Fungsi setup tanpa underscore meneruskan operasi akun editor', function () {
+  const context = setupContext('owner@example.com', 'owner@example.com');
+  const operations = {
+    installHealthyVibes: { databaseUrl: 'database', driveUrl: 'drive' },
+    verifyAuthRuntime: { passed: true, milliseconds: 10 },
+    createFirstAdmin: 'Admin dibuat',
+    runRuleTests: [{ name: 'Aturan uji', status: 'PASS' }]
+  };
+  for (const [name, expected] of Object.entries(operations)) {
+    let calls = 0;
+    context[name + '_'] = function () {
+      calls += 1;
+      return expected;
+    };
+    assert.equal(context[name](), expected);
+    assert.equal(calls, 1);
+  }
+});
+
+test('Setup menolak anonim dan akun berbeda sebelum mengubah data', function () {
+  for (const [active, effective] of [
+    ['', 'owner@example.com'],
+    ['other@example.com', 'owner@example.com'],
+    ['owner@example.com', '']
+  ]) {
+    const context = setupContext(active, effective);
+    for (const name of [
+      'installHealthyVibes', 'verifyAuthRuntime', 'createFirstAdmin', 'runRuleTests'
+    ]) {
+      let calls = 0;
+      context[name + '_'] = function () { calls += 1; };
+      assert.throws(function () { context[name](); }, /dari editor/);
+      assert.equal(calls, 0);
+    }
+  }
+});
+
+test('Run aturan menampilkan error jika implementasi mengembalikan FAIL', function () {
+  const context = setupContext('owner@example.com', 'owner@example.com');
+  context.runRuleTests_ = function () {
+    return [{ name: 'Aturan uji', status: 'FAIL' }];
+  };
+  assert.throws(function () { context.runRuleTests(); }, /aturan yang gagal/);
+});

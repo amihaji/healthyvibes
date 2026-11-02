@@ -1,5 +1,16 @@
 # Healthy Vibes: Hasil Pengujian Build
 
+## Perbaikan Setup Editor
+
+- Fungsi yang dipilih di editor: `installHealthyVibes`, `verifyAuthRuntime`,
+  `createFirstAdmin`, dan `runRuleTests`, tanpa `_` di akhir.
+- Implementasi internal tetap memakai `_`; helper setup menolak identitas
+  kosong atau berbeda dengan akun eksekusi sebelum menjalankan operasi.
+- Manifest menambahkan scope email untuk pemeriksaan identitas akun.
+- PASS: 19 tes lokal, termasuk penerusan setup, penolakan anonim, dan pelaporan
+  aturan gagal. Tidak menjalankan installer atau mengubah database Google nyata.
+- Dropdown/Run editor dan otorisasi ulang Google belum diuji pada akun pengguna.
+
 ## Pemisahan Frontend: 2 November 2026
 
 Frontend sekarang statis (`index.html`, `css`, `js`); backend API berada di

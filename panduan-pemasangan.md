@@ -55,7 +55,8 @@ Untuk manifest:
 4. Ganti isinya dengan source `apps-script/appsscript.json`, lalu simpan.
 
 Manifest bukan file Script baru. Manifest memakai runtime V8, zona waktu
-`Asia/Makassar`, serta izin Sheets dan Drive.
+`Asia/Makassar`, izin Sheets/Drive, dan pembacaan email akun untuk membatasi
+fungsi setup. Setelah manifest diperbarui, Google dapat meminta izin ulang.
 
 `Code.gs` bawaan boleh dihapus jika hanya berisi `myFunction` kosong.
 Jika sudah berisi kode Anda, periksa dahulu; jangan menghapus kode lain.
@@ -71,13 +72,27 @@ Source boleh disimpan di GitHub, tetapi Script Properties dan file credential ti
 **Tidak perlu membuat file Google Sheets, tab, atau header secara manual.**
 
 1. Pastikan semua backend dan manifest pada tahap 1 sudah tersimpan.
-2. Buka `Schema.gs`, pilih fungsi `installHealthyVibes_` pada daftar fungsi.
+2. Buka `Schema.gs`, pilih fungsi **`installHealthyVibes`** pada daftar fungsi
+   di toolbar. Gunakan nama tanpa `_` di akhir.
 3. Klik **Run / Jalankan**.
 4. Pada permintaan otorisasi, periksa project serta izin Sheets/Drive,
    lalu setujui hanya jika sesuai source milik Anda.
 5. Tunggu eksekusi selesai tanpa error.
 6. Buka Google Drive dan cari folder **HEALTHY VIBES**.
 7. Buka spreadsheet **Healthy Vibes - Database** di dalam folder tersebut.
+
+Jika nama fungsi belum muncul atau tombol Run masih abu-abu:
+
+1. Pastikan `Schema.gs`, `Store.gs`, dan manifest di Google berisi source terbaru.
+2. Simpan semua file, lalu muat ulang editor Google.
+3. Pilih `installHealthyVibes` dari dropdown fungsi sebelum menekan Run.
+4. Periksa error sintaks pada seluruh file project; satu file yang tidak lengkap
+   dapat menghalangi editor mengenali fungsi.
+
+`installHealthyVibes_` tetap ada sebagai implementasi internal.
+Fungsi tanpa `_` memeriksa identitas akun sebelum menjalankan installer.
+Gunakan akun pemilik project di editor, bukan membuka fungsi setup dari website.
+Execution log menampilkan URL database dan folder setelah instalasi berhasil.
 
 Installer otomatis membuat satu spreadsheet dengan **20 tab aplikasi**
 beserta header masing-masing. Ringkasan relasi ada di `struktur-database.md`;
@@ -143,17 +158,17 @@ Jika Admin sudah ada, jangan membuat ulang Admin pertama.
    kebijakan PowerShell komputer. Kunci masuk clipboard, tidak dicetak.
 2. Di **Setelan project > Script Properties**, tambahkan `SECURITY_KEY`,
    tempel dari clipboard dan simpan.
-3. Dari `Auth.gs`, pilih `verifyAuthRuntime_`, lalu jalankan. Jika berhasil,
+3. Dari `Auth.gs`, pilih `verifyAuthRuntime`, lalu jalankan. Jika berhasil,
    Script Properties memiliki `AUTH_RUNTIME_VERIFIED` bernilai `true`.
    Jangan membuat atau mengubah penanda lulus secara manual.
 4. Tambahkan dua properti sementara pada tabel berikut dan simpan.
-5. Pilih `createFirstAdmin_` dari `Auth.gs`, lalu jalankan.
+5. Pilih `createFirstAdmin` dari `Auth.gs`, lalu jalankan.
 6. Periksa tab `Users`: akun Anda memiliki role `Admin`, password berupa hash,
    dan kewajiban mengganti password saat login pertama.
    Jangan mengedit hash password dari Sheets.
-7. Dari `Tests.gs`, jalankan `runRuleTests_`. Untuk melihat daftar hasil,
-   pasang breakpoint pada baris `return results`, gunakan **Debug**, lalu
-   periksa variabel `results`: seluruh pemeriksaan harus berstatus `PASS`.
+7. Dari `Tests.gs`, pilih `runRuleTests`, lalu jalankan.
+   Periksa Execution log: setiap aturan harus berstatus `PASS`.
+   Jika ada yang gagal, fungsi berhenti dengan error; jangan lanjut ke produksi.
 
 | Properti | Nilai | Penanganan |
 | --- | --- | --- |

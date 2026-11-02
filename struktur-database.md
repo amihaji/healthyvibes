@@ -1,6 +1,8 @@
 # Healthy Vibes: Struktur Database Google Sheets
 
-Database dibuat oleh `installHealthyVibes_` di akun Google pemilik.
+Database dibuat dengan menjalankan `installHealthyVibes` dari editor Google
+memakai akun pemilik. Fungsi tersebut memanggil implementasi internal
+`installHealthyVibes_`.
 Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten dengan API.
 
 | Sheet | Kegunaan | Relasi / aturan penting |
