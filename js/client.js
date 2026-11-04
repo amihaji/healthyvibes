@@ -16,6 +16,8 @@
     page: 'shop',
     adminPage: 'Dashboard',
     admin: null,
+    adminLoading: false,
+    adminError: '',
     checkoutStep: 1,
     recipient: {},
     quote: null,
@@ -639,11 +641,30 @@
       '<button class="btn btn-primary" type="submit">' + buttonLabel('save', 'Simpan Password') + '</button></form>');
   }
 
-  // Mengambil data pengelola terbaru sesuai hak akses akun yang sedang login.
+  let adminRequest = 0;
+
+  // Panel tampil dahulu; respons menu lama atau sesi yang sudah berubah tidak digunakan.
   async function loadAdmin() {
-    state.admin = await rpc('adminData');
-    state.user = state.admin.user;
+    const request = ++adminRequest;
+    const token = state.token;
+    state.adminLoading = true;
+    state.adminError = '';
     renderAdmin();
+    try {
+      const result = await rpc('adminData', { page: state.adminPage });
+      if (request !== adminRequest || token !== state.token || state.page !== 'admin') { return; }
+      state.admin = result;
+      state.user = result.user;
+    } catch (error) {
+      if (request !== adminRequest || token !== state.token || state.page !== 'admin') { return; }
+      state.adminError = error.message;
+      throw error;
+    } finally {
+      if (request === adminRequest && token === state.token && state.page === 'admin') {
+        state.adminLoading = false;
+        renderAdmin();
+      }
+    }
   }
 
   // Menentukan menu yang ditampilkan untuk Admin, Operator, atau Viewer.
@@ -702,6 +723,16 @@
           buttonLabel(adminIcons[name], tableLabels[name] || name) + '</button>';
       }).join('') + '</nav></details><section id="admin-body"></section></div>';
     const body = document.getElementById('admin-body');
+    // Tidak menampilkan angka nol atau data menu lama selama menunggu data sebenarnya.
+    if (state.adminLoading || state.adminError || !state.admin) {
+      body.innerHTML = '<section class="panel" role="status" aria-live="polite">' +
+        (state.adminError
+          ? '<p>Data belum dapat dimuat: ' + safe(state.adminError) + '</p>' +
+            '<button class="btn btn-outline-dark" id="refresh-admin" type="button">' +
+            buttonLabel('refresh', 'Coba Lagi') + '</button>'
+          : '<p class="mb-0">Mengambil data ' + safe(tableLabels[page] || page) + '...</p>') + '</section>';
+      return;
+    }
     if (page === 'Dashboard') {
       const kpi = state.admin.kpi;
       body.innerHTML = '<div class="kpis">' + [
@@ -1184,8 +1215,7 @@
     if (button.dataset.adminPage) {
       state.adminPage = button.dataset.adminPage;
       state.listPage = 0;
-      renderAdmin();
-      return;
+      return loadAdmin();
     }
     if (button.dataset.new || button.dataset.edit) {
       editMaster(button.dataset.new || button.dataset.table, button.dataset.edit);
@@ -1313,6 +1343,9 @@
       const result = await rpc('login', data);
       state.token = result.token;
       state.user = result.user;
+      state.admin = null;
+      state.report = null;
+      state.adminPage = 'Dashboard';
       form.reset();
       if (result.user.mustChangePassword) {
         passwordDialog();

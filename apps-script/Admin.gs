@@ -213,16 +213,27 @@ function saveSettings_(user, data) {
   return config;
 }
 
-// Data pengelola tidak pernah berisi passwordHash, tokenHash atau accessHash.
-function adminData_(user) {
+// Ambil hanya data menu aktif; hak akses dan kolom rahasia tetap dibatasi di server.
+function adminData_(user, data) {
+  const page = (data || {}).page || 'Dashboard';
+  const common = ['Dashboard', 'Laporan'];
+  const allowed = user.role === 'Admin'
+    ? common.concat(['Pesanan', 'Pengaturan', 'Backup'], Object.keys(HV_MASTER_ROLES))
+    : user.role === 'Operator'
+      ? common.concat(['Pesanan', 'Categories', 'Products', 'ReadyStock', 'PreorderCapacity'])
+      : user.role === 'Viewer' ? common : [];
+  if (!allowed.includes(page)) {
+    throw new Error('Menu pengelola tidak diizinkan.');
+  }
   const result = { user: userView_(user), tables: {}, settings: {} };
-  const tables = user.role === 'Viewer'
-    ? ['Orders', 'Products', 'Categories', 'Payments', 'Refunds', 'StockLedger']
-    : Object.keys(HV_MASTER_ROLES).concat(['Orders', 'Files', 'Shipping']);
+  const dependencies = {
+    Dashboard: [], Pesanan: ['Orders', 'Files', 'Shipping'], Pengaturan: [], Backup: [],
+    Laporan: ['Categories'], Products: ['Products', 'Categories'],
+    ReadyStock: ['ReadyStock', 'Products'], PreorderCapacity: ['PreorderCapacity', 'Products'],
+    Discounts: ['Discounts', 'Products']
+  };
+  const tables = dependencies[page] || [page];
   tables.forEach(function (name) {
-    if (name === 'Users' && user.role !== 'Admin') {
-      return;
-    }
     result.tables[name] = rows_(name).map(function (row) {
       if (name === 'Users') {
         return Object.assign(userView_(row), { active: active_(row.active) });
@@ -237,11 +248,31 @@ function adminData_(user) {
       return publicRecord_(row, fields);
     });
   });
-  if (user.role === 'Admin') {
+  if (page === 'Pengaturan') {
     result.settings = settings_();
   }
-  result.kpi = report_(user, {}).summary;
+  if (page === 'Dashboard') {
+    result.kpi = adminSummary_();
+  }
   return result;
+}
+
+// Ringkasan dihitung sekali tanpa menyusun detail laporan atau membaca ulang pesanan.
+function adminSummary_() {
+  const orders = rows_('Orders').filter(function (order) {
+    return order.transactionState === 'COMMITTED';
+  });
+  const ids = new Set(orders.map(function (order) { return order.id; }));
+  function total(table) {
+    return rows_(table).reduce(function (sum, row) {
+      return sum + (ids.has(row.orderId) ? Number(row.amount) : 0);
+    }, 0);
+  }
+  return {
+    orders: orders.length, payments: total('Payments'), refunds: total('Refunds'),
+    pending: orders.filter(function (order) { return order.paymentStatus !== 'PAID'; }).length,
+    refundPending: orders.filter(function (order) { return order.refundStatus === 'PENDING'; }).length
+  };
 }
 
 // Laporan memakai pembayaran/refund aktual, bukan jumlah invoice atau ongkir.

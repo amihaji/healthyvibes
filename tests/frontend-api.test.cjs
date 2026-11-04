@@ -699,6 +699,113 @@ test('Ikon lokal mempertahankan teks tombol dan mengamankan label', function () 
   assert.ok(html.indexOf('js/icons.js') < html.indexOf('js/client.js'));
 });
 
+// Data per menu diuji memakai database tiruan, tanpa mengakses akun pengelola nyata.
+function adminContext(tables, reads) {
+  const context = backend();
+  for (const file of ['Schema.gs', 'Auth.gs', 'Admin.gs']) {
+    vm.runInContext(source('apps-script/' + file), context);
+  }
+  context.rows_ = function (name) { reads.push(name); return tables[name] || []; };
+  context.settings_ = function () { reads.push('Settings'); return { storeName: 'Toko uji' }; };
+  return context;
+}
+
+test('Dashboard membaca tiga tabel sekali dan tidak menyusun laporan lengkap', function () {
+  const reads = [];
+  const context = adminContext({
+    Orders: [
+      { id: 'a', transactionState: 'COMMITTED', paymentStatus: 'PENDING', refundStatus: 'PENDING', snapshotJson: 'Tidak perlu diparse' },
+      { id: 'b', transactionState: 'COMMITTED', paymentStatus: 'PAID', refundStatus: 'NONE' },
+      { id: 'c', transactionState: 'PREPARING', paymentStatus: 'PENDING', refundStatus: 'PENDING' }
+    ],
+    Payments: [{ orderId: 'a', amount: 100 }, { orderId: 'b', amount: 200 }, { orderId: 'c', amount: 500 }],
+    Refunds: [{ orderId: 'a', amount: 10 }, { orderId: 'unknown', amount: 20 }]
+  }, reads);
+  context.report_ = function () { throw new Error('Dashboard tidak boleh menyusun laporan'); };
+  const result = context.adminData_({ role: 'Admin' }, { page: 'Dashboard' });
+  assert.deepEqual(reads, ['Orders', 'Payments', 'Refunds']);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.kpi)),
+    { orders: 2, payments: 300, refunds: 10, pending: 1, refundPending: 1 });
+  assert.deepEqual(Object.keys(result.tables), []);
+});
+
+test('Data Admin hanya memuat tabel menu aktif beserta kebutuhan formulirnya', function () {
+  for (const [page, expected] of [
+    ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products']],
+    ['PreorderCapacity', ['PreorderCapacity', 'Products']], ['Discounts', ['Discounts', 'Products']],
+    ['Pesanan', ['Orders', 'Files', 'Shipping']], ['Laporan', ['Categories']],
+    ['Pengaturan', ['Settings']], ['Backup', []], ['Users', ['Users']]
+  ]) {
+    const reads = [];
+    const context = adminContext({ Users: [{ id: 'u', name: 'Admin uji', role: 'Admin', passwordHash: 'RAHASIA' }],
+      Orders: [{ id: 'o', accessHash: 'RAHASIA', requestHash: 'RAHASIA', snapshotJson: 'RAHASIA' }] }, reads);
+    const result = context.adminData_({ role: 'Admin' }, { page: page });
+    assert.deepEqual(reads, expected, page);
+    assert.ok(!JSON.stringify(result).includes('RAHASIA'));
+    assert.equal(result.kpi, undefined);
+  }
+});
+
+test('Menu Admin tetap memeriksa sesi dan menolak menu di luar hak akses', function () {
+  const reads = [];
+  const context = adminContext({}, reads);
+  for (const role of ['Viewer', 'Operator']) {
+    for (const page of ['Users', 'Pengaturan', 'Backup', 'Sessions']) {
+      assert.throws(function () { context.adminData_({ role: role }, { page: page }); }, /tidak diizinkan/);
+    }
+  }
+  assert.throws(function () { context.adminData_({ role: 'Viewer' }, { page: 'Pesanan' }); }, /tidak diizinkan/);
+  assert.deepEqual(reads, []);
+  context.authorize_ = function (token, roles) {
+    assert.deepEqual(Array.from(roles), ['Admin', 'Operator', 'Viewer']);
+    if (token !== 'sesi-uji') { throw new Error('Sesi tidak valid'); }
+    return { role: 'Operator' };
+  };
+  assert.equal(readReply(post(context, { action: 'adminData', data: { page: 'Products' } })).message.response.ok, false);
+  assert.equal(readReply(post(context, { action: 'adminData', token: 'sesi-uji', data: { page: 'Products' } })).message.response.ok, true);
+  assert.deepEqual(reads, ['Products', 'Categories']);
+});
+
+test('Panel Admin tampil sebelum data selesai dan mengabaikan respons menu lama', async function () {
+  const requests = [];
+  const renders = [];
+  const state = { token: 'sesi-uji', page: 'admin', adminPage: 'Dashboard' };
+  const context = vm.createContext({
+    state: state,
+    renderAdmin: function () { renders.push({ loading: state.adminLoading, page: state.adminPage }); },
+    rpc: function (action, data) {
+      return new Promise(function (resolve, reject) { requests.push({ action, data, resolve, reject }); });
+    }
+  });
+  const client = source('js/client.js');
+  vm.runInContext(client.slice(client.indexOf('  let adminRequest ='),
+    client.indexOf('  function adminMenu(')), context);
+  const first = context.loadAdmin();
+  assert.equal(renders[0].loading, true);
+  assert.equal(requests[0].data.page, 'Dashboard');
+  state.adminPage = 'Products';
+  const second = context.loadAdmin();
+  requests[1].resolve({ user: { role: 'Admin' }, tables: { Products: [] } });
+  await second;
+  assert.equal(state.adminLoading, false);
+  const current = state.admin;
+  const rendered = renders.length;
+  requests[0].resolve({ user: { role: 'Admin' }, kpi: {} });
+  await first;
+  assert.equal(state.admin, current);
+  assert.equal(renders.length, rendered);
+  const third = context.loadAdmin();
+  requests[2].reject(new Error('Server belum merespons'));
+  await assert.rejects(third, /Server belum merespons/);
+  assert.equal(state.adminLoading, false);
+  assert.equal(state.adminError, 'Server belum merespons');
+  const fourth = context.loadAdmin();
+  state.token = '';
+  requests[3].resolve({ user: { role: 'Admin' }, tables: {} });
+  await fourth;
+  assert.equal(state.admin, current);
+});
+
 // Render pengelola diuji tanpa akun atau transaksi Google nyata.
 test('Navigasi pengelola berikon sesuai role, halaman aktif, dan ukuran layar', function () {
   const client = source('js/client.js');
@@ -719,6 +826,11 @@ test('Navigasi pengelola berikon sesuai role, halaman aktif, dan ukuran layar', 
       context.buttonLabel = context.window.HV_UI.label;
       vm.runInContext(client.slice(client.indexOf('  function adminMenu('),
         client.indexOf('  function renderOrders(')), context);
+      context.state.adminLoading = true;
+      context.renderAdmin();
+      assert.ok(body.innerHTML.includes('Mengambil data Dashboard'));
+      assert.ok(!body.innerHTML.includes('class="kpis"'));
+      context.state.adminLoading = false;
       context.renderAdmin();
       assert.ok(app.innerHTML.includes('id="admin-navigation"' + (mobile ? '>' : ' open>')));
       assert.ok(app.innerHTML.includes('aria-current="page"'));

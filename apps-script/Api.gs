@@ -155,7 +155,7 @@ function dispatch_(request) {
   }
   const user = authorize_(request.token, roles[action], action === 'changePassword');
   const operations = {
-    adminData: function () { return adminData_(user); },
+    adminData: function () { return adminData_(user, data); },
     changePassword: function () { return changePassword_(user, data); },
     saveMaster: function () { return saveMaster_(user, data); },
     saveSettings: function () { return saveSettings_(user, data); },
