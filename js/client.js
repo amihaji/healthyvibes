@@ -157,6 +157,12 @@
 
   async function navigate(page) {
     state.page = page;
+    document.querySelector('.site-header').classList.remove('menu-open');
+    document.getElementById('nav-toggle').setAttribute('aria-expanded', 'false');
+    document.querySelectorAll('.site-header [data-nav]').forEach(function (button) {
+      if (button.dataset.nav === page) { button.setAttribute('aria-current', 'page'); }
+      else { button.removeAttribute('aria-current'); }
+    });
     dialog.close();
     if (page === 'shop') {
       await loadCatalog();
@@ -174,18 +180,6 @@
   async function loadCatalog() {
     state.catalog = await rpc('catalog', { type: state.type });
     renderShop();
-    if (state.catalog.settings.logoFileId) {
-      rpc('storeAsset', { asset: 'logoFileId' }).then(function (photo) {
-        if (photo) {
-          const brand = document.querySelector('.brand');
-          const image = document.createElement('img');
-          image.alt = 'Healthy Vibes';
-          image.style.cssText = 'max-width:150px;max-height:48px;object-fit:contain';
-          image.src = 'data:' + photo.mimeType + ';base64,' + photo.base64;
-          brand.replaceChildren(image);
-        }
-      }).catch(function () {});
-    }
   }
 
   function cartLines() {
@@ -227,11 +221,18 @@
 
   function renderShop() {
     const catalog = state.catalog;
-    app.innerHTML = '<section class="hero"><small>SEHAT SETIAP HARI</small>' +
-      '<h1>Pilihan sehat,<br>untuk hari yang lebih baik.</h1>' +
-      '<p>Pesan langsung atau rencanakan menu sehat Anda untuk besok.</p></section>' +
+    // Foto dan logo memakai aset yang diberikan pemilik, bukan gambar contoh.
+    app.innerHTML = '<section class="hero shop-hero" aria-labelledby="shop-title">' +
+      '<img class="hero-image" src="image/Header_HealthyVibes.jpg" alt="Wafel dengan stroberi dan secangkir teh" fetchpriority="high" decoding="async">' +
+      '<div class="hero-copy"><span class="hero-eyebrow">HEALTHY VIBES / PILIHAN SEHAT</span>' +
+      '<h1 id="shop-title">Pilihan sehat,<br>untuk hari yang <span>lebih baik.</span></h1>' +
+      '<p>Pesan langsung atau rencanakan menu sehat Anda untuk besok.</p>' +
+      '<a class="btn btn-primary hero-action" href="#menu-section">Lihat Menu <span aria-hidden="true">&rarr;</span></a>' +
+      '<div class="hero-note">Dibuat dengan sepenuh hati. Dinikmati setiap hari.</div></div></section>' +
       '<div class="shop-layout"><section>' +
-      '<div class="d-flex gap-2 mb-3 flex-wrap">' +
+      '<div id="menu-section" class="menu-heading"><span class="section-eyebrow">MENU HEALTHY VIBES</span>' +
+      '<h2>Temukan pilihan favorit Anda</h2><p>Pilih menu dan waktu penerimaan sesuai kebutuhan Anda.</p></div>' +
+      '<div class="order-type d-flex gap-2 mb-3 flex-wrap">' +
       '<button class="btn ' + (state.type === 'DIRECT' ? 'btn-green' : 'btn-outline-dark') +
       '" data-type="DIRECT" type="button">Pesanan Langsung</button>' +
       '<button class="btn ' + (state.type === 'PREORDER' ? 'btn-green' : 'btn-outline-dark') +
@@ -948,6 +949,11 @@
   });
 
   async function clickAction(button) {
+    if (button.id === 'nav-toggle') {
+      const open = document.querySelector('.site-header').classList.toggle('menu-open');
+      button.setAttribute('aria-expanded', String(open));
+      return;
+    }
     if (button.dataset.nav) {
       return navigate(button.dataset.nav);
     }

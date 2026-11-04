@@ -372,6 +372,24 @@ test('Semua source dapat diparse dan frontend tidak memakai template Google', fu
   }));
 });
 
+test('Branding memakai aset pemilik, ikon pengaturan dan gambar ikut publikasi', function () {
+  const html = source('index.html');
+  const client = source('js/client.js');
+  const workflow = source('.github/workflows/jekyll-docker.yml');
+  assert.ok(html.includes('image/Logo_HealthyVibes_PilihanSehat.png'));
+  assert.ok(client.includes('image/Header_HealthyVibes.jpg'));
+  assert.ok(html.includes('aria-label="Pengaturan pengelola"'));
+  assert.ok(html.includes('id="nav-toggle"'));
+  assert.ok(html.includes('aria-controls="site-nav"'));
+  assert.ok(!html.includes('>Pengelola</button>'));
+  assert.ok(!client.includes('brand.replaceChildren'));
+  assert.ok(workflow.includes('"image/**"'));
+  assert.ok(workflow.includes('cp -R css js image'));
+  for (const file of ['Header_HealthyVibes.jpg', 'Logo_HealthyVibes_PilihanSehat.png']) {
+    assert.ok(fs.statSync(path.join(root, 'image', file)).size > 0);
+  }
+});
+
 function sheetDateContext() {
   const context = vm.createContext({
     Date: Date,

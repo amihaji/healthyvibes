@@ -17,15 +17,30 @@
     <link href="css/styles.css" rel="stylesheet">
   </head>
   <body>
+    <!-- Identitas layanan mengikuti gaya topbar BERATidealku. -->
+    <div class="site-topbar">
+      <div class="container topbar-inner">
+        <span>Pilihan sehat untuk hari yang lebih baik</span>
+        <span class="topbar-location">Makassar &amp; sekitarnya <span aria-hidden="true">&middot;</span> WITA</span>
+      </div>
+    </div>
     <header class="site-header">
-      <button class="brand btn p-0" data-nav="shop" type="button">
-        Healthy Vibes
-      </button>
-      <nav aria-label="Navigasi utama" class="d-flex gap-2 flex-wrap">
-        <button class="btn btn-outline-dark" data-nav="shop" type="button">Menu</button>
-        <button class="btn btn-outline-dark" data-nav="status" type="button">Status Pesanan</button>
-        <button class="btn btn-outline-dark" data-nav="admin" type="button">Pengelola</button>
-      </nav>
+      <div class="container header-inner">
+        <button class="brand btn p-0" data-nav="shop" type="button" aria-label="Healthy Vibes, kembali ke menu">
+          <img src="image/Logo_HealthyVibes_PilihanSehat.png" alt="Healthy Vibes - Pilihan Sehat Untuk Hari yang Lebih Baik" class="brand-logo" decoding="async">
+        </button>
+        <nav id="site-nav" aria-label="Navigasi utama" class="site-nav">
+          <button class="nav-button" data-nav="shop" type="button" aria-current="page">Menu</button>
+          <button class="nav-button" data-nav="status" type="button">Status Pesanan</button>
+        </nav>
+        <!-- Menu HP dan login pengelola memakai ikon tanpa dependensi font eksternal. -->
+        <button class="icon-button nav-toggle" id="nav-toggle" type="button" aria-label="Buka menu navigasi" aria-controls="site-nav" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button class="icon-button settings-button" data-nav="admin" type="button" aria-label="Pengaturan pengelola" title="Pengaturan pengelola">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.7 2.3-2 .9-2.2-.6-2 3.4 1.5 1.7v2.6L2.1 15l2 3.4 2.2-.6 2 .9L9 21h6l.7-2.3 2-.9 2.2.6 2-3.4-1.5-1.7v-2.6L21.9 9l-2-3.4-2.2.6-2-.9L15 3Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
     </header>
     <!-- Pesan server dan loading dibaca juga oleh pembaca layar. -->
     <div id="notification" role="status" aria-live="polite" class="container mt-3"></div>
@@ -34,7 +49,7 @@
       Memproses...
     </div>
     <main id="app" class="container py-4"></main>
-    <footer class="container pb-4 text-secondary small">
+    <footer class="container site-footer pb-4 text-secondary small">
       Makassar dan sekitarnya • WITA. Ongkir GoSend terpisah dari pembayaran produk.
     </footer>
     <!-- Dialog editor master dan detail pesanan tidak menghilangkan fitur di HP. -->

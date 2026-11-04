@@ -9,6 +9,7 @@ on:
       - "index.html"
       - "css/**"
       - "js/**"
+      - "image/**"
       - "tests/**"
       - ".github/workflows/jekyll-docker.yml"
   workflow_dispatch:
@@ -58,7 +59,7 @@ jobs:
           site="$RUNNER_TEMP/healthyvibes-pages"
           mkdir -p "$site"
           cp index.html "$site/"
-          cp -R css js "$site/"
+          cp -R css js image "$site/"
 
       - name: Unggah artifact frontend
         uses: actions/upload-pages-artifact@v3
