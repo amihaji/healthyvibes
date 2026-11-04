@@ -376,18 +376,31 @@ test('Branding memakai aset pemilik, ikon pengaturan dan gambar ikut publikasi',
   const html = source('index.html');
   const client = source('js/client.js');
   const workflow = source('.github/workflows/jekyll-docker.yml');
-  assert.ok(html.includes('image/Logo_HealthyVibes_PilihanSehat.png'));
+  assert.ok(html.includes('image/Logo_HealthyVibes_Trans.png'));
   assert.ok(client.includes('image/Header_HealthyVibes.jpg'));
-  assert.ok(html.includes('aria-label="Pengaturan pengelola"'));
+  assert.ok(html.includes('aria-label="Admin"'));
   assert.ok(html.includes('id="nav-toggle"'));
   assert.ok(html.includes('aria-controls="site-nav"'));
   assert.ok(!html.includes('>Pengelola</button>'));
   assert.ok(!client.includes('brand.replaceChildren'));
   assert.ok(workflow.includes('"image/**"'));
   assert.ok(workflow.includes('cp -R css js image'));
-  for (const file of ['Header_HealthyVibes.jpg', 'Logo_HealthyVibes_PilihanSehat.png']) {
+  for (const file of ['Header_HealthyVibes.jpg', 'Logo_HealthyVibes_Trans.png']) {
     assert.ok(fs.statSync(path.join(root, 'image', file)).size > 0);
   }
+});
+
+test('Label awal memakai Katalog dan Admin dengan navigasi HP berikon', function () {
+  const html = source('index.html');
+  assert.match(html, /data-nav="shop"[^>]*>[\s\S]*?<span>Katalog<\/span>/);
+  const toggle = html.match(/<button[^>]*id="nav-toggle"[\s\S]*?<\/button>/)[0];
+  assert.ok(toggle.includes('<svg'));
+  assert.ok(!toggle.includes('<span'));
+  assert.ok(toggle.includes('aria-label="Buka menu navigasi"'));
+  assert.match(html, /class="header-action-text">Admin<\/span>/);
+  assert.ok(source('js/client.js').includes("buttonLabel('menu', 'Lihat Katalog')"));
+  assert.ok(!source('js/client.js').includes("buttonLabel('menu', 'Lihat Menu')"));
+  assert.match(source('css/styles.css'), /\.settings-button \.header-action-text \{ display: none; \}/);
 });
 
 // Ikon dekoratif tidak menggantikan label tombol dan tidak menerima HTML dari data.

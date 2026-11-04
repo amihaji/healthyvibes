@@ -249,7 +249,7 @@
   .shop-hero h1 span { color: #ffb56f; }
   /* Ukuran dan lebar paragraf penjelasan pada banner. */
   .hero-copy p { max-width: 420px; color: #e5ebf3; font-size: 15px; margin-bottom: 22px; }
-  /* Menyejajarkan teks dan ikon tombol Lihat Menu. */
+  /* Menyejajarkan teks dan ikon tombol Lihat Katalog. */
   .hero-action { display: inline-flex; align-items: center; gap: 12px; padding: 10px 18px; font-size: 14px; }
   /* Catatan kecil di bawah tombol banner. */
   .hero-note { margin-top: 22px; font-size: 11px; color: #d9e2ed; }
@@ -654,6 +654,11 @@
     #admin-body { min-width: 0; }
     /* Tombol dan label pada header tetap muat di layar HP kecil. */
     .icon-button { padding-inline: 8px; font-size: 12px; gap: 6px; }
+    /* Di HP, tombol pembuka navigasi dan Admin cukup ikon dengan area sentuh 44px. */
+    .nav-toggle,
+    .settings-button { width: 44px; padding: 0; gap: 0; }
+    /* Label Admin tetap tampil di desktop; pada HP namanya tersedia lewat aria-label. */
+    .settings-button .header-action-text { display: none; }
 
     /* Mengurangi ruang dalam panel pembuka pada HP. */
     .hero {
