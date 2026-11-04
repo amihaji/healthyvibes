@@ -99,6 +99,11 @@ function api_(request) {
     if (!request || typeof request !== 'object') {
       throw new Error('Permintaan tidak valid.');
     }
+    // Foto hanya dibaca, jadi tidak perlu mengantre lock transaksi stok/pembayaran.
+    // Dispatcher tetap membatasi foto ke produk aktif; izin Drive tidak diubah.
+    if (request.action === 'productPhoto') {
+      return { ok: true, data: dispatch_(request) };
+    }
     return { ok: true, data: withLock_(function () { return dispatch_(request); }) };
   } catch (error) {
     // Detail rahasia atau stack tidak dikirim ke pelanggan.

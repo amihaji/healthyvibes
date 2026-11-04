@@ -1053,8 +1053,8 @@
     pdf.save('Healthy-Vibes-Laporan.pdf');
   }
 
-  // Gambar dikecilkan sebelum upload; server tetap memeriksa isi dan ukuran.
-  async function photoData(file) {
+  // Foto produk cukup 800px; dokumen dan QRIS tetap memakai ukuran sebelumnya.
+  async function photoData(file, productPhoto) {
     if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       throw new Error('Pilih gambar JPG, PNG, atau WebP.');
     }
@@ -1062,13 +1062,13 @@
       throw new Error('Gambar maksimal 5 MB sebelum optimasi.');
     }
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, (productPhoto ? 800 : 1200) / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
-    const encoded = canvas.toDataURL('image/jpeg', 0.85);
+    const encoded = canvas.toDataURL('image/jpeg', productPhoto ? 0.8 : 0.85);
     return { mimeType: 'image/jpeg', base64: encoded.split(',')[1] };
   }
 
@@ -1282,7 +1282,7 @@
         notify('Permintaan dikirim. Pesanan belum dibatalkan.');
       }
     } else if (['proof-form', 'handover-form', 'product-photo-form'].includes(form.id)) {
-      const photo = await photoData(form.elements.photo.files[0]);
+      const photo = await photoData(form.elements.photo.files[0], form.id === 'product-photo-form');
       const customer = form.id === 'proof-form';
       await rpc(customer ? 'customerUpload' : 'upload', Object.assign({}, photo, {
         requestId: crypto.randomUUID(),

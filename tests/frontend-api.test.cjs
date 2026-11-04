@@ -92,6 +92,57 @@ test('POST publik memberikan hasil server dengan target origin tepat', function 
   assert.equal(output.frameMode, 'ALLOWALL');
 });
 
+test('Foto publik tidak mengantre lock, transaksi lainnya tetap memakai lock', function () {
+  const context = backend();
+  let locks = 0;
+  context.withLock_ = function (operation) { locks += 1; return operation(); };
+  context.productPhoto_ = function (data) { return { mimeType: 'image/jpeg', base64: data.productId }; };
+  context.quote_ = function () { return {}; };
+  context.createOrder_ = function () { return {}; };
+  const photo = readReply(post(context, { action: 'productPhoto', data: { productId: 'foto-uji' } }));
+  assert.equal(photo.message.response.data.base64, 'foto-uji');
+  assert.equal(locks, 0);
+  for (const action of ['quote', 'createOrder']) {
+    assert.equal(readReply(post(context, { action: action, data: {} })).message.response.ok, true);
+  }
+  assert.equal(locks, 2);
+});
+
+test('Foto produk nonaktif tidak dibaca dari Drive', function () {
+  const context = backend();
+  vm.runInContext(source('apps-script/Files.gs'), context);
+  context.rows_ = function () { return [{ id: 'p1', active: false, photoFileId: 'private-file' }]; };
+  context.active_ = function (value) { return value === true; };
+  context.DriveApp = { getFileById: function () { throw new Error('Drive tidak boleh dibaca'); } };
+  assert.equal(context.api_({ action: 'productPhoto', data: { productId: 'p1' } }).data, null);
+});
+
+test('Kompresi 800px hanya untuk foto produk, dokumen tetap 1200px', async function () {
+  const client = source('js/client.js');
+  const canvas = {
+    width: 0, height: 0,
+    getContext: function () { return { drawImage: function () {} }; },
+    toDataURL: function (mime, quality) { this.quality = quality; return 'data:image/jpeg;base64,test'; }
+  };
+  const context = vm.createContext({
+    createImageBitmap: async function () { return { width: 2000, height: 1000, close: function () {} }; },
+    document: { createElement: function () { return canvas; } }
+  });
+  vm.runInContext(client.slice(client.indexOf('  async function photoData('),
+    client.indexOf('  function saveDownload(')), context);
+  const file = { type: 'image/jpeg', size: 200000 };
+  await context.photoData(file, true);
+  assert.equal(canvas.width, 800);
+  assert.equal(canvas.height, 400);
+  assert.equal(canvas.quality, 0.8);
+  await context.photoData(file);
+  assert.equal(canvas.width, 1200);
+  assert.equal(canvas.height, 600);
+  assert.equal(canvas.quality, 0.85);
+  assert.ok(client.includes("photoData(form.elements.photo.files[0], form.id === 'product-photo-form')"));
+  await assert.rejects(context.photoData({ type: 'text/plain', size: 100 }), /JPG/);
+});
+
 test('Login membaca password dari badan POST, bukan query event', function () {
   const context = backend();
   let supplied;
