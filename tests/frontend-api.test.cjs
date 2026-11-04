@@ -454,6 +454,29 @@ test('Label awal memakai Katalog dan Admin dengan navigasi HP berikon', function
   assert.match(source('css/styles.css'), /\.settings-button \.header-action-text \{ display: none; \}/);
 });
 
+// Katalog statis harus ikut publikasi agar tautan tidak menghasilkan halaman 404.
+test('Lihat Katalog membuka PDF dengan sumber produk dan gambar lokal yang lengkap', function () {
+  const client = source('js/client.js');
+  assert.match(client, /href="pdf\/Katalog_Menu_Healthy_Vibes\.pdf" target="_blank" rel="noopener" type="application\/pdf"/);
+  const workflow = source('.github/workflows/jekyll-docker.yml');
+  assert.ok(workflow.includes('"pdf/**"'));
+  assert.ok(workflow.includes('cp -R css js image pdf'));
+  const pdf = fs.readFileSync(path.join(root, 'pdf/Katalog_Menu_Healthy_Vibes.pdf'));
+  assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
+  assert.ok(pdf.length > 10000);
+  const catalog = JSON.parse(source('image/katalog-produk.json'));
+  assert.ok(catalog.products.length > 0);
+  assert.ok(Number.isFinite(Date.parse(catalog.createdAt)));
+  for (const product of catalog.products) {
+    assert.ok(product.name);
+    assert.ok(Number.isFinite(product.price) && product.price >= 0);
+    if (product.image) {
+      assert.match(product.image, /^katalog-[a-z0-9-]+\.jpg$/);
+      assert.ok(fs.statSync(path.join(root, 'image', product.image)).size > 0);
+    }
+  }
+});
+
 // Penutup HTML harus lengkap agar katalog dan keranjang tidak masuk ke dalam banner.
 test('Banner, katalog, dan keranjang memiliki struktur HTML terpisah dan lengkap', function () {
   const app = { innerHTML: '' };

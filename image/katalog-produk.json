@@ -1,0 +1,180 @@
+{
+  "categories": [
+    {
+      "id": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "name": "Snacks"
+    },
+    {
+      "id": "717054fe-423d-40ff-a1de-755d2f177e1c",
+      "name": "Drink"
+    },
+    {
+      "id": "560b0052-ebdd-4fd3-9b0e-b28260d91112",
+      "name": "Smoothies"
+    }
+  ],
+  "products": [
+    {
+      "id": "524869d3-aa28-4083-b988-c21f67860a38",
+      "name": "Wafel Rasa Coklat",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-01-wafel-rasa-coklat.jpg"
+    },
+    {
+      "id": "3def8a5b-02d1-41e9-91c3-b3553dd14d6d",
+      "name": "Wafel Rasa Keju",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-02-wafel-rasa-keju.jpg"
+    },
+    {
+      "id": "106db0dc-011a-4ea5-9ba4-562e63c94691",
+      "name": "Donat Rasa Coklat",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-03-donat-rasa-coklat.jpg"
+    },
+    {
+      "id": "dccb0153-75aa-49c8-a5ba-f5b0b1caaec6",
+      "name": "Donat Rasa Keju",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-04-donat-rasa-keju.jpg"
+    },
+    {
+      "id": "6817031d-6015-4ca3-857f-0b66b84263ef",
+      "name": "Wafel Rasa Coklat (4 Slice)",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 40000,
+      "image": ""
+    },
+    {
+      "id": "a69e755d-10bb-4ff8-b850-41ed0ca4ab7d",
+      "name": "Wafel Rasa Keju (4 Slice)",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 40000,
+      "image": "katalog-06-wafel-rasa-keju-4-slice.jpg"
+    },
+    {
+      "id": "962b01f6-b9a9-4110-9831-4d3ce3892145",
+      "name": "Lumpur Surga Ubi Ungu Toping Kenari",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-07-lumpur-surga-ubi-ungu-toping-kenari.jpg"
+    },
+    {
+      "id": "aa701cb2-995b-45d3-afe8-094e466e6f3c",
+      "name": "Lumpur Surga Ubi Ungu Toping Nangka",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-08-lumpur-surga-ubi-ungu-toping-nangka.jpg"
+    },
+    {
+      "id": "fde86787-87ff-4760-abfa-fff387509167",
+      "name": "Lumpur Surga Labu Kuning Ungu Toping Nangka",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": ""
+    },
+    {
+      "id": "1048ef5e-efe7-43b9-a8b9-a54cd33d2227",
+      "name": "Lumpur Surga Labu Kuning Toping Kenari",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-10-lumpur-surga-labu-kuning-toping-kenari.jpg"
+    },
+    {
+      "id": "2ffcdac4-a1f1-4ad4-b8e7-6098198e178f",
+      "name": "Lumpur Surga Pisang Toping Kenari",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": "katalog-11-lumpur-surga-pisang-toping-kenari.jpg"
+    },
+    {
+      "id": "98d28af5-d1a7-44bd-9b22-19635621fb65",
+      "name": "Lumpur Surga Pisang Toping Nangka",
+      "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
+      "price": 15000,
+      "image": ""
+    },
+    {
+      "id": "6af97068-1f57-4876-a564-bcf55d02eadf",
+      "name": "Smoties CaffeLatte Toping Granola",
+      "description": "smoothies yang terbuat dari bahan-bahan kualiatas terbaik dan sehat, rendah kalori, tinggi protien",
+      "categoryId": "560b0052-ebdd-4fd3-9b0e-b28260d91112",
+      "price": 20000,
+      "image": "katalog-13-smoties-caffelatte-toping-granola.jpg"
+    },
+    {
+      "id": "993eb067-5370-42e2-bee0-4128dc5bb128",
+      "name": "Smoties Vanila Toping Granola",
+      "description": "smoothies yang terbuat dari bahan-bahan kualiatas terbaik dan sehat, rendah kalori, tinggi protien",
+      "categoryId": "560b0052-ebdd-4fd3-9b0e-b28260d91112",
+      "price": 20000,
+      "image": "katalog-14-smoties-vanila-toping-granola.jpg"
+    },
+    {
+      "id": "c1d504ab-5247-4d35-8b5d-f6a512f448c6",
+      "name": "Smoties Coklat Toping Granola",
+      "description": "smoothies yang terbuat dari bahan-bahan kualiatas terbaik dan sehat, rendah kalori, tinggi protien",
+      "categoryId": "560b0052-ebdd-4fd3-9b0e-b28260d91112",
+      "price": 20000,
+      "image": "katalog-15-smoties-coklat-toping-granola.jpg"
+    },
+    {
+      "id": "19d7c0fd-85bf-444a-b845-4a2801e8e5da",
+      "name": "Smoties Stroberry Toping Granola",
+      "description": "smoothies yang terbuat dari bahan-bahan kualiatas terbaik dan sehat, rendah kalori, tinggi protien",
+      "categoryId": "560b0052-ebdd-4fd3-9b0e-b28260d91112",
+      "price": 20000,
+      "image": "katalog-16-smoties-stroberry-toping-granola.jpg"
+    },
+    {
+      "id": "2ff5e42e-68e0-4173-9d60-dcd297424d1b",
+      "name": "Cafe Latte Drink",
+      "description": "Minuman kesegaran yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "717054fe-423d-40ff-a1de-755d2f177e1c",
+      "price": 15000,
+      "image": "katalog-17-cafe-latte-drink.jpg"
+    },
+    {
+      "id": "77883f93-7af5-4f53-9f7e-25b42a54ab6d",
+      "name": "Coklat Drink",
+      "description": "Minuman kesegaran yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "717054fe-423d-40ff-a1de-755d2f177e1c",
+      "price": 15000,
+      "image": "katalog-18-coklat-drink.jpg"
+    },
+    {
+      "id": "036a900a-5225-4453-90f5-4ccad8ad0372",
+      "name": "Vanila Drink",
+      "description": "Minuman kesegaran yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "717054fe-423d-40ff-a1de-755d2f177e1c",
+      "price": 15000,
+      "image": "katalog-19-vanila-drink.jpg"
+    },
+    {
+      "id": "00ab76f6-beec-451d-a1d1-5251fc39881c",
+      "name": "Stroberry Drink",
+      "description": "Minuman kesegaran yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
+      "categoryId": "717054fe-423d-40ff-a1de-755d2f177e1c",
+      "price": 15000,
+      "image": "katalog-20-stroberry-drink.jpg"
+    }
+  ],
+  "createdAt": "2026-11-04T07:35:29.011Z",
+  "source": "https://amihaji.github.io/healthyvibes/"
+}

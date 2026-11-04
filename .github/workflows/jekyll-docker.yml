@@ -1,4 +1,4 @@
-# Publikasikan hanya frontend; kode backend dan dokumen tidak masuk website.
+# Publikasikan frontend dan katalog PDF; kode backend serta dokumen internal tetap terpisah.
 name: Publikasikan Frontend Healthy Vibes
 
 on:
@@ -10,6 +10,7 @@ on:
       - "css/**"
       - "js/**"
       - "image/**"
+      - "pdf/**"
       - "tests/**"
       - ".github/workflows/jekyll-docker.yml"
   workflow_dispatch:
@@ -59,7 +60,7 @@ jobs:
           site="$RUNNER_TEMP/healthyvibes-pages"
           mkdir -p "$site"
           cp index.html "$site/"
-          cp -R css js image "$site/"
+          cp -R css js image pdf "$site/"
 
       - name: Unggah artifact frontend
         uses: actions/upload-pages-artifact@v3
