@@ -253,7 +253,6 @@
       '<h1 id="shop-title">Pilihan sehat,<br>untuk hari yang <span>lebih baik.</span></h1>' +
       '<p>Pesan langsung atau rencanakan menu sehat Anda untuk besok.</p>' +
       '<a class="btn btn-primary hero-action" href="#menu-section">' + buttonLabel('menu', 'Lihat Menu') + '</a>' +
-      '<div class="hero-note">Dibuat dengan sepenuh hati. Dinikmati setiap hari.</div></div></section>' +
       '<div class="shop-layout"><section>' +
       '<div id="menu-section" class="menu-heading"><span class="section-eyebrow">MENU HEALTHY VIBES</span>' +
       '<h2>Temukan pilihan favorit Anda</h2><p>Pilih menu dan waktu penerimaan sesuai kebutuhan Anda.</p></div>' +
