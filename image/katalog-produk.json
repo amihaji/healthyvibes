@@ -52,7 +52,7 @@
       "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
       "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
       "price": 40000,
-      "image": ""
+      "image": "katalog-05-wafel-rasa-coklat-4-slice.jpg"
     },
     {
       "id": "a69e755d-10bb-4ff8-b850-41ed0ca4ab7d",
@@ -84,7 +84,7 @@
       "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
       "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
       "price": 15000,
-      "image": ""
+      "image": "katalog-09-lumpur-surga-labu-kuning-ungu-toping-nangka.jpg"
     },
     {
       "id": "1048ef5e-efe7-43b9-a8b9-a54cd33d2227",
@@ -108,7 +108,7 @@
       "description": "Snack yang terbuat dari bahan-bahan kualitas terbaik dan sehat, rendah kalori, tinggi protein",
       "categoryId": "9df07572-9c89-4ae7-b240-0a560a28fa86",
       "price": 15000,
-      "image": ""
+      "image": "katalog-12-lumpur-surga-pisang-toping-nangka.jpg"
     },
     {
       "id": "6af97068-1f57-4876-a564-bcf55d02eadf",
@@ -176,5 +176,6 @@
     }
   ],
   "createdAt": "2026-11-04T07:35:29.011Z",
-  "source": "https://amihaji.github.io/healthyvibes/"
+  "source": "https://amihaji.github.io/healthyvibes/",
+  "imagesUpdatedAt": "2026-11-04T07:51:37.953Z"
 }
