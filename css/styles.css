@@ -358,6 +358,9 @@
     gap: 12px;
   }
 
+  /* Status katalog memenuhi seluruh kolom tanpa menahan tampilan banner dan navigasi. */
+  .catalog-status { grid-column: 1 / -1; color: #5b6b80; font-size: 14px; }
+
   /* Ukuran judul nama produk pada kartu. */
   .product-card h2 {
     font-size: 16px;

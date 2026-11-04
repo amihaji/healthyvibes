@@ -5,6 +5,9 @@
     token: '',
     user: null,
     catalog: null,
+    catalogLoading: false,
+    catalogSlow: false,
+    catalogError: '',
     type: 'DIRECT',
     cart: {},
     page: 'shop',
@@ -83,12 +86,14 @@
     return /(?:At|Deadline)$/.test(key) ? dateTimeText(value) : value;
   }
 
-  // Loading dihitung agar request foto bersamaan tidak mematikan indikator lebih awal.
+  // Hanya tindakan pengguna memakai indikator global; katalog dan foto dimuat terpisah.
   let pending = 0;
   // Mengirim tindakan ke backend dan memeriksa hasil sambil menampilkan Memproses.
-  function rpc(action, data) {
-    pending += 1;
-    document.getElementById('busy').classList.remove('d-none');
+  function rpc(action, data, background) {
+    if (!background) {
+      pending += 1;
+      document.getElementById('busy').classList.remove('d-none');
+    }
     return Promise.resolve().then(function () {
       return HealthyVibesApi.request({
         action: action,
@@ -104,8 +109,10 @@
       }
       return response.data;
     }).finally(function () {
-      pending -= 1;
-      document.getElementById('busy').classList.toggle('d-none', pending === 0);
+      if (!background) {
+        pending -= 1;
+        document.getElementById('busy').classList.toggle('d-none', pending === 0);
+      }
     });
   }
 
@@ -197,10 +204,35 @@
     }
   }
 
-  // Mengambil katalog terbaru untuk pesanan langsung atau preorder dari backend.
+  let catalogRequest = 0;
+  // Menampilkan halaman segera; data tetap diambil baru dan respons lama tidak menimpa halaman.
   async function loadCatalog() {
-    state.catalog = await rpc('catalog', { type: state.type });
+    const request = ++catalogRequest;
+    const type = state.type;
+    state.catalogLoading = true;
+    state.catalogSlow = false;
+    state.catalogError = '';
+    state.catalog = { products: [], categories: [], areas: [], settings: {}, schedule: { date: '', times: [] } };
     renderShop();
+    // Setelah 5 detik, ganti indikator dengan penjelasan tanpa mengklaim data sudah siap.
+    const timer = setTimeout(function () {
+      if (request === catalogRequest && state.catalogLoading) {
+        state.catalogSlow = true;
+        if (state.page === 'shop') { renderShop(); }
+      }
+    }, 5000);
+    try {
+      const catalog = await rpc('catalog', { type: type }, true);
+      if (request === catalogRequest) { state.catalog = catalog; }
+    } catch (error) {
+      if (request === catalogRequest) { state.catalogError = error.message; }
+    } finally {
+      clearTimeout(timer);
+      if (request === catalogRequest) {
+        state.catalogLoading = false;
+        if (state.page === 'shop') { renderShop(); }
+      }
+    }
   }
 
   // Menggabungkan jumlah di keranjang dengan data produk yang tersedia di katalog.
@@ -265,23 +297,65 @@
       '" data-type="PREORDER" type="button">' + buttonLabel('calendar', 'Preorder Besok') + '</button></div>' +
       '<div class="alert alert-warning small">Preorder sampai 17.00 WITA; ' +
       'pembayaran maksimal 18.00 WITA. ' +
-      (catalog.settings.ordersEnabled === 'true' ? '' : 'Toko belum membuka pemesanan.') +
+      (state.catalogLoading || state.catalogError || catalog.settings.ordersEnabled === 'true'
+        ? '' : 'Toko belum membuka pemesanan.') +
       '</div><div class="row g-2 mb-3"><div class="col-7">' +
-      '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat...">' +
-      '</div><div class="col-5"><select class="form-select" id="category-filter" aria-label="Kategori">' +
+      '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat..."' +
+      (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
+      '</div><div class="col-5"><select class="form-select" id="category-filter" aria-label="Kategori"' +
+      (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<option value="">Semua kategori</option>' + catalog.categories.map(function (row) {
         return '<option value="' + safe(row.id) + '">' + safe(row.name) + '</option>';
       }).join('') + '</select></div></div>' +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
       '</section><aside class="panel cart-panel">' + renderCart() + '</aside></div>' +
       '<div class="mobile-cart"><strong>' + rupiah(cartSummary().total) +
-      '</strong><button class="btn btn-primary" id="mobile-cart-button" type="button">' +
+      '</strong><button class="btn btn-primary" id="mobile-cart-button" type="button"' +
+      (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       buttonLabel('cart', 'Keranjang & Checkout') + '</button></div>';
     renderProducts();
   }
 
-  // Menampilkan produk sesuai pencarian/kategori dan memuat foto unggahan aktual.
+  // Foto publik digunakan ulang selama halaman terbuka; perubahan ID foto memuat versi baru.
+  const productPhotos = new Map();
+  let photoObserver = null;
+
+  // Memuat satu foto tanpa menahan indikator halaman; kegagalan boleh dicoba lagi.
+  function loadProductPhoto(element) {
+    const key = element.dataset.photo + ':' + element.dataset.photoFile;
+    if (!productPhotos.has(key)) {
+      const request = rpc('productPhoto', { productId: element.dataset.photo }, true)
+        .catch(function (error) { productPhotos.delete(key); throw error; });
+      productPhotos.set(key, request);
+    }
+    productPhotos.get(key).then(function (photo) {
+      if (photo && element.isConnected) {
+        const image = document.createElement('img');
+        image.loading = 'lazy';
+        image.alt = 'Foto produk';
+        image.src = 'data:' + photo.mimeType + ';base64,' + photo.base64;
+        element.replaceChildren(image);
+      }
+    }).catch(function () {
+      if (element.isConnected) { element.textContent = 'Foto belum dapat dimuat.'; }
+    });
+  }
+
+  // Menampilkan produk sesuai pencarian/kategori; foto hanya dimuat dekat area yang terlihat.
   function renderProducts() {
+    if (photoObserver) { photoObserver.disconnect(); }
+    const holder = document.getElementById('products');
+    if (state.catalogLoading || state.catalogError) {
+      holder.innerHTML = '<div class="panel catalog-status" role="status">' +
+        (state.catalogError
+          ? '<p>Data katalog belum dapat dimuat: ' + safe(state.catalogError) + '</p>' +
+            '<button class="btn btn-outline-dark" data-nav="shop" type="button">' +
+            buttonLabel('refresh', 'Coba Lagi') + '</button>'
+          : state.catalogSlow
+            ? 'Halaman sudah siap. Server Google masih menyiapkan harga dan stok terbaru; produk akan muncul otomatis.'
+            : 'Mengambil harga dan stok terbaru...') + '</div>';
+      return;
+    }
     const search = document.getElementById('product-search').value.toLowerCase();
     const category = document.getElementById('category-filter').value;
     const products = state.catalog.products.filter(function (row) {
@@ -291,7 +365,8 @@
     document.getElementById('products').innerHTML = products.length
       ? products.map(function (product) {
         return '<article class="product-card">' +
-          (product.photoFileId ? '<div data-photo="' + safe(product.id) + '"></div>' : '') +
+          (product.photoFileId ? '<div data-photo="' + safe(product.id) +
+            '" data-photo-file="' + safe(product.photoFileId) + '"></div>' : '') +
           '<h2>' + safe(product.name) + '</h2><p class="description">' +
           safe(product.description) + '</p><small>Tersedia: ' + product.available +
           '</small><div class="price d-flex flex-wrap gap-2 justify-content-between align-items-center mt-2">' +
@@ -301,23 +376,33 @@
           (product.available < 1 ? ' disabled' : '') + '>' + buttonLabel('plus', 'Tambah') + '</button></div></article>';
       }).join('')
       : '<p class="text-secondary">Belum ada produk sesuai pencarian.</p>';
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting && entry.target.isConnected) {
+            observer.unobserve(entry.target);
+            loadProductPhoto(entry.target);
+          }
+        });
+      }, { rootMargin: '150px' });
+      photoObserver = observer;
+    } else {
+      photoObserver = null;
+    }
     document.querySelectorAll('[data-photo]').forEach(function (element) {
-      rpc('productPhoto', { productId: element.dataset.photo }).then(function (photo) {
-        if (photo && element.isConnected) {
-          const image = document.createElement('img');
-          image.loading = 'lazy';
-          image.alt = 'Foto produk';
-          image.src = 'data:' + photo.mimeType + ';base64,' + photo.base64;
-          element.appendChild(image);
-        }
-      }).catch(function () {
-        element.textContent = 'Foto belum dapat dimuat.';
-      });
+      if (photoObserver) {
+        photoObserver.observe(element);
+      } else {
+        loadProductPhoto(element);
+      }
     });
   }
 
   // Memulai checkout dan menyiapkan ID permintaan serta kunci akses privat pesanan.
   async function startCheckout() {
+    if (state.catalogLoading || state.catalogError) {
+      throw new Error('Tunggu harga dan stok terbaru sebelum checkout.');
+    }
     if (!cartLines().length) {
       throw new Error('Tambahkan produk terlebih dahulu.');
     }

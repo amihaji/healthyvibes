@@ -191,6 +191,24 @@ function catalog_(data) {
   const products = rows_('Products').filter(function (row) { return active_(row.active); });
   const discounts = rows_('Discounts');
   const orders = rows_('Orders');
+  // Tabel stok dibaca satu kali untuk semua produk, bukan satu kali per produk.
+  const pools = rows_(type === 'DIRECT' ? 'ReadyStock' : 'PreorderCapacity');
+  let reserved = Object.create(null);
+  try {
+    // Setiap snapshot pesanan dibaca satu kali; aturan reservasi tetap sama.
+    orders.forEach(function (order) {
+      if (!['PREPARING', 'COMMITTED'].includes(order.transactionState) ||
+        (order.fulfillment === 'CANCELLED' && !order.preparedAt)) {
+        return;
+      }
+      JSON.parse(order.snapshotJson).items.forEach(function (item) {
+        reserved[item.poolId] = (reserved[item.poolId] || 0) + item.quantity;
+      });
+    });
+  } catch (error) {
+    // Data reservasi rusak tidak boleh membuat stok terlihat tersedia.
+    reserved = null;
+  }
   const result = products.map(function (product) {
     const view = publicRecord_(product, [
       'id', 'categoryId', 'name', 'description', 'price', 'photoFileId'
@@ -205,12 +223,11 @@ function catalog_(data) {
         : Number(discount.value);
       view.unitPrice -= Math.min(view.unitPrice, rounded_(amount, config.discountRounding));
     }
-    try {
-      const pool = pool_(product.id, type, schedule.date);
-      view.available = Math.max(0, Number(pool.capacity) - usedCapacity_(pool.id, orders));
-    } catch (error) {
-      view.available = 0;
-    }
+    const pool = pools.find(function (row) {
+      return row.productId === product.id && (type === 'DIRECT' || row.date === schedule.date);
+    });
+    view.available = pool && reserved
+      ? Math.max(0, Number(pool.capacity) - (reserved[pool.id] || 0)) : 0;
     return view;
   });
   return {

@@ -441,6 +441,118 @@ test('Banner, katalog, dan keranjang memiliki struktur HTML terpisah dan lengkap
   assert.deepEqual(topLevel, ['section', 'div', 'div']);
 });
 
+// Halaman tidak menunggu server, tetapi harga/stok tidak dianggap siap sebelum balasan.
+test('Tampilan katalog langsung dibuat, memberi penjelasan setelah 5 detik, dan mengabaikan respons lama', async function () {
+  const client = source('js/client.js');
+  const requests = [];
+  const timers = [];
+  const renders = [];
+  const state = { type: 'DIRECT', page: 'shop' };
+  const context = vm.createContext({
+    state: state,
+    rpc: function (action, data, background) {
+      assert.equal(background, true);
+      return new Promise(function (resolve, reject) { requests.push({ resolve: resolve, reject: reject, data: data }); });
+    },
+    renderShop: function () { renders.push({ loading: state.catalogLoading, slow: state.catalogSlow }); },
+    setTimeout: function (callback, delay) { timers.push({ callback: callback, delay: delay }); return timers.length; },
+    clearTimeout: function () {}
+  });
+  vm.runInContext(client.slice(client.indexOf('  let catalogRequest ='),
+    client.indexOf('  function cartLines(')), context);
+  const first = context.loadCatalog();
+  assert.equal(renders.length, 1);
+  assert.equal(state.catalog.products.length, 0);
+  assert.equal(timers[0].delay, 5000);
+  timers[0].callback();
+  assert.equal(state.catalogSlow, true);
+  state.type = 'PREORDER';
+  const second = context.loadCatalog();
+  requests[1].resolve({ products: ['baru'] });
+  await second;
+  requests[0].resolve({ products: ['lama'] });
+  await first;
+  assert.deepEqual(state.catalog.products, ['baru']);
+  assert.equal(state.catalogLoading, false);
+  const third = context.loadCatalog();
+  state.page = 'status';
+  const count = renders.length;
+  requests[2].reject(new Error('Server lambat'));
+  await third;
+  assert.equal(renders.length, count);
+  assert.equal(state.catalogError, 'Server lambat');
+});
+
+test('Foto latar tidak menahan indikator tindakan pengguna', async function () {
+  const client = source('js/client.js');
+  const requests = [];
+  const changes = [];
+  const context = vm.createContext({
+    state: { token: '' },
+    HealthyVibesApi: {
+      request: function () { return new Promise(function (resolve) { requests.push(resolve); }); }
+    },
+    document: {
+      getElementById: function () {
+        return { classList: {
+          remove: function () { changes.push('show'); },
+          toggle: function (name, hidden) { changes.push(hidden ? 'hide' : 'show'); }
+        } };
+      }
+    }
+  });
+  vm.runInContext(client.slice(client.indexOf('  let pending ='),
+    client.indexOf('  function notify(')), context);
+  const photo = context.rpc('productPhoto', {}, true);
+  const action = context.rpc('quote', {});
+  await Promise.resolve();
+  requests[1]({ ok: true, data: {} });
+  await action;
+  assert.deepEqual(changes, ['show', 'hide']);
+  requests[0]({ ok: true, data: {} });
+  await photo;
+  assert.deepEqual(changes, ['show', 'hide']);
+});
+
+test('Katalog membaca stok sekali dan mempertahankan aturan reservasi', function () {
+  const context = backend();
+  vm.runInContext(source('apps-script/Rules.gs'), context);
+  context.settings_ = function () { return { discountRounding: 'NEAREST' }; };
+  context.slots_ = function () { return { date: '2026-11-05', times: ['10:00'] }; };
+  const makeOrder = function (state, fulfillment, prepared, quantity, json) {
+    return { transactionState: state, fulfillment: fulfillment, preparedAt: prepared,
+      snapshotJson: json || JSON.stringify({ items: [{ poolId: 'pool0', quantity: quantity }] }) };
+  };
+  const orders = [
+    makeOrder('COMMITTED', 'NEW', '', 2), makeOrder('PREPARING', 'NEW', '', 1),
+    makeOrder('COMMITTED', 'CANCELLED', '', 4), makeOrder('COMMITTED', 'CANCELLED', 'stamp', 1),
+    makeOrder('ROLLED_BACK', 'NEW', '', 5)
+  ];
+  const calls = {};
+  const products = Array.from({ length: 30 }, function (_, i) {
+    return { id: 'p' + i, active: true, price: 10000 };
+  });
+  context.rows_ = function (name) {
+    calls[name] = (calls[name] || 0) + 1;
+    if (name === 'Products') { return products; }
+    if (name === 'Orders') { return orders; }
+    if (name === 'ReadyStock' || name === 'PreorderCapacity') {
+      return products.map(function (product, i) {
+        return { id: 'pool' + i, productId: product.id, capacity: 10, date: '2026-11-05' };
+      });
+    }
+    return [];
+  };
+  for (const type of ['DIRECT', 'PREORDER']) {
+    const result = context.catalog_({ type: type });
+    assert.equal(calls[type === 'DIRECT' ? 'ReadyStock' : 'PreorderCapacity'], 1);
+    assert.equal(result.products[0].available, 10 - context.usedCapacity_('pool0', orders));
+    assert.equal(result.products[1].available, 10);
+  }
+  orders.push(makeOrder('COMMITTED', 'NEW', '', 1, '{invalid'));
+  assert.equal(context.catalog_({ type: 'DIRECT' }).products[0].available, 0);
+});
+
 // Ikon dekoratif tidak menggantikan label tombol dan tidak menerima HTML dari data.
 test('Ikon lokal mempertahankan teks tombol dan mengamankan label', function () {
   const context = vm.createContext({ window: {} });
@@ -634,7 +746,7 @@ test('Tampilan WITA memakai DD/MM/YYYY HH:mm dan menolak tanggal yang tidak ada'
   const client = source('js/client.js');
   const context = vm.createContext({});
   vm.runInContext(client.slice(client.indexOf('  function dateText('),
-    client.indexOf('  // Loading dihitung')), context);
+    client.indexOf('  let pending =')), context);
   vm.runInContext(client.slice(client.indexOf('  function toWitaInput('),
     client.indexOf('  function renderMaster(')), context);
   assert.equal(context.dateText('2026-11-02'), '02/11/2026');
