@@ -21,6 +21,15 @@
   };
   const app = document.getElementById('app');
   const dialog = document.getElementById('editor');
+  // Semua tombol memakai pembuat ikon dan teks yang sama.
+  const buttonLabel = window.HV_UI.label;
+  const adminViewport = window.matchMedia('(max-width: 1050px)');
+
+  // Menu pengelola terbuka di desktop dan ringkas saat berpindah ke layar kecil.
+  adminViewport.addEventListener('change', function (event) {
+    const navigation = document.getElementById('admin-navigation');
+    if (navigation) { navigation.open = !event.matches; }
+  });
 
   // Escape sebelum memasukkan data produk/pelanggan ke markup.
   function safe(value) {
@@ -223,15 +232,15 @@
           '<div class="d-flex justify-content-between align-items-center gap-2">' +
           '<span>' + rupiah(item.product.unitPrice) + '</span>' +
           '<div><button class="btn btn-sm btn-outline-dark" data-minus="' +
-          safe(item.product.id) + '" type="button">−</button> ' + item.quantity +
+          safe(item.product.id) + '" type="button">' + buttonLabel('minus', 'Kurangi') + '</button> ' + item.quantity +
           ' <button class="btn btn-sm btn-outline-dark" data-add="' +
-          safe(item.product.id) + '" type="button">+</button></div></div></div>';
+          safe(item.product.id) + '" type="button">' + buttonLabel('plus', 'Tambah') + '</button></div></div></div>';
       }).join('') : '<p class="text-secondary">Belum ada produk.</p>') +
       '<p class="mt-3"><strong>Total produk: ' + rupiah(summary.total) + '</strong></p>' +
       '<p class="small text-secondary">Ongkir dikonfirmasi terpisah. ' +
       'Keranjang belum menahan stok.</p>' +
       '<button class="btn btn-primary w-100" id="checkout-button" type="button"' +
-      (!summary.lines.length ? ' disabled' : '') + '>Lanjut Checkout</button>';
+      (!summary.lines.length ? ' disabled' : '') + '>' + buttonLabel('cart', 'Lanjut Checkout') + '</button>';
   }
 
   // Menampilkan banner, pilihan jenis pesanan, pencarian produk, dan keranjang.
@@ -243,16 +252,16 @@
       '<div class="hero-copy"><span class="hero-eyebrow">HEALTHY VIBES / PILIHAN SEHAT</span>' +
       '<h1 id="shop-title">Pilihan sehat,<br>untuk hari yang <span>lebih baik.</span></h1>' +
       '<p>Pesan langsung atau rencanakan menu sehat Anda untuk besok.</p>' +
-      '<a class="btn btn-primary hero-action" href="#menu-section">Lihat Menu <span aria-hidden="true">&rarr;</span></a>' +
+      '<a class="btn btn-primary hero-action" href="#menu-section">' + buttonLabel('menu', 'Lihat Menu') + '</a>' +
       '<div class="hero-note">Dibuat dengan sepenuh hati. Dinikmati setiap hari.</div></div></section>' +
       '<div class="shop-layout"><section>' +
       '<div id="menu-section" class="menu-heading"><span class="section-eyebrow">MENU HEALTHY VIBES</span>' +
       '<h2>Temukan pilihan favorit Anda</h2><p>Pilih menu dan waktu penerimaan sesuai kebutuhan Anda.</p></div>' +
       '<div class="order-type d-flex gap-2 mb-3 flex-wrap">' +
       '<button class="btn ' + (state.type === 'DIRECT' ? 'btn-green' : 'btn-outline-dark') +
-      '" data-type="DIRECT" type="button">Pesanan Langsung</button>' +
+      '" data-type="DIRECT" type="button">' + buttonLabel('cart', 'Pesanan Langsung') + '</button>' +
       '<button class="btn ' + (state.type === 'PREORDER' ? 'btn-green' : 'btn-outline-dark') +
-      '" data-type="PREORDER" type="button">Preorder Besok</button></div>' +
+      '" data-type="PREORDER" type="button">' + buttonLabel('calendar', 'Preorder Besok') + '</button></div>' +
       '<div class="alert alert-warning small">Preorder sampai 17.00 WITA; ' +
       'pembayaran maksimal 18.00 WITA. ' +
       (catalog.settings.ordersEnabled === 'true' ? '' : 'Toko belum membuka pemesanan.') +
@@ -266,7 +275,7 @@
       '</section><aside class="panel cart-panel">' + renderCart() + '</aside></div>' +
       '<div class="mobile-cart"><strong>' + rupiah(cartSummary().total) +
       '</strong><button class="btn btn-primary" id="mobile-cart-button" type="button">' +
-      'Keranjang & Checkout</button></div>';
+      buttonLabel('cart', 'Keranjang & Checkout') + '</button></div>';
     renderProducts();
   }
 
@@ -288,7 +297,7 @@
           '<strong>' + rupiah(product.unitPrice) + '</strong>' +
           '<button class="btn btn-primary" data-add="' + safe(product.id) +
           '" type="button" aria-label="Tambah ' + safe(product.name) + '"' +
-          (product.available < 1 ? ' disabled' : '') + '>+</button></div></article>';
+          (product.available < 1 ? ' disabled' : '') + '>' + buttonLabel('plus', 'Tambah') + '</button></div></article>';
       }).join('')
       : '<p class="text-secondary">Belum ada produk sesuai pencarian.</p>';
     document.querySelectorAll('[data-photo]').forEach(function (element) {
@@ -396,9 +405,9 @@
       }).join('') + '</div><div class="checkout-layout"><section class="panel">' +
       '<form id="checkout-form">' + content +
       '<div class="d-flex gap-2 mt-4"><button class="btn btn-outline-dark" id="checkout-back" ' +
-      'type="button">Kembali</button><button class="btn btn-primary flex-grow-1" type="submit"' +
+      'type="button">' + buttonLabel('back', 'Kembali') + '</button><button class="btn btn-primary" type="submit"' +
       (step === 1 && !schedule.times.length ? ' disabled' : '') + '>' +
-      (step === 3 ? 'Buat Pesanan' : 'Lanjut') + '</button></div></form></section>' +
+      buttonLabel(step === 3 ? 'check' : 'next', step === 3 ? 'Buat Pesanan' : 'Lanjut') + '</button></div></form></section>' +
       '<aside class="panel"><h2 class="h5">Ringkasan Produk</h2>' +
       cartLines().map(function (item) {
         return '<p>' + safe(item.product.name) + ' x ' + item.quantity + '</p>';
@@ -447,7 +456,7 @@
       'Masukkan kunci akses privat yang Anda terima setelah memesan.</p>' +
       '<form id="status-form">' + field('Nomor pesanan', 'orderId', state.order?.id) +
       field('Kunci akses privat', 'accessToken', state.accessToken) +
-      '<button class="btn btn-primary" type="submit">Lihat Pesanan</button></form></section>';
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('eye', 'Lihat Pesanan') + '</button></form></section>';
   }
 
   // Menampilkan detail pesanan, status, unduhan invoice, dan formulir bukti/pembatalan.
@@ -470,16 +479,16 @@
         ' WITA' : 'Sebelum dikirim; langsung ambil dapat bayar saat diambil.') +
       '</p><p>Refund: ' + safe(order.refundStatus) + ' ' + rupiah(order.refundAmount) +
       '</p><div class="d-flex gap-2 flex-wrap"><button class="btn btn-outline-dark" ' +
-      'id="refresh-order" type="button">Perbarui Status</button>' +
-      '<button class="btn btn-green" id="download-invoice" type="button">Unduh Invoice PDF</button>' +
-      '<button class="btn btn-outline-dark" id="save-access" type="button">Unduh Kunci Akses</button>' +
+      'id="refresh-order" type="button">' + buttonLabel('refresh', 'Perbarui Status') + '</button>' +
+      '<button class="btn btn-green" id="download-invoice" type="button">' + buttonLabel('download', 'Unduh Invoice PDF') + '</button>' +
+      '<button class="btn btn-outline-dark" id="save-access" type="button">' + buttonLabel('key', 'Unduh Kunci Akses') + '</button>' +
       '</div>' + (order.fulfillment !== 'CANCELLED' ? '<form id="proof-form" class="mt-4">' +
       '<label class="form-label">Struk bukti transfer (JPG/PNG/WebP)</label>' +
       '<input class="form-control mb-2" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>' +
-      '<button class="btn btn-primary" type="submit">Unggah Bukti Transfer</button></form>' : '') +
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('upload', 'Unggah Bukti Transfer') + '</button></form>' : '') +
       (!order.preparedAt && !['CANCELLED', 'COMPLETED'].includes(order.fulfillment)
         ? '<form id="cancel-form" class="mt-4">' + field('Alasan pembatalan', 'reason', '') +
-        '<button class="btn btn-outline-danger" type="submit">Ajukan Pembatalan</button></form>'
+        '<button class="btn btn-outline-danger" type="submit">' + buttonLabel('close', 'Ajukan Pembatalan') + '</button></form>'
         : '') + '</section>';
   }
 
@@ -491,7 +500,7 @@
       '<div class="col-md-6"><section class="panel"><h2>Login Pengelola</h2>' +
       '<form id="login-form">' + field('Username (minimal 6 karakter)', 'username', '') +
       field('Password', 'password', '', 'password') +
-      '<button class="btn btn-primary w-100" type="submit">Masuk</button></form>' +
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('login', 'Masuk') + '</button></form>' +
       '<p class="small mt-3">Lupa password? Hubungi Admin untuk reset password sementara.</p>' +
       '</section></div></div>';
   }
@@ -502,7 +511,7 @@
       field('Password saat ini', 'currentPassword', '', 'password') +
       field('Password baru (minimal 6 karakter)', 'newPassword', '', 'password') +
       '<p>Semua sesi akan dicabut; masuk kembali setelah perubahan.</p>' +
-      '<button class="btn btn-primary" type="submit">Simpan Password</button></form>');
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('save', 'Simpan Password') + '</button></form>');
   }
 
   // Mengambil data pengelola terbaru sesuai hak akses akun yang sedang login.
@@ -540,20 +549,33 @@
     ServiceAreas: 'Wilayah Layanan'
   };
 
+  // Ikon khusus membantu membedakan menu pengelola tanpa mengubah hak akses.
+  const adminIcons = {
+    Dashboard: 'dashboard', Pesanan: 'orders', Categories: 'categories',
+    Products: 'product', ReadyStock: 'stock', PreorderCapacity: 'calendar',
+    Discounts: 'tag', Vouchers: 'voucher', Users: 'users', ServiceHours: 'clock',
+    ServiceAreas: 'location', Pengaturan: 'settings', Backup: 'backup', Laporan: 'report'
+  };
+
   // Menampilkan panel pengelola dan isi menu yang sedang dipilih.
   function renderAdmin() {
     const page = state.adminPage;
-    app.innerHTML = '<div class="d-flex justify-content-between gap-2 flex-wrap mb-3">' +
-      '<h1 class="h2">Panel Pengelola</h1><div><span>' + safe(state.user.name) +
-      ' (' + safe(state.user.role) + ')</span> ' +
-      '<button class="btn btn-outline-dark" id="change-password" type="button">Password</button> ' +
-      '<button class="btn btn-outline-dark" id="logout" type="button">Keluar</button></div></div>' +
-      '<div class="admin-layout"><nav class="admin-nav" aria-label="Menu pengelola">' +
+    app.innerHTML = '<div class="admin-toolbar mb-3">' +
+      '<div><h1 class="h2 mb-1">Panel Pengelola</h1><p class="admin-account mb-0">' + safe(state.user.name) +
+      ' (' + safe(state.user.role) + ')</p></div><div class="admin-actions">' +
+      '<button class="btn btn-outline-dark" id="change-password" type="button">' + buttonLabel('key', 'Password') + '</button>' +
+      '<button class="btn btn-outline-dark" id="logout" type="button">' + buttonLabel('logout', 'Keluar') + '</button></div></div>' +
+      '<div class="admin-layout"><details class="admin-navigation" id="admin-navigation"' +
+      (adminViewport.matches ? '' : ' open') + '><summary class="admin-menu-toggle">' +
+      '<span class="admin-menu-title">' + buttonLabel('menu', 'Menu Pengelola') +
+      '<span class="admin-menu-current">' + safe(tableLabels[page] || page) + '</span></span>' +
+      window.HV_UI.icon('chevron') + '</summary><nav class="admin-nav" aria-label="Menu pengelola">' +
       adminMenu().map(function (name) {
         return '<button class="btn ' + (page === name ? 'selected' : '') +
-          '" data-admin-page="' + safe(name) + '" type="button">' +
-          safe(tableLabels[name] || name) + '</button>';
-      }).join('') + '</nav><section id="admin-body"></section></div>';
+          '" data-admin-page="' + safe(name) + '" type="button"' +
+          (page === name ? ' aria-current="page"' : '') + '>' +
+          buttonLabel(adminIcons[name], tableLabels[name] || name) + '</button>';
+      }).join('') + '</nav></details><section id="admin-body"></section></div>';
     const body = document.getElementById('admin-body');
     if (page === 'Dashboard') {
       const kpi = state.admin.kpi;
@@ -569,7 +591,7 @@
         '<p>Data berasal dari transaksi tersimpan, bukan contoh.</p>' +
         '<p>Refund dibayar: ' + rupiah(kpi.refunds) + '</p>' +
         '<p>Ongkir ke kurir bukan kas toko. Sisa kas bukan laba.</p>' +
-        '<button class="btn btn-green" id="refresh-admin" type="button">Perbarui Data</button></section>';
+        '<button class="btn btn-green" id="refresh-admin" type="button">' + buttonLabel('refresh', 'Perbarui Data') + '</button></section>';
     } else if (page === 'Pesanan') {
       renderOrders();
     } else if (page === 'Pengaturan') {
@@ -580,11 +602,11 @@
       body.innerHTML = '<section class="panel"><h2>Backup Privat</h2>' +
         '<p>Menyalin database dan berkas ke BACKUP. Tidak menimpa atau menghapus produksi.</p>' +
         '<p>Untuk data besar, runtime Google dapat habis; periksa BackupLog sebelum menyatakan berhasil.</p>' +
-        '<button class="btn btn-primary" id="backup" type="button">Buat Backup</button>' +
+        '<button class="btn btn-primary" id="backup" type="button">' + buttonLabel('backup', 'Buat Backup') + '</button>' +
         '<hr><h3 class="h5">Pulihkan ke Staging</h3><form id="restore-form">' +
         field('ID folder backup selesai', 'folderId', '') +
         field('Ketik RESTORE KE STAGING', 'confirmation', '') +
-        '<button class="btn btn-outline-dark" type="submit">Buat Salinan Pemulihan</button>' +
+        '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('restore', 'Buat Salinan Pemulihan') + '</button>' +
         '</form></section>';
     } else {
       renderMaster(page);
@@ -624,7 +646,7 @@
           '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
           '</td><td>' + safe(order.paymentStatus + ' / ' + order.fulfillment) +
           '</td><td><button class="btn btn-outline-dark" data-order="' + safe(order.id) +
-          '" type="button">Detail</button></td></tr>';
+          '" type="button">' + buttonLabel('eye', 'Detail') + '</button></td></tr>';
       }).join('') + '</tbody></table></div><div class="order-mobile">' +
       orders.map(function (order) {
         return '<article class="panel"><strong>' + safe(order.name) + '</strong><p class="text-break">' +
@@ -632,14 +654,14 @@
           ' WITA</p><p>' + rupiah(order.total) + '</p><p>' +
           safe(order.paymentStatus + ' / ' + order.fulfillment) + '</p>' +
           '<button class="btn btn-outline-dark" data-order="' + safe(order.id) +
-          '" type="button">Detail Pesanan</button></article>';
+          '" type="button">' + buttonLabel('eye', 'Detail Pesanan') + '</button></article>';
       }).join('') + '</div>' +
       '<div class="d-flex align-items-center gap-2 mt-3">' +
       '<button class="btn btn-outline-dark" id="previous-orders" type="button"' +
-      (state.listPage === 0 ? ' disabled' : '') + '>Sebelumnya</button>' +
+      (state.listPage === 0 ? ' disabled' : '') + '>' + buttonLabel('back', 'Sebelumnya') + '</button>' +
       '<span>' + (state.listPage + 1) + ' / ' + pageCount + '</span>' +
       '<button class="btn btn-outline-dark" id="next-orders" type="button"' +
-      (state.listPage + 1 >= pageCount ? ' disabled' : '') + '>Berikutnya</button></div>';
+      (state.listPage + 1 >= pageCount ? ' disabled' : '') + '>' + buttonLabel('next', 'Berikutnya') + '</button></div>';
   }
 
   // Membuka detail pesanan dan formulir tindakan pembayaran, pemenuhan, refund, atau kurir.
@@ -656,9 +678,9 @@
       '<div class="d-flex gap-2 flex-wrap mb-3">' +
       files.map(function (file) {
         return '<button class="btn btn-outline-dark" data-file="' + safe(file.driveFileId) +
-          '" type="button">Lihat ' + safe(file.kind) + '</button>';
+          '" type="button">' + buttonLabel('eye', 'Lihat ' + file.kind) + '</button>';
       }).join('') + '<button class="btn btn-green" data-invoice="' + safe(id) +
-      '" type="button">Invoice PDF</button></div><hr>' +
+      '" type="button">' + buttonLabel('download', 'Invoice PDF') + '</button></div><hr>' +
       '<form id="order-action-form" data-id="' + safe(id) + '">' +
       selectField('Tindakan', 'action', [
         ['verifyPayment', 'Verifikasi pembayaran dari transaksi masuk'],
@@ -682,11 +704,11 @@
       field('Nomor/link pelacakan', 'tracking', '', 'text', false) +
       '<label class="d-block"><input type="checkbox" name="customerAgreed"> Ongkir telah disetujui pelanggan</label>' +
       '<label class="d-block mb-3"><input type="checkbox" name="feePaidToCourier"> Pelanggan mengonfirmasi ongkir sudah dibayar ke kurir</label>' +
-      '<button class="btn btn-primary" type="submit">Jalankan Tindakan</button></form><hr>' +
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('check', 'Jalankan Tindakan') + '</button></form><hr>' +
       '<form id="handover-form" data-id="' + safe(id) + '">' +
       '<label class="form-label">Foto tanda terima</label>' +
       '<input type="file" name="photo" class="form-control mb-2" accept="image/jpeg,image/png,image/webp" required>' +
-      '<button class="btn btn-outline-dark" type="submit">Unggah ke TANDATERIMA</button></form>');
+      '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('upload', 'Unggah ke TANDATERIMA') + '</button></form>');
   }
 
   // Form master dikonfigurasi per tabel agar tidak menampilkan password hash.
@@ -781,7 +803,7 @@
     document.getElementById('admin-body').innerHTML = '<section class="panel">' +
       '<div class="d-flex justify-content-between gap-2 mb-3"><h2 class="h4">' +
       safe(tableLabels[table]) + '</h2><button class="btn btn-primary" data-new="' +
-      safe(table) + '" type="button">Tambah</button></div>' +
+      safe(table) + '" type="button">' + buttonLabel('plus', 'Tambah') + '</button></div>' +
       '<input class="form-control mb-3" id="master-search" placeholder="Cari data..." aria-label="Cari data">' +
       '<div class="table-wrap"><table class="table"><thead><tr>' +
       keys.map(function (key) {
@@ -797,9 +819,9 @@
           });
           return '<td>' + safe(masterText(key, product ? product.name : row[key])) + '</td>';
         }).join('') + '<td><button class="btn btn-outline-dark" data-edit="' +
-          safe(row.id) + '" data-table="' + safe(table) + '" type="button">Edit</button>' +
+          safe(row.id) + '" data-table="' + safe(table) + '" type="button">' + buttonLabel('edit', 'Edit') + '</button>' +
           (table === 'Products' ? ' <button class="btn btn-outline-dark" data-product-upload="' +
-          safe(row.id) + '" type="button">Foto</button>' : '') + '</td></tr>';
+          safe(row.id) + '" type="button">' + buttonLabel('photo', 'Foto') + '</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       (!rows.length ? '<p>Belum ada data. Tambahkan data aktual toko.</p>' : '') + '</section>';
   }
@@ -810,7 +832,7 @@
     showEditor((id ? 'Edit ' : 'Tambah ') + tableLabels[table],
       '<form id="master-form" data-table="' + safe(table) + '" data-id="' + safe(id || '') + '">' +
       masterFields(table, row) +
-      '<button class="btn btn-primary" type="submit">Simpan</button></form>');
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('save', 'Simpan') + '</button></form>');
   }
 
   // Menampilkan formulir pengaturan toko, jam operasional terkait, logo, dan QRIS.
@@ -840,13 +862,13 @@
     ], config.ordersEnabled);
     document.getElementById('admin-body').innerHTML = '<section class="panel">' +
       '<h2>Pengaturan</h2><form id="settings-form">' + html +
-      '<button class="btn btn-primary" type="submit">Simpan Pengaturan</button></form>' +
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('save', 'Simpan Pengaturan') + '</button></form>' +
       '<hr><h3 class="h5">Logo dan QRIS</h3><form id="store-asset-form">' +
       selectField('Jenis aset', 'asset', [
         ['logoFileId', 'Logo toko'], ['qrisFileId', 'QRIS pembayaran']
       ], '') + '<input class="form-control mb-3" type="file" name="photo" ' +
       'accept="image/jpeg,image/png,image/webp" required>' +
-      '<button class="btn btn-outline-dark" type="submit">Unggah Aset Toko</button></form></section>';
+      '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('upload', 'Unggah Aset Toko') + '</button></form></section>';
   }
 
   // Menampilkan filter laporan berdasarkan tanggal, jenis, kategori, dan status pesanan.
@@ -864,7 +886,7 @@
         ['', 'Semua'],
         ...['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DISPATCHED', 'COMPLETED', 'CANCELLED']
           .map(function (status) { return [status, status]; })
-      ], '') + '<button class="btn btn-green" type="submit">Tampilkan</button></form>' +
+      ], '') + '<button class="btn btn-green" type="submit">' + buttonLabel('report', 'Tampilkan') + '</button></form>' +
       '<div id="report-result" class="mt-4"></div></section>';
   }
 
@@ -878,8 +900,8 @@
       '<p class="small">Periode berdasarkan tanggal pesanan WITA. Pembayaran/refund ' +
       'adalah yang tercatat sampai saat laporan dibuka. Sisa kas bukan laba.</p>' +
       '<div class="d-flex gap-2 mb-3"><button class="btn btn-primary" id="export-xlsx" ' +
-      'type="button">Excel .xlsx</button><button class="btn btn-outline-dark" id="export-pdf" ' +
-      'type="button">PDF</button></div><div class="table-wrap"><table class="table"><thead><tr>' +
+      'type="button">' + buttonLabel('report', 'Excel .xlsx') + '</button><button class="btn btn-outline-dark" id="export-pdf" ' +
+      'type="button">' + buttonLabel('download', 'PDF') + '</button></div><div class="table-wrap"><table class="table"><thead><tr>' +
       keys.map(function (key) { return '<th>' + safe(key) + '</th>'; }).join('') +
       '</tr></thead><tbody>' + report.rows.map(function (row) {
         return '<tr>' + keys.map(function (key) { return '<td>' + safe(row[key]) + '</td>'; }).join('') + '</tr>';
@@ -1050,7 +1072,7 @@
       showEditor('Foto Produk', '<form id="product-photo-form" data-id="' +
         safe(button.dataset.productUpload) + '"><input type="file" name="photo" ' +
         'class="form-control mb-3" accept="image/jpeg,image/png,image/webp" required>' +
-        '<button class="btn btn-primary" type="submit">Simpan di PRODUK</button></form>');
+        '<button class="btn btn-primary" type="submit">' + buttonLabel('upload', 'Simpan di PRODUK') + '</button></form>');
       return;
     }
     const id = button.id;
@@ -1236,6 +1258,6 @@
       '<p>Aplikasi belum terhubung ke database yang terpasang.</p>' +
       '<p>Isi URL API pada js/config.js dan pasang backend sesuai panduan.</p>' +
       '<button class="btn btn-primary" data-nav="shop" type="button">' +
-      'Coba Hubungkan Lagi</button></section>';
+      buttonLabel('refresh', 'Coba Hubungkan Lagi') + '</button></section>';
     notify(error.message, true);
   });

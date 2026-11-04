@@ -1,4 +1,3 @@
-  /* Gaya korporat mengikuti BERATidealku, dengan identitas Healthy Vibes. */
   /* Warna bersama untuk seluruh website; --green saat ini berisi biru tua brand. */
   :root {
     --green: #0b2545;
@@ -61,7 +60,8 @@
 
   /* Garis fokus membantu pengguna yang menavigasi dengan keyboard. */
   button:focus-visible,
-  a:focus-visible {
+  a:focus-visible,
+  summary:focus-visible {
     outline: 3px solid var(--orange);
     outline-offset: 3px;
   }
@@ -102,6 +102,9 @@
 
   /* Tampilan seragam untuk tombol dan tautan navigasi. */
   .nav-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     position: relative;
     border: 0;
     background: transparent;
@@ -136,11 +139,14 @@
 
   /* Tombol ikon persegi untuk menu HP dan pengaturan pengelola. */
   .icon-button {
-    width: 44px;
+    width: auto;
     height: 44px;
-    display: grid;
-    place-items: center;
-    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 12px;
+    font-size: 13px;
     background: transparent;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -155,10 +161,11 @@
     border-color: #0d5eb8;
   }
 
-  /* Ukuran dan ketebalan garis gambar ikon di dalam tombol. */
-  .icon-button svg {
-    width: 22px;
-    height: 22px;
+  /* Ikon mengikuti warna teks, berukuran tetap, dan tidak menyusut di layar kecil. */
+  .ui-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.7;
@@ -312,6 +319,19 @@
     color: white;
   }
 
+  /* Semua tombol berikon memiliki jarak 8px dan lebar mengikuti isi teksnya. */
+  .btn:not(.brand) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    max-width: 100%;
+  }
+
+  /* Label panjang boleh membungkus tanpa memotong teks maupun ikon. */
+  .button-text { min-width: 0; overflow-wrap: anywhere; }
+
   /* Bingkai dan ruang dalam yang seragam untuk panel, kartu produk, dan ringkasan. */
   .panel,
   .product-card,
@@ -378,15 +398,26 @@
   /* Memisahkan navigasi pengelola di kiri dan isi halaman di kanan. */
   .admin-layout {
     display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-columns: 230px minmax(0, 1fr);
     gap: 24px;
+    align-items: start;
   }
+
+  /* Judul, identitas akun, dan tindakan akun tersusun jelas dalam toolbar. */
+  .admin-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .admin-account { color: #5b6b80; font-size: 13px; overflow-wrap: anywhere; }
+  .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Pembungkus navigasi dapat dibuka/tutup secara native pada layar kecil. */
+  .admin-navigation { min-width: 0; border-radius: 12px; background: var(--green); }
+  /* Desktop menampilkan semua pilihan tanpa tombol buka menu. */
+  .admin-menu-toggle { display: none; }
 
   /* Panel menu pengelola tersusun vertikal dengan latar biru tua. */
   .admin-nav {
     background: var(--green);
-    border-radius: 16px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -397,12 +428,24 @@
   .admin-nav .btn {
     text-align: left;
     color: white;
+    justify-content: flex-start;
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+    min-height: 46px;
+    padding: 10px 12px;
+    line-height: 1.4;
+    width: 100%;
+    border-radius: 8px;
   }
+
+  /* Sorotan menu kontras di atas latar biru tua. */
+  .admin-nav .btn:hover { background: #ffffff14; color: white; }
 
   /* Menandai menu pengelola aktif dengan latar terang dan garis orange. */
   .admin-nav .selected {
     background: #ffffff20;
-    border-left: 3px solid var(--orange);
+    border-left-color: var(--orange);
+    font-weight: 600;
   }
 
   /* Menyusun empat kartu angka ringkasan dashboard dalam satu baris. */
@@ -549,11 +592,32 @@
       padding-bottom: 100px;
     }
 
-    /* Menu pengelola menjadi baris yang dapat membungkus ke baris berikutnya. */
+    /* Menu layar kecil memakai kolom tetap agar pilihan tidak berantakan. */
     .admin-nav {
-      flex-direction: row;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      border-top: 1px solid #ffffff26;
     }
+
+    /* Tombol pembuka menampilkan halaman aktif dan indikator buka/tutup. */
+    .admin-menu-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      color: white;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 12px;
+    }
+    .admin-menu-toggle::-webkit-details-marker { display: none; }
+    /* Judul menu dan nama halaman aktif ditampilkan pada dua baris yang rapi. */
+    .admin-menu-title { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 2px; font-size: 14px; font-weight: 600; }
+    .admin-menu-current { grid-column: 2; font-size: 12px; font-weight: 400; color: #d9e2ed; }
+    /* Arah panah memberi petunjuk apakah panel navigasi sedang terbuka. */
+    .admin-navigation[open] .admin-menu-toggle > .ui-icon { transform: rotate(180deg); }
 
     /* Angka ringkasan dashboard disusun dalam dua kolom. */
     .kpis {
@@ -570,15 +634,26 @@
     /* Logo dan dua tombol ikon disusun sesuai lebar HP. */
     .header-inner { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; padding-block: 4px; }
     /* Mengecilkan logo sambil mempertahankan proporsinya. */
-    .brand-logo { width: 164px; height: 84px; }
+    .brand-logo { width: clamp(100px, 35vw, 164px); height: 72px; }
     /* Menampilkan tombol buka/tutup navigasi HP. */
-    .nav-toggle { display: grid; }
+    .nav-toggle { display: inline-flex; }
     /* Menu HP ditempatkan pada baris kedua dan ditutup secara awal. */
-    .site-nav { display: none; grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; gap: 24px; border-top: 1px solid var(--line); padding-block: 8px; }
+    .site-nav { display: none; grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--line); padding-block: 8px; }
     /* Menu muncul setelah tombol navigasi HP dibuka. */
     .menu-open .site-nav { display: flex; }
     /* Menyesuaikan jarak gulir dengan tinggi header HP. */
     .menu-heading { scroll-margin-top: 112px; }
+
+    /* Toolbar pengelola tampil berurutan: judul/akun lalu tombol akun. */
+    .admin-toolbar { align-items: flex-start; flex-direction: column; gap: 12px; }
+    .admin-toolbar h1 { font-size: 24px; }
+    .admin-nav { padding: 8px; }
+    .admin-nav .btn { padding: 10px 8px; font-size: 12px; gap: 8px; }
+    .admin-layout { gap: 16px; }
+    /* Isi pengelola tidak boleh memperlebar halaman; tabel bergulir di pembungkusnya. */
+    #admin-body { min-width: 0; }
+    /* Tombol dan label pada header tetap muat di layar HP kecil. */
+    .icon-button { padding-inline: 8px; font-size: 12px; gap: 6px; }
 
     /* Mengurangi ruang dalam panel pembuka pada HP. */
     .hero {

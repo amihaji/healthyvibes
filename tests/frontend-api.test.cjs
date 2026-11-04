@@ -390,6 +390,54 @@ test('Branding memakai aset pemilik, ikon pengaturan dan gambar ikut publikasi',
   }
 });
 
+// Ikon dekoratif tidak menggantikan label tombol dan tidak menerima HTML dari data.
+test('Ikon lokal mempertahankan teks tombol dan mengamankan label', function () {
+  const context = vm.createContext({ window: {} });
+  vm.runInContext(source('js/icons.js'), context);
+  const markup = context.window.HV_UI.label('save', '<img src=x onerror=alert(1)>');
+  assert.ok(markup.includes('class="ui-icon"'));
+  assert.ok(markup.includes('aria-hidden="true"'));
+  assert.ok(markup.includes('focusable="false"'));
+  assert.ok(markup.includes('&lt;img'));
+  assert.ok(!markup.includes('<img'));
+  const html = source('index.html');
+  assert.ok(html.indexOf('js/icons.js') < html.indexOf('js/client.js'));
+});
+
+// Render pengelola diuji tanpa akun atau transaksi Google nyata.
+test('Navigasi pengelola berikon sesuai role, halaman aktif, dan ukuran layar', function () {
+  const client = source('js/client.js');
+  for (const role of ['Admin', 'Operator', 'Viewer']) {
+    for (const mobile of [false, true]) {
+      const body = { innerHTML: '' };
+      const app = { innerHTML: '' };
+      const context = vm.createContext({
+        window: {}, app: app, safe: String, rupiah: String,
+        adminViewport: { matches: mobile },
+        state: {
+          adminPage: 'Dashboard', user: { name: 'Akun uji', role: role },
+          admin: { kpi: { orders: 0, pending: 0, payments: 0, refundPending: 0, refunds: 0 } }
+        },
+        document: { getElementById: function () { return body; } }
+      });
+      vm.runInContext(source('js/icons.js'), context);
+      context.buttonLabel = context.window.HV_UI.label;
+      vm.runInContext(client.slice(client.indexOf('  function adminMenu('),
+        client.indexOf('  function renderOrders(')), context);
+      context.renderAdmin();
+      assert.ok(app.innerHTML.includes('id="admin-navigation"' + (mobile ? '>' : ' open>')));
+      assert.ok(app.innerHTML.includes('aria-current="page"'));
+      const buttons = Array.from(app.innerHTML.matchAll(/<button\b[^>]*data-admin-page="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g));
+      assert.equal(buttons.length, role === 'Admin' ? 14 : role === 'Operator' ? 7 : 2);
+      for (const button of buttons) {
+        assert.ok(button[2].includes('<svg'), button[1]);
+        assert.ok(button[2].includes('class="button-text"'), button[1]);
+      }
+      if (role !== 'Admin') { assert.ok(!app.innerHTML.includes('data-admin-page="Users"')); }
+    }
+  }
+});
+
 function sheetDateContext() {
   const context = vm.createContext({
     Date: Date,
