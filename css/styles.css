@@ -76,11 +76,11 @@
     box-shadow: 0 4px 18px #08192e08;
   }
 
-  /* Menyusun logo, navigasi, dan tombol pengaturan dalam satu baris. */
+  /* Merapatkan logo dan navigasi di kiri; tombol Admin tetap di kanan. */
   .header-inner {
     display: grid;
     grid-template-columns: auto 1fr auto;
-    gap: 24px;
+    gap: 16px;
     align-items: center;
     padding-block: 6px;
   }
@@ -93,11 +93,11 @@
     object-fit: contain;
   }
 
-  /* Menyejajarkan menu navigasi di tengah dengan jarak antarmenu. */
+  /* Menu rata kiri, berdekatan dengan logo, dengan jarak antarmenu yang konsisten. */
   .site-nav {
     display: flex;
-    justify-content: center;
-    gap: 28px;
+    justify-content: flex-start;
+    gap: 24px;
   }
 
   /* Tampilan seragam untuk tombol dan tautan navigasi. */
