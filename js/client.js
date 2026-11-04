@@ -35,6 +35,7 @@
     });
   }
 
+  // Menampilkan nominal uang dalam format Rupiah tanpa angka desimal.
   function rupiah(value) {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -43,11 +44,13 @@
     }).format(Number(value || 0));
   }
 
+  // Mengubah tanggal yyyy-MM-dd menjadi DD/MM/YYYY untuk dibaca pengguna.
   function dateText(value) {
     const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return match ? match[3] + '/' + match[2] + '/' + match[1] : String(value || '');
   }
 
+  // Menampilkan tanggal dan jam 24 jam berdasarkan zona waktu WITA.
   function dateTimeText(value) {
     if (!value) { return ''; }
     const date = new Date(value);
@@ -61,6 +64,7 @@
       ' ' + get('hour') + ':' + get('minute');
   }
 
+  // Mengubah nilai tabel menjadi label hari, Ya/Tidak, atau tanggal yang mudah dibaca.
   function masterText(key, value) {
     if (key === 'weekday' && value !== '') {
       return ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][Number(value)] ?? value;
@@ -72,6 +76,7 @@
 
   // Loading dihitung agar request foto bersamaan tidak mematikan indikator lebih awal.
   let pending = 0;
+  // Mengirim tindakan ke backend dan memeriksa hasil sambil menampilkan Memproses.
   function rpc(action, data) {
     pending += 1;
     document.getElementById('busy').classList.remove('d-none');
@@ -95,6 +100,7 @@
     });
   }
 
+  // Menampilkan pesan sukses atau kesalahan di area notifikasi halaman.
   function notify(message, error) {
     const element = document.getElementById('notification');
     element.innerHTML = '<div class="alert ' +
@@ -102,6 +108,7 @@
     element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  // Membuat input beserta label, nilai awal, dan aturan pengisian.
   function field(label, name, value, type, required) {
     const minimum = ['username', 'password', 'newPassword'].includes(name)
       ? ' minlength="6"' : '';
@@ -124,6 +131,7 @@
       (required === false ? '' : ' required') + '></div>';
   }
 
+  // Membuat daftar pilihan dan memilih nilai awal yang sesuai.
   function selectField(label, name, options, value) {
     return '<div class="mb-3"><label class="form-label" for="f-' + name + '">' +
       safe(label) + '</label><select class="form-select" id="f-' + name +
@@ -134,10 +142,12 @@
       }).join('') + '</select></div>';
   }
 
+  // Mengambil isian formulir menjadi data yang siap diproses.
   function formData(form) {
     return Object.fromEntries(new FormData(form).entries());
   }
 
+  // Membuka dialog berisi judul dan formulir atau detail yang diperlukan.
   function showEditor(title, content) {
     document.getElementById('editor-title').textContent = title;
     document.getElementById('editor-content').innerHTML = content;
@@ -155,6 +165,7 @@
       .replace(/=+$/, '');
   }
 
+  // Berpindah halaman internal, menutup menu HP, dan menandai navigasi aktif.
   async function navigate(page) {
     state.page = page;
     document.querySelector('.site-header').classList.remove('menu-open');
@@ -177,11 +188,13 @@
     }
   }
 
+  // Mengambil katalog terbaru untuk pesanan langsung atau preorder dari backend.
   async function loadCatalog() {
     state.catalog = await rpc('catalog', { type: state.type });
     renderShop();
   }
 
+  // Menggabungkan jumlah di keranjang dengan data produk yang tersedia di katalog.
   function cartLines() {
     return Object.entries(state.cart).map(function (entry) {
       const product = state.catalog.products.find(function (row) {
@@ -191,6 +204,7 @@
     }).filter(Boolean);
   }
 
+  // Menghitung perkiraan total produk di keranjang sebelum validasi server.
   function cartSummary() {
     const lines = cartLines();
     const total = lines.reduce(function (sum, item) {
@@ -199,6 +213,7 @@
     return { lines: lines, total: total };
   }
 
+  // Menyusun tampilan isi keranjang, pengubah jumlah, total, dan tombol checkout.
   function renderCart() {
     const summary = cartSummary();
     return '<h2 class="editorial h4">Keranjang Anda</h2>' +
@@ -219,6 +234,7 @@
       (!summary.lines.length ? ' disabled' : '') + '>Lanjut Checkout</button>';
   }
 
+  // Menampilkan banner, pilihan jenis pesanan, pencarian produk, dan keranjang.
   function renderShop() {
     const catalog = state.catalog;
     // Foto dan logo memakai aset yang diberikan pemilik, bukan gambar contoh.
@@ -254,7 +270,7 @@
     renderProducts();
   }
 
-  // Foto berasal dari upload produk aktual; tidak ada foto placeholder.
+  // Menampilkan produk sesuai pencarian/kategori dan memuat foto unggahan aktual.
   function renderProducts() {
     const search = document.getElementById('product-search').value.toLowerCase();
     const category = document.getElementById('category-filter').value;
@@ -290,6 +306,7 @@
     });
   }
 
+  // Memulai checkout dan menyiapkan ID permintaan serta kunci akses privat pesanan.
   async function startCheckout() {
     if (!cartLines().length) {
       throw new Error('Tambahkan produk terlebih dahulu.');
@@ -303,6 +320,7 @@
     renderCheckout();
   }
 
+  // Menggabungkan data penerima, jadwal, produk, dan kunci akses untuk dikirim ke server.
   function checkoutPayload() {
     return Object.assign({}, state.recipient, {
       type: state.type,
@@ -315,6 +333,7 @@
     });
   }
 
+  // Menampilkan langkah penerima, pembayaran, atau tinjauan beserta ringkasan belanja.
   function renderCheckout() {
     const step = state.checkoutStep;
     const recipient = state.recipient;
@@ -400,6 +419,7 @@
     }
   }
 
+  // Menyimpan isian tiap langkah, memeriksa harga di server, lalu membuat pesanan.
   async function submitCheckout(form) {
     const data = formData(form);
     if (state.checkoutStep < 3) {
@@ -420,6 +440,7 @@
     notify('Pesanan berhasil dibuat. Simpan nomor pesanan dan kunci akses privat Anda.');
   }
 
+  // Menampilkan formulir pengecekan pesanan dengan nomor dan kunci akses privat.
   function renderStatusForm() {
     app.innerHTML = '<section class="panel mx-auto" style="max-width:650px">' +
       '<h1 class="h2">Status Pesanan</h1><p>Nomor pesanan saja tidak cukup. ' +
@@ -429,6 +450,7 @@
       '<button class="btn btn-primary" type="submit">Lihat Pesanan</button></form></section>';
   }
 
+  // Menampilkan detail pesanan, status, unduhan invoice, dan formulir bukti/pembatalan.
   function renderOrder() {
     const order = state.order;
     app.innerHTML = '<section class="panel mx-auto" style="max-width:850px">' +
@@ -461,6 +483,7 @@
         : '') + '</section>';
   }
 
+  // Menampilkan formulir login pengelola menggunakan username dan password.
   function renderLogin() {
     app.innerHTML = '<div class="row g-4 align-items-center mx-auto" style="max-width:960px">' +
       '<div class="col-md-6"><section class="hero"><h1>Kelola toko,<br>dengan lebih teratur.</h1>' +
@@ -473,6 +496,7 @@
       '</section></div></div>';
   }
 
+  // Membuka formulir penggantian password pengelola.
   function passwordDialog() {
     showEditor('Ganti Password', '<form id="password-form">' +
       field('Password saat ini', 'currentPassword', '', 'password') +
@@ -481,12 +505,14 @@
       '<button class="btn btn-primary" type="submit">Simpan Password</button></form>');
   }
 
+  // Mengambil data pengelola terbaru sesuai hak akses akun yang sedang login.
   async function loadAdmin() {
     state.admin = await rpc('adminData');
     state.user = state.admin.user;
     renderAdmin();
   }
 
+  // Menentukan menu yang ditampilkan untuk Admin, Operator, atau Viewer.
   function adminMenu() {
     const role = state.user.role;
     const list = role === 'Viewer' ? ['Dashboard', 'Laporan'] : [
@@ -501,6 +527,7 @@
     return list;
   }
 
+  // Nama tabel backend diterjemahkan menjadi judul menu berbahasa Indonesia.
   const tableLabels = {
     Categories: 'Kategori',
     Products: 'Setup Produk',
@@ -513,6 +540,7 @@
     ServiceAreas: 'Wilayah Layanan'
   };
 
+  // Menampilkan panel pengelola dan isi menu yang sedang dipilih.
   function renderAdmin() {
     const page = state.adminPage;
     app.innerHTML = '<div class="d-flex justify-content-between gap-2 flex-wrap mb-3">' +
@@ -563,6 +591,7 @@
     }
   }
 
+  // Menyiapkan pencarian, filter status, dan tempat daftar pesanan pengelola.
   function renderOrders() {
     const body = document.getElementById('admin-body');
     body.innerHTML = '<section class="panel"><h2>Pesanan</h2><div class="row g-2 mb-3">' +
@@ -576,6 +605,7 @@
     filterOrders();
   }
 
+  // Menyaring pesanan, mengurutkan yang terbaru, dan menampilkan 20 pesanan per halaman.
   function filterOrders() {
     const query = document.getElementById('order-search').value.toLowerCase();
     const status = document.getElementById('order-filter').value;
@@ -612,6 +642,7 @@
       (state.listPage + 1 >= pageCount ? ' disabled' : '') + '>Berikutnya</button></div>';
   }
 
+  // Membuka detail pesanan dan formulir tindakan pembayaran, pemenuhan, refund, atau kurir.
   function orderEditor(id) {
     const order = state.admin.tables.Orders.find(function (row) { return row.id === id; });
     const files = (state.admin.tables.Files || []).filter(function (row) { return row.orderId === id; });
@@ -724,10 +755,12 @@
     return html;
   }
 
+  // Menyiapkan tanggal dan jam WITA sebagai nilai awal input formulir.
   function toWitaInput(value) {
     return dateTimeText(value);
   }
 
+  // Memvalidasi isian DD/MM/YYYY HH:mm WITA lalu mengubahnya ke waktu ISO untuk server.
   function fromWitaInput(value) {
     const match = String(value).match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
     if (!match) { throw new Error('Gunakan tanggal dan jam DD/MM/YYYY HH:mm.'); }
@@ -739,6 +772,7 @@
     return date.toISOString();
   }
 
+  // Menampilkan tabel data master dengan pencarian serta tombol tambah/edit.
   function renderMaster(table) {
     const rows = state.admin.tables[table] || [];
     const keys = rows.length ? Object.keys(rows[0]).filter(function (key) {
@@ -770,6 +804,7 @@
       (!rows.length ? '<p>Belum ada data. Tambahkan data aktual toko.</p>' : '') + '</section>';
   }
 
+  // Membuka formulir tambah atau edit sesuai jenis tabel dan data yang dipilih.
   function editMaster(table, id) {
     const row = (state.admin.tables[table] || []).find(function (item) { return item.id === id; }) || {};
     showEditor((id ? 'Edit ' : 'Tambah ') + tableLabels[table],
@@ -778,6 +813,7 @@
       '<button class="btn btn-primary" type="submit">Simpan</button></form>');
   }
 
+  // Menampilkan formulir pengaturan toko, jam operasional terkait, logo, dan QRIS.
   function renderSettings() {
     const config = state.admin.settings;
     const labels = {
@@ -813,6 +849,7 @@
       '<button class="btn btn-outline-dark" type="submit">Unggah Aset Toko</button></form></section>';
   }
 
+  // Menampilkan filter laporan berdasarkan tanggal, jenis, kategori, dan status pesanan.
   function renderReportForm() {
     document.getElementById('admin-body').innerHTML = '<section class="panel"><h2>Laporan</h2>' +
       '<form id="report-form"><div class="row"><div class="col-sm-6">' +
@@ -831,6 +868,7 @@
       '<div id="report-result" class="mt-4"></div></section>';
   }
 
+  // Menampilkan ringkasan pembayaran/refund dan tabel laporan beserta tombol ekspor.
   function renderReport() {
     const report = state.report;
     const keys = report.rows.length ? Object.keys(report.rows[0]) : [];
@@ -850,6 +888,7 @@
 
   // Pustaka ekspor dimuat saat dibutuhkan, bukan saat katalog dibuka.
   const loadedScripts = {};
+  // Memuat pustaka tambahan satu kali dan memungkinkan percobaan ulang jika gagal.
   function loadScript(url) {
     if (!loadedScripts[url]) {
       loadedScripts[url] = new Promise(function (resolve, reject) {
@@ -866,6 +905,7 @@
     return loadedScripts[url];
   }
 
+  // Mengunduh laporan Excel berisi lembar Pesanan dan Ringkasan.
   async function exportXlsx() {
     await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
     const rows = state.report.rows.map(function (row) {
@@ -885,6 +925,7 @@
     XLSX.writeFile(workbook, 'Healthy-Vibes-Laporan.xlsx');
   }
 
+  // Mengunduh tabel laporan sebagai PDF mendatar dengan nomor halaman.
   async function exportPdf() {
     await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js');
     await loadScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js');
@@ -923,6 +964,7 @@
     return { mimeType: 'image/jpeg', base64: encoded.split(',')[1] };
   }
 
+  // Mengubah data berkas dari server menjadi berkas unduhan dengan nama aslinya.
   function saveDownload(file) {
     const bytes = Uint8Array.from(atob(file.base64), function (value) {
       return value.charCodeAt(0);
@@ -930,6 +972,7 @@
     saveBlob(new Blob([bytes], { type: file.mimeType }), file.name);
   }
 
+  // Memicu unduhan berkas di browser dan melepaskan alamat sementara setelah digunakan.
   function saveBlob(blob, name) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -948,6 +991,7 @@
     clickAction(button).catch(function (error) { notify(error.message, true); });
   });
 
+  // Menjalankan tindakan tombol: navigasi, keranjang, pengelola, unduhan, atau ekspor.
   async function clickAction(button) {
     if (button.id === 'nav-toggle') {
       const open = document.querySelector('.site-header').classList.toggle('menu-open');
@@ -1063,6 +1107,7 @@
     }
   }
 
+  // Memperbarui hasil pencarian dan filter segera saat pengguna mengubah isian.
   document.addEventListener('input', function (event) {
     if (['product-search', 'category-filter'].includes(event.target.id)) {
       renderProducts();
@@ -1095,6 +1140,7 @@
     }
   });
 
+  // Mengirim formulir yang sesuai ke backend, lalu memperbarui tampilan dan pesan hasil.
   async function submitAction(form) {
     const data = formData(form);
     if (form.id === 'checkout-form') {

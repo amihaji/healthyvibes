@@ -11,7 +11,7 @@ window.HealthyVibesApi = (function () {
       .test(origin);
   }
 
-  // HTML Service dapat membungkus respons di iframe bersarang.
+  // Memeriksa bahwa pengirim balasan berasal dari iframe permintaan, termasuk iframe bersarang.
   function belongsToFrame(source, frame) {
     try {
       for (let depth = 0; source && depth < 8; depth += 1) {
@@ -40,6 +40,7 @@ window.HealthyVibesApi = (function () {
     ).join('');
   }
 
+  // Mengirim data lewat form POST dan menunggu balasan Google yang cocok dengan permintaan.
   function request(payload) {
     return new Promise(function (resolve, reject) {
       const config = window.HV_CONFIG || {};

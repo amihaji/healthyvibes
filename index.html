@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="id">
   <head>
+    <!-- Pengodean teks dan ukuran halaman agar sesuai dengan layar perangkat. -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Jangan membawa URL halaman pelanggan saat menghubungi layanan lain. -->
@@ -24,13 +25,16 @@
         <span class="topbar-location">Makassar &amp; sekitarnya <span aria-hidden="true">&middot;</span> WITA</span>
       </div>
     </div>
+    <!-- Header berisi logo, navigasi pelanggan, dan akses pengelola. -->
     <header class="site-header">
       <div class="container header-inner">
+        <!-- Klik logo membuka kembali katalog Healthy Vibes. -->
         <button class="brand btn p-0" data-nav="shop" type="button" aria-label="Healthy Vibes, kembali ke menu">
           <img src="image/Logo_HealthyVibes_PilihanSehat.png" alt="Healthy Vibes by Klub KITA" class="brand-logo" decoding="async">
         </button>
+        <!-- Tautan Home membuka Berat Idealku; Menu dan Status memakai halaman internal. -->
         <nav id="site-nav" aria-label="Navigasi utama" class="site-nav">
-          <button class="nav-button" data-nav="home" type="button" aria-current="page">Home</button>
+          <!-- <button class="nav-button" data-nav="home" type="button" aria-current="page">Home</button>-->
           <a class="nav-button" href="https://www.beratidealku.com">Home</a>
           <button class="nav-button" data-nav="shop" type="button" aria-current="page">Menu</button>
           <button class="nav-button" data-nav="status" type="button">Status Pesanan</button>
@@ -39,6 +43,7 @@
         <button class="icon-button nav-toggle" id="nav-toggle" type="button" aria-label="Buka menu navigasi" aria-controls="site-nav" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
+        <!-- Ikon roda gigi membuka login atau panel pengelola. -->
         <button class="icon-button settings-button" data-nav="admin" type="button" aria-label="Pengaturan pengelola" title="Pengaturan pengelola">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.7 2.3-2 .9-2.2-.6-2 3.4 1.5 1.7v2.6L2.1 15l2 3.4 2.2-.6 2 .9L9 21h6l.7-2.3 2-.9 2.2.6 2-3.4-1.5-1.7v-2.6L21.9 9l-2-3.4-2.2.6-2-.9L15 3Z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
@@ -46,13 +51,24 @@
     </header>
     <!-- Pesan server dan loading dibaca juga oleh pembaca layar. -->
     <div id="notification" role="status" aria-live="polite" class="container mt-3"></div>
+    <!-- Indikator ini ditampilkan JavaScript selama menunggu respons backend. -->
     <div id="busy" class="busy d-none" role="status">
       <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
       Memproses...
     </div>
+    <!-- Isi halaman katalog, checkout, status, dan pengelola dibuat oleh client.js di sini. -->
     <main id="app" class="container py-4"></main>
-    <footer class="container site-footer pb-4 text-secondary small">
-      Makassar dan sekitarnya • WITA. Ongkir GoSend terpisah dari pembayaran produk.
+    <!-- Identitas pendukung dan informasi layanan pada footer berlatar abu-abu muda. -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-brand">
+          <span>Power By:</span>
+          <img src="image/logo_beratidealku.png" alt="Berat Idealku" class="footer-logo" width="199" height="38" decoding="async">
+        </div>
+        <p class="footer-info small text-secondary mb-0">
+          Makassar dan sekitarnya • WITA. Ongkir GoSend terpisah dari pembayaran produk.
+        </p>
+      </div>
     </footer>
     <!-- Dialog editor master dan detail pesanan tidak menghilangkan fitur di HP. -->
     <dialog id="editor" aria-labelledby="editor-title">

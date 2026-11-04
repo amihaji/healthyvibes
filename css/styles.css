@@ -1,4 +1,5 @@
   /* Gaya korporat mengikuti BERATidealku, dengan identitas Healthy Vibes. */
+  /* Warna bersama untuk seluruh website; --green saat ini berisi biru tua brand. */
   :root {
     --green: #0b2545;
     --orange: #f5821f;
@@ -7,6 +8,7 @@
     --line: #e6eaf0;
   }
 
+  /* Warna latar, jenis huruf, dan jarak baris dasar halaman. */
   body {
     background: var(--cream);
     color: var(--ink);
@@ -15,14 +17,17 @@
     line-height: 1.6;
   }
 
+  /* Membuat perpindahan ke bagian halaman berlangsung halus. */
   html { scroll-behavior: smooth; }
 
+  /* Kursor tangan menandakan elemen yang dapat diklik atau dipilih. */
   button,
   a,
   select {
     cursor: pointer;
   }
 
+  /* Kursor larangan menandakan isian/tombol tidak dapat digunakan atau diubah. */
   button:disabled,
   input:disabled,
   select:disabled,
@@ -30,12 +35,14 @@
     cursor: not-allowed;
   }
 
+  /* Pita informasi tipis di atas header. */
   .site-topbar {
     background: #08192e;
     color: #e3e8ef;
     font-size: 12px;
   }
 
+  /* Menempatkan identitas dan lokasi di sisi berlawanan pada topbar. */
   .topbar-inner {
     display: flex;
     justify-content: space-between;
@@ -44,6 +51,7 @@
     min-height: 36px;
   }
 
+  /* Ukuran minimum kontrol agar mudah disentuh pada layar HP. */
   button,
   input,
   select,
@@ -51,12 +59,14 @@
     min-height: 44px;
   }
 
+  /* Garis fokus membantu pengguna yang menavigasi dengan keyboard. */
   button:focus-visible,
   a:focus-visible {
     outline: 3px solid var(--orange);
     outline-offset: 3px;
   }
 
+  /* Header tetap di atas saat halaman digulir. */
   .site-header {
     position: sticky;
     top: 0;
@@ -66,6 +76,7 @@
     box-shadow: 0 4px 18px #08192e08;
   }
 
+  /* Menyusun logo, navigasi, dan tombol pengaturan dalam satu baris. */
   .header-inner {
     display: grid;
     grid-template-columns: auto 1fr auto;
@@ -74,6 +85,7 @@
     padding-block: 6px;
   }
 
+  /* Membatasi ukuran logo tanpa memotong atau mengubah proporsinya. */
   .brand-logo {
     display: block;
     width: 220px;
@@ -81,12 +93,14 @@
     object-fit: contain;
   }
 
+  /* Menyejajarkan menu navigasi di tengah dengan jarak antarmenu. */
   .site-nav {
     display: flex;
     justify-content: center;
     gap: 28px;
   }
 
+  /* Tampilan seragam untuk tombol dan tautan navigasi. */
   .nav-button {
     position: relative;
     border: 0;
@@ -99,6 +113,7 @@
     transition: color .2s ease;
   }
 
+  /* Garis bawah orange yang disiapkan untuk animasi navigasi. */
   .nav-button::after {
     content: "";
     position: absolute;
@@ -112,11 +127,14 @@
     transition: transform .2s ease;
   }
 
+  /* Warna teks saat menu disorot atau sedang aktif. */
   .nav-button:hover,
   .nav-button[aria-current="page"] { color: #0d5eb8; }
+  /* Memunculkan garis bawah pada menu yang disorot atau aktif. */
   .nav-button:hover::after,
   .nav-button[aria-current="page"]::after { transform: scaleX(1); }
 
+  /* Tombol ikon persegi untuk menu HP dan pengaturan pengelola. */
   .icon-button {
     width: 44px;
     height: 44px;
@@ -130,12 +148,14 @@
     transition: color .2s ease, border-color .2s ease;
   }
 
+  /* Penanda warna dan bingkai pada tombol ikon yang disorot atau aktif. */
   .icon-button:hover,
   .icon-button[aria-current="page"] {
     color: #0d5eb8;
     border-color: #0d5eb8;
   }
 
+  /* Ukuran dan ketebalan garis gambar ikon di dalam tombol. */
   .icon-button svg {
     width: 22px;
     height: 22px;
@@ -146,14 +166,17 @@
     stroke-linejoin: round;
   }
 
+  /* Tombol buka menu tidak diperlukan pada layar desktop. */
   .nav-toggle { display: none; }
 
+  /* Menggunakan huruf tebal yang konsisten untuk judul utama. */
   h1,
   .editorial {
     font-family: inherit;
     font-weight: 700;
   }
 
+  /* Panel pembuka berwarna biru tua dengan teks putih. */
   .hero {
     background: var(--green);
     color: white;
@@ -162,6 +185,7 @@
     margin-bottom: 24px;
   }
 
+  /* Ukuran judul pada panel pembuka umum. */
   .hero h1 {
     font-size: 36px;
   }
@@ -178,6 +202,7 @@
     margin-bottom: 36px;
   }
 
+  /* Foto memenuhi latar banner tanpa mengubah proporsinya. */
   .hero-image {
     position: absolute;
     inset: 0;
@@ -188,6 +213,7 @@
     z-index: -2;
   }
 
+  /* Lapisan gelap di atas foto agar tulisan banner tetap terbaca. */
   .shop-hero::before {
     content: "";
     position: absolute;
@@ -196,7 +222,9 @@
     z-index: -1;
   }
 
+  /* Membatasi lebar kelompok teks banner agar tidak melebar berlebihan. */
   .hero-copy { max-width: 560px; }
+  /* Label kecil dengan jarak huruf lebar di atas judul banner dan menu. */
   .hero-eyebrow,
   .section-eyebrow {
     display: block;
@@ -206,19 +234,61 @@
     margin-bottom: 16px;
   }
 
+  /* Warna label banner yang kontras terhadap latar gelap. */
   .hero-eyebrow { color: #ffd9b9; }
+  /* Judul banner menyesuaikan ukuran layar dalam batas yang ditentukan. */
   .shop-hero h1 { font-size: clamp(30px, 3.5vw, 46px); line-height: 1.2; margin-bottom: 18px; }
+  /* Aksen orange pada bagian judul yang ingin ditonjolkan. */
   .shop-hero h1 span { color: #ffb56f; }
+  /* Ukuran dan lebar paragraf penjelasan pada banner. */
   .hero-copy p { max-width: 420px; color: #e5ebf3; font-size: 15px; margin-bottom: 22px; }
+  /* Menyejajarkan teks dan ikon tombol Lihat Menu. */
   .hero-action { display: inline-flex; align-items: center; gap: 12px; padding: 10px 18px; font-size: 14px; }
+  /* Catatan kecil di bawah tombol banner. */
   .hero-note { margin-top: 22px; font-size: 11px; color: #d9e2ed; }
+  /* Warna label pembuka bagian katalog. */
   .section-eyebrow { color: #a84f09; margin-bottom: 8px; }
+  /* Memberi jarak gulir agar judul menu tidak tertutup header. */
   .menu-heading { scroll-margin-top: 145px; margin-bottom: 24px; }
+  /* Ukuran dan jarak judul katalog. */
   .menu-heading h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  /* Teks penjelasan di bawah judul katalog. */
   .menu-heading p { font-size: 14px; color: #5b6b80; }
+  /* Ukuran tombol pilihan Pesanan Langsung dan Preorder. */
   .order-type .btn { font-size: 13px; padding-inline: 16px; }
-  .site-footer { border-top: 1px solid var(--line); padding-top: 24px; }
+  /* Footer selebar halaman dengan latar abu-abu muda dan isi rata tengah. */
+  .site-footer {
+    border-top: 1px solid var(--line);
+    background: #eceff2;
+    padding-block: 24px;
+    text-align: center;
+  }
 
+  /* Menyejajarkan tulisan Power By dan logo dengan jarak yang jelas. */
+  .footer-brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  /* Logo pendukung berukuran ringkas tanpa mengubah proporsi gambar asli. */
+  .footer-logo {
+    display: block;
+    width: 160px;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  /* Jarak antara identitas pendukung dan keterangan layanan. */
+  .footer-info { margin-top: 12px; }
+
+  /* Warna orange brand untuk tombol aksi utama, termasuk saat dinonaktifkan. */
   .btn-primary,
   .btn-primary:disabled {
     background: var(--orange);
@@ -227,6 +297,7 @@
     font-weight: 700;
   }
 
+  /* Warna tombol utama ketika disorot atau menerima fokus. */
   .btn-primary:hover,
   .btn-primary:focus {
     background: #e77b23;
@@ -234,12 +305,14 @@
     color: var(--ink);
   }
 
+  /* Tombol alternatif biru tua dengan teks putih. */
   .btn-green,
   .btn-green:hover {
     background: var(--green);
     color: white;
   }
 
+  /* Bingkai dan ruang dalam yang seragam untuk panel, kartu produk, dan ringkasan. */
   .panel,
   .product-card,
   .kpi {
@@ -250,6 +323,7 @@
     min-width: 0;
   }
 
+  /* Katalog di kiri dan keranjang selebar 290px di kanan pada desktop. */
   .shop-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 290px;
@@ -257,20 +331,25 @@
     align-items: start;
   }
 
+  /* Menyusun kartu produk dalam tiga kolom pada layar lebar. */
   .products {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
   }
 
+  /* Ukuran judul nama produk pada kartu. */
   .product-card h2 {
     font-size: 16px;
     font-weight: 700;
     line-height: 1.4;
   }
 
+  /* Memperhalus perubahan bingkai dan bayangan kartu produk. */
   .product-card { transition: border-color .2s ease, box-shadow .2s ease; }
+  /* Sorotan ringan saat kursor berada di atas kartu produk. */
   .product-card:hover { border-color: #c2cedd; box-shadow: 0 8px 24px #08192e0c; }
+  /* Foto produk berasio 4:3 dengan sudut membulat. */
   .product-card img {
     width: 100%;
     aspect-ratio: 4 / 3;
@@ -279,26 +358,31 @@
     margin-bottom: 14px;
   }
 
+  /* Deskripsi produk dibuat lebih kecil dan lembut daripada judul. */
   .product-card .description {
     font-size: 12px;
     color: #62666a;
   }
 
+  /* Keranjang desktop mengikuti guliran dengan jarak aman di bawah header. */
   .cart-panel {
     position: sticky;
     top: 142px;
   }
 
+  /* Bilah keranjang HP tidak ditampilkan pada layar desktop. */
   .mobile-cart {
     display: none;
   }
 
+  /* Memisahkan navigasi pengelola di kiri dan isi halaman di kanan. */
   .admin-layout {
     display: grid;
     grid-template-columns: 200px minmax(0, 1fr);
     gap: 24px;
   }
 
+  /* Panel menu pengelola tersusun vertikal dengan latar biru tua. */
   .admin-nav {
     background: var(--green);
     border-radius: 16px;
@@ -309,16 +393,19 @@
     align-self: start;
   }
 
+  /* Teks menu pengelola berwarna putih dan rata kiri. */
   .admin-nav .btn {
     text-align: left;
     color: white;
   }
 
+  /* Menandai menu pengelola aktif dengan latar terang dan garis orange. */
   .admin-nav .selected {
     background: #ffffff20;
     border-left: 3px solid var(--orange);
   }
 
+  /* Menyusun empat kartu angka ringkasan dashboard dalam satu baris. */
   .kpis {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -326,25 +413,30 @@
     margin-bottom: 22px;
   }
 
+  /* Membesarkan angka ringkasan dan membungkus angka panjang agar tidak meluap. */
   .kpi strong {
     display: block;
     font-size: 24px;
     overflow-wrap: anywhere;
   }
 
+  /* Tabel lebar dapat digulir mendatar tanpa memperlebar halaman. */
   .table-wrap {
     overflow-x: auto;
     max-width: 100%;
   }
 
+  /* Ukuran teks tabel data pengelola. */
   .table {
     font-size: 13px;
   }
 
+  /* Latar berbeda untuk membedakan kepala tabel dari isinya. */
   .table th {
     background: #f2f3f4;
   }
 
+  /* Label membulat untuk menampilkan status pembayaran atau pesanan. */
   .status-tag {
     display: inline-block;
     background: #e1f3f0;
@@ -354,6 +446,7 @@
     font-size: 12px;
   }
 
+  /* Menyusun indikator tiga langkah checkout dan membungkusnya bila perlu. */
   .steps {
     display: flex;
     gap: 8px;
@@ -361,6 +454,7 @@
     margin: 18px 0;
   }
 
+  /* Bentuk label setiap langkah checkout. */
   .steps span {
     padding: 10px 12px;
     border: 1px solid var(--line);
@@ -368,17 +462,20 @@
     background: white;
   }
 
+  /* Menandai langkah checkout yang sedang dikerjakan. */
   .steps .current {
     background: var(--green);
     color: white;
   }
 
+  /* Formulir checkout di kiri dan ringkasan belanja di kanan pada desktop. */
   .checkout-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 290px;
     gap: 22px;
   }
 
+  /* Ukuran dan area gulir dialog editor agar tetap muat di layar. */
   dialog {
     width: min(900px, calc(100% - 24px));
     max-height: calc(100dvh - 32px);
@@ -388,10 +485,12 @@
     padding: 24px;
   }
 
+  /* Meredupkan halaman di belakang dialog yang terbuka. */
   dialog::backdrop {
     background: #00000060;
   }
 
+  /* Indikator Memproses mengambang tanpa menghalangi klik pada halaman. */
   .busy {
     pointer-events: none;
     position: fixed;
@@ -404,25 +503,31 @@
     color: white;
   }
 
+  /* Versi kartu daftar pesanan HP tidak ditampilkan pada desktop. */
   .order-mobile {
     display: none;
   }
 
+  /* Penyesuaian tablet dan layar lebih kecil, hingga lebar 1050px. */
   @media (max-width: 1050px) {
+    /* Produk berubah menjadi dua kolom. */
     .products {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    /* Katalog, checkout, dan pengelola berubah menjadi satu kolom. */
     .shop-layout,
     .checkout-layout,
     .admin-layout {
       grid-template-columns: 1fr;
     }
 
+    /* Keranjang samping digantikan bilah keranjang bawah. */
     .cart-panel {
       display: none;
     }
 
+    /* Bilah keranjang tetap terlihat di bawah layar. */
     .mobile-cart {
       display: flex;
       justify-content: space-between;
@@ -439,78 +544,111 @@
       z-index: 20;
     }
 
+    /* Ruang tambahan agar isi halaman tidak tertutup bilah keranjang. */
     body:has(.mobile-cart) {
       padding-bottom: 100px;
     }
 
+    /* Menu pengelola menjadi baris yang dapat membungkus ke baris berikutnya. */
     .admin-nav {
       flex-direction: row;
       flex-wrap: wrap;
     }
 
+    /* Angka ringkasan dashboard disusun dalam dua kolom. */
     .kpis {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
+  /* Penyesuaian khusus HP, hingga lebar 767px. */
   @media (max-width: 767px) {
+    /* Identitas topbar lebih kecil dan rata tengah. */
     .topbar-inner { justify-content: center; font-size: 10px; min-height: 32px; }
+    /* Informasi lokasi disembunyikan agar topbar HP tidak terlalu penuh. */
     .topbar-location { display: none; }
+    /* Logo dan dua tombol ikon disusun sesuai lebar HP. */
     .header-inner { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; padding-block: 4px; }
+    /* Mengecilkan logo sambil mempertahankan proporsinya. */
     .brand-logo { width: 164px; height: 84px; }
+    /* Menampilkan tombol buka/tutup navigasi HP. */
     .nav-toggle { display: grid; }
+    /* Menu HP ditempatkan pada baris kedua dan ditutup secara awal. */
     .site-nav { display: none; grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; gap: 24px; border-top: 1px solid var(--line); padding-block: 8px; }
+    /* Menu muncul setelah tombol navigasi HP dibuka. */
     .menu-open .site-nav { display: flex; }
+    /* Menyesuaikan jarak gulir dengan tinggi header HP. */
     .menu-heading { scroll-margin-top: 112px; }
 
+    /* Mengurangi ruang dalam panel pembuka pada HP. */
     .hero {
       padding: 20px;
     }
 
+    /* Mengecilkan judul panel pembuka umum. */
     .hero h1 {
       font-size: 29px;
     }
 
+    /* Menyesuaikan tinggi dan jarak banner katalog untuk HP. */
     .shop-hero { min-height: 370px; padding: 28px 22px; margin-bottom: 28px; }
+    /* Lapisan gelap disesuaikan agar teks banner HP tetap jelas. */
     .shop-hero::before { background: linear-gradient(100deg, #08192ee8 0%, #0b2545b8 60%, #08192e73 100%); }
+    /* Menggeser titik fokus foto banner pada layar sempit. */
     .hero-image { object-position: 42% center; }
+    /* Ukuran judul banner katalog pada HP. */
     .shop-hero h1 { font-size: 30px; }
+    /* Memperkecil label dan jarak huruf pada banner HP. */
     .hero-eyebrow { font-size: 9px; letter-spacing: 1px; }
+    /* Membatasi lebar dan ukuran paragraf banner HP. */
     .hero-copy p { font-size: 13px; max-width: 280px; }
+    /* Mengecilkan catatan banner agar tetap proporsional. */
     .hero-note { font-size: 10px; max-width: 260px; }
+    /* Ukuran judul bagian menu pada HP. */
     .menu-heading h2 { font-size: 21px; }
+    /* Menjaga bilah keranjang tidak berbenturan dengan area navigasi bawah perangkat. */
     .mobile-cart { bottom: calc(12px + env(safe-area-inset-bottom)); padding: 12px; }
+    /* Ukuran teks tombol keranjang pada HP. */
     .mobile-cart .btn { font-size: 12px; }
+    /* Mengurangi ruang dalam kartu dan panel pada layar sempit. */
     .product-card,
     .panel,
     .kpi {
       padding: 14px;
     }
 
+    /* Ukuran nama produk pada HP. */
     .product-card h2 {
       font-size: 14px;
     }
 
+    /* Ukuran bagian harga produk pada HP. */
     .product-card .price {
       font-size: 12px;
     }
 
+    /* Tabel pesanan desktop digantikan tampilan kartu pada HP. */
     .order-desktop {
       display: none;
     }
 
+    /* Menampilkan daftar pesanan sebagai kartu yang tersusun ke bawah. */
     .order-mobile {
       display: grid;
       gap: 12px;
     }
 
+    /* Mengecilkan label langkah checkout agar muat di HP. */
     .steps span {
       font-size: 12px;
       padding: 8px;
     }
   }
 
+  /* Mengikuti pengaturan perangkat pengguna yang mengurangi animasi. */
   @media (prefers-reduced-motion: reduce) {
+    /* Menonaktifkan guliran halus untuk pengguna yang mengurangi gerakan. */
     html { scroll-behavior: auto; }
+    /* Menonaktifkan efek transisi seluruh elemen dan lapisan tambahannya. */
     *, *::before, *::after { transition: none !important; }
   }
