@@ -403,6 +403,44 @@ test('Label awal memakai Katalog dan Admin dengan navigasi HP berikon', function
   assert.match(source('css/styles.css'), /\.settings-button \.header-action-text \{ display: none; \}/);
 });
 
+// Penutup HTML harus lengkap agar katalog dan keranjang tidak masuk ke dalam banner.
+test('Banner, katalog, dan keranjang memiliki struktur HTML terpisah dan lengkap', function () {
+  const app = { innerHTML: '' };
+  const context = vm.createContext({
+    window: {}, app: app, safe: String, rupiah: String,
+    state: {
+      type: 'DIRECT',
+      catalog: { settings: { ordersEnabled: 'true' }, categories: [] }
+    },
+    renderCart: function () { return '<h2>Keranjang Anda</h2>'; },
+    cartSummary: function () { return { total: 0 }; },
+    renderProducts: function () {}
+  });
+  vm.runInContext(source('js/icons.js'), context);
+  context.buttonLabel = context.window.HV_UI.label;
+  const client = source('js/client.js');
+  vm.runInContext(client.slice(client.indexOf('  function renderShop('),
+    client.indexOf('  function renderProducts(')), context);
+  context.renderShop();
+  const stack = [];
+  const topLevel = [];
+  const voidTags = new Set(['img', 'input', 'br', 'hr']);
+  for (const match of app.innerHTML.matchAll(/<\/?([a-z][a-z0-9-]*)\b[^>]*>/gi)) {
+    const tag = match[1].toLowerCase();
+    if (match[0].startsWith('</')) {
+      assert.equal(stack.pop(), tag, 'Penutup tidak cocok: ' + match[0]);
+    } else {
+      if (stack.length === 0) { topLevel.push(tag); }
+      if (/class="(?:shop-layout|mobile-cart)"/.test(match[0])) {
+        assert.equal(stack.length, 0, 'Katalog/keranjang harus berada di luar banner');
+      }
+      if (!voidTags.has(tag) && !match[0].endsWith('/>')) { stack.push(tag); }
+    }
+  }
+  assert.deepEqual(stack, [], 'Masih ada elemen HTML yang belum ditutup');
+  assert.deepEqual(topLevel, ['section', 'div', 'div']);
+});
+
 // Ikon dekoratif tidak menggantikan label tombol dan tidak menerima HTML dari data.
 test('Ikon lokal mempertahankan teks tombol dan mengamankan label', function () {
   const context = vm.createContext({ window: {} });
