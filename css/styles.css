@@ -356,7 +356,17 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
+    scroll-margin-top: 145px;
   }
+
+  /* Navigasi halaman ringkas, rata tengah, dan tidak memenuhi lebar layar secara berlebihan. */
+  .product-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 20px; }
+  /* Menampilkan nomor halaman dan rentang produk sebagai informasi pendukung. */
+  .product-page-info { text-align: center; font-size: 13px; color: var(--green); }
+  .product-page-info span { display: block; font-size: 11px; color: #5b6b80; }
+  /* Menjaga ruang foto tetap stabil sehingga tombol halaman tidak bergeser saat foto dimuat. */
+  .product-card [data-photo] { aspect-ratio: 4 / 3; margin-bottom: 14px; }
+  .product-card [data-photo] img { display: block; margin-bottom: 0; }
 
   /* Status katalog memenuhi seluruh kolom tanpa menahan tampilan banner dan navigasi. */
   .catalog-status { grid-column: 1 / -1; color: #5b6b80; font-size: 14px; }
@@ -594,6 +604,9 @@
     body:has(.mobile-cart) {
       padding-bottom: 100px;
     }
+    /* Guliran otomatis menyisakan ruang untuk bilah keranjang agar tombol halaman terlihat. */
+    html:has(.mobile-cart) { scroll-padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+    #product-pagination { scroll-margin-bottom: calc(100px + env(safe-area-inset-bottom)); }
 
     /* Menu layar kecil memakai kolom tetap agar pilihan tidak berantakan. */
     .admin-nav {
@@ -646,6 +659,10 @@
     .menu-open .site-nav { display: flex; }
     /* Menyesuaikan jarak gulir dengan tinggi header HP. */
     .menu-heading { scroll-margin-top: 112px; }
+    /* Informasi halaman di atas dua tombol navigasi agar tetap muat pada HP. */
+    .products { scroll-margin-top: 112px; }
+    .product-pagination { gap: 8px; }
+    .product-page-info { flex-basis: 100%; order: -1; }
 
     /* Toolbar pengelola tampil berurutan: judul/akun lalu tombol akun. */
     .admin-toolbar { align-items: flex-start; flex-direction: column; gap: 12px; }

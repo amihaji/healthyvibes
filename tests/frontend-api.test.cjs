@@ -515,6 +515,64 @@ test('Banner, katalog, dan keranjang memiliki struktur HTML terpisah dan lengkap
   assert.deepEqual(topLevel, ['section', 'div', 'div']);
 });
 
+test('Halaman produk dibatasi dua baris dan nomor halaman tetap valid setelah filter', function () {
+  const client = source('js/client.js');
+  for (const mobile of [false, true]) {
+    const context = vm.createContext({ state: { productPage: 0 }, adminViewport: { matches: mobile } });
+    vm.runInContext(client.slice(client.indexOf('  function productPageData('),
+      client.indexOf('  function renderProducts(')), context);
+    const products = Array.from({ length: 20 }, function (_, id) { return { id: id }; });
+    const size = mobile ? 4 : 6;
+    let result = context.productPageData(products);
+    assert.equal(result.items.length, size);
+    assert.equal(result.count, Math.ceil(20 / size));
+    context.state.productPage = 99;
+    result = context.productPageData(products);
+    assert.equal(context.state.productPage, result.count - 1);
+    assert.equal(result.last, 20);
+    result = context.productPageData(products.slice(0, 1));
+    assert.equal(context.state.productPage, 0);
+    assert.equal(result.items.length, 1);
+    result = context.productPageData([]);
+    assert.equal(result.first, 0);
+    assert.equal(result.last, 0);
+  }
+});
+
+test('Render halaman hanya meminta foto produk pada halaman aktif', function () {
+  const client = source('js/client.js');
+  const requested = [];
+  const holder = {
+    innerHTML: '',
+    querySelectorAll: function () {
+      return Array.from(this.innerHTML.matchAll(/data-photo="([^"]+)"/g), function (match) {
+        return { dataset: { photo: match[1] } };
+      });
+    }
+  };
+  const pager = { innerHTML: '' };
+  const products = Array.from({ length: 20 }, function (_, id) {
+    return { id: 'p' + id, name: 'Produk ' + id, photoFileId: 'file' + id, categoryId: 'c1', available: 5, unitPrice: 15000 };
+  });
+  const context = vm.createContext({
+    state: { productPage: 2, catalog: { products: products } },
+    adminViewport: { matches: true }, window: {}, photoObserver: null,
+    safe: String, rupiah: String, buttonLabel: function (name, text) { return text; },
+    loadProductPhoto: function (element) { requested.push(element.dataset.photo); },
+    document: {
+      getElementById: function (id) {
+        return { products: holder, 'product-pagination': pager,
+          'product-search': { value: '' }, 'category-filter': { value: '' } }[id];
+      }
+    }
+  });
+  vm.runInContext(client.slice(client.indexOf('  function productPageData('),
+    client.indexOf('  async function startCheckout(')), context);
+  context.renderProducts();
+  assert.deepEqual(requested, ['p8', 'p9', 'p10', 'p11']);
+  assert.ok(pager.innerHTML.includes('Halaman 3 dari 5'));
+});
+
 // Halaman tidak menunggu server, tetapi harga/stok tidak dianggap siap sebelum balasan.
 test('Tampilan katalog langsung dibuat, memberi penjelasan setelah 5 detik, dan mengabaikan respons lama', async function () {
   const client = source('js/client.js');

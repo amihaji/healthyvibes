@@ -8,6 +8,9 @@
     catalogLoading: false,
     catalogSlow: false,
     catalogError: '',
+    productPage: 0,
+    productSearch: '',
+    productCategory: '',
     type: 'DIRECT',
     cart: {},
     page: 'shop',
@@ -32,6 +35,10 @@
   adminViewport.addEventListener('change', function (event) {
     const navigation = document.getElementById('admin-navigation');
     if (navigation) { navigation.open = !event.matches; }
+    // Jumlah produk mengikuti jumlah kolom agar tetap maksimal dua baris.
+    if (state.page === 'shop' && state.catalog && document.getElementById('products')) {
+      renderProducts();
+    }
   });
 
   // Escape sebelum memasukkan data produk/pelanggan ke markup.
@@ -209,6 +216,7 @@
   async function loadCatalog() {
     const request = ++catalogRequest;
     const type = state.type;
+    state.productPage = 0;
     state.catalogLoading = true;
     state.catalogSlow = false;
     state.catalogError = '';
@@ -302,14 +310,17 @@
       (state.catalogLoading || state.catalogError || catalog.settings.ordersEnabled === 'true'
         ? '' : 'Toko belum membuka pemesanan.') +
       '</div><div class="row g-2 mb-3"><div class="col-7">' +
-      '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat..."' +
+      '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat..." value="' +
+      safe(state.productSearch || '') + '"' +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '</div><div class="col-5"><select class="form-select" id="category-filter" aria-label="Kategori"' +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<option value="">Semua kategori</option>' + catalog.categories.map(function (row) {
-        return '<option value="' + safe(row.id) + '">' + safe(row.name) + '</option>';
+        return '<option value="' + safe(row.id) + '"' +
+          (row.id === state.productCategory ? ' selected' : '') + '>' + safe(row.name) + '</option>';
       }).join('') + '</select></div></div>' +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
+      '<div id="product-pagination"></div>' +
       '</section><aside class="panel cart-panel">' + renderCart() + '</aside></div>' +
       '<div class="mobile-cart"><strong>' + rupiah(cartSummary().total) +
       '</strong><button class="btn btn-primary" id="mobile-cart-button" type="button"' +
@@ -343,10 +354,24 @@
     });
   }
 
-  // Menampilkan produk sesuai pencarian/kategori; foto hanya dimuat dekat area yang terlihat.
+  // Membagi hasil pencarian menjadi dua baris: 6 produk desktop atau 4 produk HP/tablet.
+  function productPageData(products) {
+    const size = adminViewport.matches ? 4 : 6;
+    const count = Math.max(1, Math.ceil(products.length / size));
+    state.productPage = Math.max(0, Math.min(state.productPage || 0, count - 1));
+    const start = state.productPage * size;
+    return {
+      items: products.slice(start, start + size), count: count,
+      first: products.length ? start + 1 : 0, last: Math.min(start + size, products.length)
+    };
+  }
+
+  // Menampilkan halaman produk aktif saja; foto halaman lain belum diminta ke server.
   function renderProducts() {
     if (photoObserver) { photoObserver.disconnect(); }
     const holder = document.getElementById('products');
+    const pager = document.getElementById('product-pagination');
+    pager.innerHTML = '';
     if (state.catalogLoading || state.catalogError) {
       holder.innerHTML = '<div class="panel catalog-status" role="status">' +
         (state.catalogError
@@ -364,8 +389,9 @@
       return row.name.toLowerCase().includes(search) &&
         (!category || row.categoryId === category);
     });
+    const pagination = productPageData(products);
     document.getElementById('products').innerHTML = products.length
-      ? products.map(function (product) {
+      ? pagination.items.map(function (product) {
         return '<article class="product-card">' +
           (product.photoFileId ? '<div data-photo="' + safe(product.id) +
             '" data-photo-file="' + safe(product.photoFileId) + '"></div>' : '') +
@@ -378,6 +404,17 @@
           (product.available < 1 ? ' disabled' : '') + '>' + buttonLabel('plus', 'Tambah') + '</button></div></article>';
       }).join('')
       : '<p class="text-secondary">Belum ada produk sesuai pencarian.</p>';
+    if (pagination.count > 1) {
+      pager.innerHTML = '<nav class="product-pagination" aria-label="Halaman produk">' +
+        '<button class="btn btn-outline-dark" data-product-page="previous" type="button"' +
+        (state.productPage === 0 ? ' disabled' : '') + '>' + buttonLabel('back', 'Sebelumnya') + '</button>' +
+        '<p class="product-page-info mb-0" role="status" aria-live="polite">Halaman ' +
+        (state.productPage + 1) + ' dari ' + pagination.count +
+        '<span>' + pagination.first + ' - ' + pagination.last + ' dari ' + products.length + ' produk</span></p>' +
+        '<button class="btn btn-outline-dark" data-product-page="next" type="button"' +
+        (state.productPage + 1 >= pagination.count ? ' disabled' : '') + '>' +
+        buttonLabel('next', 'Berikutnya') + '</button></nav>';
+    }
     if ('IntersectionObserver' in window) {
       const observer = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
@@ -391,7 +428,7 @@
     } else {
       photoObserver = null;
     }
-    document.querySelectorAll('[data-photo]').forEach(function (element) {
+    holder.querySelectorAll('[data-photo]').forEach(function (element) {
       if (photoObserver) {
         photoObserver.observe(element);
       } else {
@@ -1118,6 +1155,16 @@
       state.requestId = '';
       return loadCatalog();
     }
+    if (button.dataset.productPage) {
+      state.productPage += button.dataset.productPage === 'next' ? 1 : -1;
+      renderProducts();
+      document.getElementById('products').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Fokus tetap pada navigasi halaman setelah tombol dibuat ulang.
+      const next = document.querySelector('[data-product-page="' + button.dataset.productPage + '"]:not(:disabled)') ||
+        document.querySelector('[data-product-page]:not(:disabled)');
+      if (next) { next.focus({ preventScroll: true }); }
+      return;
+    }
     if (button.dataset.add || button.dataset.minus) {
       const id = button.dataset.add || button.dataset.minus;
       const product = state.catalog.products.find(function (row) { return row.id === id; });
@@ -1220,6 +1267,9 @@
   // Memperbarui hasil pencarian dan filter segera saat pengguna mengubah isian.
   document.addEventListener('input', function (event) {
     if (['product-search', 'category-filter'].includes(event.target.id)) {
+      state.productPage = 0;
+      state.productSearch = document.getElementById('product-search').value;
+      state.productCategory = document.getElementById('category-filter').value;
       renderProducts();
     } else if (['order-search', 'order-filter'].includes(event.target.id)) {
       state.listPage = 0;
