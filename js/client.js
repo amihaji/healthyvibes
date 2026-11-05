@@ -182,13 +182,11 @@
     }
   }
 
-  // Token pelanggan menggunakan Web Crypto, bukan Math.random.
+  // Kunci pelanggan 10 karakter memakai Web Crypto; 64 karakter memberi pilihan acak merata.
   function randomToken() {
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    return btoa(String.fromCharCode(...bytes))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+    const bytes = crypto.getRandomValues(new Uint8Array(10));
+    return Array.from(bytes, function (byte) { return alphabet[byte & 63]; }).join('');
   }
 
   // Berpindah halaman internal, menutup menu HP, dan menandai navigasi aktif.
@@ -628,7 +626,9 @@
   function renderStatusForm() {
     app.innerHTML = '<section class="panel mx-auto" style="max-width:650px">' +
       '<h1 class="h2">Status Pesanan</h1><p>Nomor pesanan saja tidak cukup. ' +
-      'Masukkan kunci akses privat yang Anda terima setelah memesan.</p>' +
+      'Kunci akses dibuat otomatis dan ditampilkan pada halaman "Pesanan Anda" setelah pesanan berhasil. ' +
+      'Simpan melalui tombol "Unduh Kunci Akses", lalu masukkan kunci tersebut di sini. ' +
+      'Huruf besar dan kecil harus sesuai.</p>' +
       '<form id="status-form">' + field('Nomor pesanan', 'orderId', state.order?.id) +
       field('Kunci akses privat', 'accessToken', state.accessToken) +
       '<button class="btn btn-primary" type="submit">' + buttonLabel('eye', 'Lihat Pesanan') + '</button></form></section>';

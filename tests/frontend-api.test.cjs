@@ -1221,6 +1221,51 @@ test('Nomor pesanan menolak tanpa lock, counter rusak, dan nomor lebih dari 9999
   assert.equal(context.nextOrderId_('2026-11-02T16:00:00Z', []), 'HV-031126-0001');
 });
 
+test('Kunci akses baru berisi 10 karakter acak Web Crypto tanpa Math.random', function () {
+  const client = source('js/client.js');
+  const code = client.slice(client.indexOf('  function randomToken('),
+    client.indexOf('  async function navigate('));
+  const context = vm.createContext({ crypto: crypto });
+  vm.runInContext(code, context);
+  const keys = new Set();
+  for (let i = 0; i < 128; i += 1) {
+    const key = context.randomToken();
+    assert.match(key, /^[A-Za-z0-9_-]{10}$/);
+    keys.add(key);
+  }
+  assert.equal(keys.size, 128);
+  assert.ok(!code.includes('Math.random'));
+  assert.ok(client.includes('Simpan melalui tombol "Unduh Kunci Akses"'));
+});
+
+test('Status menerima kunci baru dan lama, tetapi menolak kunci salah serta tidak membocorkan hash', function () {
+  const { context } = orderNumberContext();
+  const digest = function (value) {
+    return require('node:crypto').createHash('sha256').update(value).digest('hex');
+  };
+  context.digest_ = digest;
+  context.equal_ = function (left, right) { return left === right; };
+  for (const key of ['AbC123_-xy', 'a'.repeat(43)]) {
+    const order = {
+      id: 'HV-051126-0001', accessHash: digest(key),
+      transactionState: 'COMMITTED', snapshotJson: '{"items":[]}'
+    };
+    context.rows_ = function () { return [order]; };
+    assert.equal(context.customerAccess_({ orderId: order.id, accessToken: key }), order);
+    for (const wrong of [key.toUpperCase(), '', 'incorrect1']) {
+      assert.throws(function () {
+        context.customerAccess_({ orderId: order.id, accessToken: wrong });
+      }, /Pesanan atau kunci akses tidak valid/);
+    }
+    context.publicRecord_ = function (record, fields) {
+      return Object.fromEntries(fields.map(function (field) { return [field, record[field]]; }));
+    };
+    const customer = context.customerOrder_(order);
+    assert.ok(!Object.hasOwn(customer, 'accessHash'));
+    assert.ok(!Object.hasOwn(customer, 'accessToken'));
+  }
+});
+
 test('Retry pesanan mempertahankan nomor lama tanpa mengambil urutan baru', function () {
   const { context, properties } = orderNumberContext();
   context.recoverOrders_ = function () {};
@@ -1232,10 +1277,17 @@ test('Retry pesanan mempertahankan nomor lama tanpa mengambil urutan baru', func
   };
   context.customerOrder_ = function (order) { return { id: order.id }; };
   context.nextOrderId_ = function () { throw new Error('Tidak boleh mengambil nomor baru saat retry.'); };
-  assert.equal(context.createOrder_({
-    requestId: 'retry-1', accessToken: 'a'.repeat(43), name: 'Pelanggan',
-    phone: '081234567890', acceptPolicy: true
-  }).id, 'HV-021126-0001');
+  const data = {
+    requestId: 'retry-1', name: 'Pelanggan', phone: '081234567890', acceptPolicy: true
+  };
+  for (const accessToken of ['AbC123_-xy', 'a'.repeat(43)]) {
+    assert.equal(context.createOrder_(Object.assign({}, data, { accessToken })).id, 'HV-021126-0001');
+  }
+  for (const accessToken of ['a'.repeat(9), 'a'.repeat(11), 'a'.repeat(42), 'a'.repeat(44), 'abcde!1234']) {
+    assert.throws(function () {
+      context.createOrder_(Object.assign({}, data, { accessToken }));
+    }, /Kunci akses pelanggan tidak valid/);
+  }
   assert.equal(properties.size, 0);
   assert.ok(source('apps-script/Files.gs').includes("const name = order.id + '.pdf';"));
 });
@@ -1262,7 +1314,7 @@ test('Pembuatan pesanan menyimpan nomor baru dan retry tidak menaikkan counter',
   context.audit_ = function () {};
   context.SpreadsheetApp = { flush: function () {} };
   const data = {
-    requestId: 'pesanan-1', accessToken: 'a'.repeat(43), name: 'Pelanggan',
+    requestId: 'pesanan-1', accessToken: 'AbC123_-xy', name: 'Pelanggan',
     phone: '081234567890', acceptPolicy: true, type: 'DIRECT',
     receipt: 'PICKUP', paymentMethod: 'PICKUP_CASH', date: '2026-11-02', time: '17:00'
   };

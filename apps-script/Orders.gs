@@ -148,7 +148,8 @@ function createOrder_(data) {
   const config = settings_();
   const requestId = text_(data.requestId, 'ID permintaan', 100);
   const accessToken = text_(data.accessToken, 'Kunci akses', 100);
-  if (!/^[A-Za-z0-9_-]{43}$/.test(accessToken)) {
+  // Terima kunci baru 10 karakter serta kunci lama 43 karakter untuk pesanan/retry lama.
+  if (!/^(?:[A-Za-z0-9_-]{10}|[A-Za-z0-9_-]{43})$/.test(accessToken)) {
     throw new Error('Kunci akses pelanggan tidak valid.');
   }
   const payload = {
