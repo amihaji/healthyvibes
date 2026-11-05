@@ -257,6 +257,33 @@ function adminData_(user, data) {
   return result;
 }
 
+// Pemulihan khusus Admin; dispatcher menjalankannya di bawah lock transaksi.
+function resetOrderAccess_(user, data) {
+  if (!user || user.role !== 'Admin') {
+    throw new Error('Hanya Admin yang boleh membuat kunci baru.');
+  }
+  const orderId = text_(data.orderId, 'Nomor pesanan', 100);
+  const phone = text_(data.phone, 'Nomor HP pelanggan', 20);
+  const order = rows_('Orders').find(function (row) { return row.id === orderId; });
+  if (!order || String(order.phone) !== phone) {
+    throw new Error('Nomor pesanan atau nomor HP pelanggan tidak sesuai.');
+  }
+  if (order.transactionState !== 'COMMITTED') {
+    throw new Error('Pesanan belum selesai diproses. Kunci belum dapat diganti.');
+  }
+  if (data.confirmed !== true) {
+    throw new Error('Konfirmasi penggantian kunci wajib dicentang.');
+  }
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+  const accessToken = secureBytes_(10).map(function (byte) {
+    return alphabet[byte & 63];
+  }).join('');
+  // Jangan mencatat kunci atau nomor HP dalam audit maupun kolom pesanan.
+  audit_(user, 'RESET_ORDER_ACCESS', order.id, 'Admin memverifikasi pelanggan dan mengganti kunci akses.');
+  patch_('Orders', order, { accessHash: digest_(accessToken) });
+  return { orderId: order.id, accessToken: accessToken };
+}
+
 // Ringkasan dihitung sekali tanpa menyusun detail laporan atau membaca ulang pesanan.
 function adminSummary_() {
   const orders = rows_('Orders').filter(function (order) {

@@ -1266,6 +1266,125 @@ test('Status menerima kunci baru dan lama, tetapi menolak kunci salah serta tida
   }
 });
 
+// Rotasi memakai data tiruan: tidak menyentuh pesanan maupun akun produksi.
+function recoveryContext(role) {
+  const context = backend();
+  vm.runInContext(source('apps-script/Admin.gs'), context);
+  vm.runInContext(source('apps-script/Auth.gs'), context);
+  vm.runInContext(source('apps-script/Orders.gs'), context);
+  const digest = value => require('node:crypto').createHash('sha256').update(String(value)).digest('hex');
+  const order = {
+    id: 'HV-051126-0001', phone: '081234567890', transactionState: 'COMMITTED',
+    accessHash: digest('oldKey1234'), snapshotJson: '{"items":[]}', total: 50000,
+    paymentStatus: 'PAID', fulfillment: 'CONFIRMED', requestHash: 'unchanged'
+  };
+  const audits = [];
+  const writes = [];
+  let locks = 0;
+  context.digest_ = digest;
+  context.secureBytes_ = length => Array.from(require('node:crypto').randomBytes(length));
+  context.rows_ = name => name === 'Orders' ? [order] : [];
+  context.patch_ = (name, record, changes) => {
+    writes.push({ name, changes });
+    Object.assign(record, changes);
+  };
+  context.audit_ = (user, action, id, detail) => audits.push({ action, id, detail });
+  context.authorize_ = (token, roles) => {
+    if (token !== 'session' || !roles.includes(role)) { throw new Error('Tidak diizinkan'); }
+    return { id: 'admin1', role };
+  };
+  context.withLock_ = operation => { locks += 1; return operation(); };
+  return { context, order, audits, writes, locks: () => locks };
+}
+
+test('Admin mengganti hash di bawah lock; kunci lama ditolak dan kunci baru diterima', function () {
+  const fixture = recoveryContext('Admin');
+  const before = { ...fixture.order };
+  const result = fixture.context.api_({
+    action: 'resetOrderAccess', token: 'session',
+    data: { orderId: before.id, phone: before.phone, confirmed: true }
+  });
+  assert.equal(result.ok, true);
+  assert.match(result.data.accessToken, /^[A-Za-z0-9_-]{10}$/);
+  assert.equal(result.data.orderId, before.id);
+  assert.equal(fixture.locks(), 1);
+  assert.equal(fixture.writes.length, 1);
+  assert.equal(fixture.writes[0].name, 'Orders');
+  assert.deepEqual(Object.keys(fixture.writes[0].changes), ['accessHash']);
+  assert.notEqual(fixture.order.accessHash, before.accessHash);
+  assert.deepEqual({ ...fixture.order, accessHash: before.accessHash }, before);
+  assert.throws(() => fixture.context.customerAccess_({
+    orderId: before.id, accessToken: 'oldKey1234'
+  }), /kunci akses tidak valid/);
+  assert.equal(fixture.context.customerAccess_({
+    orderId: before.id, accessToken: result.data.accessToken
+  }), fixture.order);
+  assert.equal(fixture.audits.length, 1);
+  assert.equal(fixture.audits[0].action, 'RESET_ORDER_ACCESS');
+  const audit = JSON.stringify(fixture.audits);
+  for (const secret of [result.data.accessToken, fixture.order.accessHash, before.phone]) {
+    assert.ok(!audit.includes(secret));
+  }
+});
+
+test('Rotasi ditolak untuk Operator, Viewer dan tanpa sesi, termasuk panggilan langsung', function () {
+  for (const role of ['Operator', 'Viewer', 'Admin']) {
+    const fixture = recoveryContext(role);
+    const data = { orderId: fixture.order.id, phone: fixture.order.phone, confirmed: true };
+    const result = fixture.context.api_({
+      action: 'resetOrderAccess', token: role === 'Admin' ? '' : 'session', data
+    });
+    assert.equal(result.ok, false);
+    assert.equal(fixture.writes.length, 0);
+    assert.equal(fixture.audits.length, 0);
+    if (role !== 'Admin') {
+      assert.throws(() => fixture.context.resetOrderAccess_({ role }, data), /Hanya Admin/);
+    }
+  }
+});
+
+test('Nomor pesanan, HP, konfirmasi, dan status transaksi diperiksa sebelum rotasi', function () {
+  const fixture = recoveryContext('Admin');
+  const valid = { orderId: fixture.order.id, phone: fixture.order.phone, confirmed: true };
+  for (const changes of [
+    { orderId: 'tidak-ada' }, { phone: '089999999999' },
+    { confirmed: false }, { confirmed: 'true' }, { phone: '' }
+  ]) {
+    const result = fixture.context.api_({
+      action: 'resetOrderAccess', token: 'session', data: { ...valid, ...changes }
+    });
+    assert.equal(result.ok, false);
+  }
+  fixture.order.transactionState = 'PREPARING';
+  assert.equal(fixture.context.api_({
+    action: 'resetOrderAccess', token: 'session', data: valid
+  }).ok, false);
+  assert.equal(fixture.writes.length, 0);
+  assert.equal(fixture.audits.length, 0);
+});
+
+test('Form pemulihan meminta HP kosong dan konfirmasi; hasil hanya di dialog', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({
+    safe: value => String(value || ''),
+    buttonLabel: (icon, label) => label,
+    field: (label, name, value) => `<input name="${name}" value="${value}">`
+  });
+  vm.runInContext(client.slice(client.indexOf('  function orderAccessForm('),
+    client.indexOf('  function masterFields(')), context);
+  const html = context.orderAccessForm({ id: 'order1', phone: '08123', transactionState: 'COMMITTED' });
+  assert.ok(html.includes('name="phone" value=""'));
+  assert.ok(html.includes('name="confirmed" required'));
+  assert.ok(!html.includes('08123'));
+  assert.equal(context.orderAccessForm({ transactionState: 'PREPARING' }), '');
+  assert.ok(client.includes("state.user.role === 'Admin' ? orderAccessForm(order) : ''"));
+  assert.ok(client.includes("dialog.addEventListener('close'"));
+  const handler = client.slice(client.indexOf("} else if (form.id === 'reset-access-form')"),
+    client.indexOf("} else if (form.id === 'order-action-form')"));
+  assert.ok(handler.includes('readonly'));
+  assert.ok(!handler.includes('state.accessToken ='));
+});
+
 test('Retry pesanan mempertahankan nomor lama tanpa mengambil urutan baru', function () {
   const { context, properties } = orderNumberContext();
   context.recoverOrders_ = function () {};

@@ -139,6 +139,7 @@ function dispatch_(request) {
     saveSettings: ['Admin'],
     uploadStoreAsset: ['Admin'],
     verifyPayment: ['Admin', 'Operator'],
+    resetOrderAccess: ['Admin'],
     cancelOrder: ['Admin', 'Operator'],
     rejectCancellation: ['Admin', 'Operator'],
     refund: ['Admin', 'Operator'],
@@ -161,6 +162,7 @@ function dispatch_(request) {
     saveSettings: function () { return saveSettings_(user, data); },
     uploadStoreAsset: function () { return uploadStoreAsset_(user, data); },
     verifyPayment: function () { return verifyPayment_(user, data); },
+    resetOrderAccess: function () { return resetOrderAccess_(user, data); },
     cancelOrder: function () { return cancelOrder_(user, data); },
     rejectCancellation: function () {
       const order = rows_('Orders').find(function (row) { return row.id === data.orderId; });

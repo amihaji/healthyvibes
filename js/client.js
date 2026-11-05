@@ -182,6 +182,11 @@
     }
   }
 
+  // Hapus isi dialog setelah ditutup agar kunci pemulihan tidak tertinggal.
+  dialog.addEventListener('close', function () {
+    document.getElementById('editor-content').innerHTML = '';
+  });
+
   // Kunci pelanggan 10 karakter memakai Web Crypto; 64 karakter memberi pilihan acak merata.
   function randomToken() {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
@@ -885,6 +890,7 @@
           '" type="button">' + buttonLabel('eye', 'Lihat ' + file.kind) + '</button>';
       }).join('') + '<button class="btn btn-green" data-invoice="' + safe(id) +
       '" type="button">' + buttonLabel('download', 'Invoice PDF') + '</button></div><hr>' +
+      (state.user.role === 'Admin' ? orderAccessForm(order) : '') +
       '<form id="order-action-form" data-id="' + safe(id) + '">' +
       selectField('Tindakan', 'action', [
         ['verifyPayment', 'Verifikasi pembayaran dari transaksi masuk'],
@@ -913,6 +919,23 @@
       '<label class="form-label">Foto tanda terima</label>' +
       '<input type="file" name="photo" class="form-control mb-2" accept="image/jpeg,image/png,image/webp" required>' +
       '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('upload', 'Unggah ke TANDATERIMA') + '</button></form>');
+  }
+
+  // Nomor HP harus diketik dari informasi pelanggan, bukan diisi otomatis.
+  function orderAccessForm(order) {
+    if (order.transactionState !== 'COMMITTED') { return ''; }
+    return '<section aria-labelledby="reset-access-title"><h2 class="h5" id="reset-access-title">' +
+      buttonLabel('key', 'Pemulihan Kunci Akses') + '</h2>' +
+      '<p class="small">Pastikan identitas pelanggan sesuai dengan pesanan. ' +
+      'Kunci lama akan tidak berlaku. Kunci baru hanya tampil sampai detail ini ditutup.</p>' +
+      '<form id="reset-access-form" data-id="' + safe(order.id) + '">' +
+      field('Nomor HP pelanggan (sesuai pesanan)', 'phone', '', 'tel') +
+      '<label class="d-flex align-items-center gap-2 mb-3">' +
+      '<input class="form-check-input m-0" type="checkbox" name="confirmed" required>' +
+      '<span>Saya sudah memverifikasi pelanggan dan setuju mengganti kunci lama.</span></label>' +
+      '<div id="reset-access-result" role="status" aria-live="polite"></div>' +
+      '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit">' +
+      buttonLabel('key', 'Buat Kunci Baru') + '</button></div></form></section><hr>';
   }
 
   // Form master dikonfigurasi per tabel agar tidak menampilkan password hash.
@@ -1373,7 +1396,12 @@
     try {
       await submitAction(form);
     } catch (error) {
-      notify(error.message, true);
+      if (form.id === 'reset-access-form') {
+        form.querySelector('#reset-access-result').innerHTML =
+          '<p class="alert alert-danger">' + safe(error.message) + '</p>';
+      } else {
+        notify(error.message, true);
+      }
     } finally {
       submit.disabled = false;
     }
@@ -1451,6 +1479,19 @@
       await rpc('uploadStoreAsset', Object.assign({}, photo, { asset: data.asset }));
       await loadAdmin();
       notify('Aset toko tersimpan di PRODUK.');
+    } else if (form.id === 'reset-access-form') {
+      const result = await rpc('resetOrderAccess', {
+        orderId: form.dataset.id, phone: data.phone, confirmed: data.confirmed === 'on'
+      });
+      // Hasil hanya di dialog, tidak disimpan di state, URL, atau penyimpanan browser.
+      form.innerHTML = '<div class="alert alert-success" role="status">' +
+        '<p>Kunci baru berhasil dibuat. Kunci lama tidak berlaku lagi.</p>' +
+        '<p>Nomor pesanan: <strong>' + safe(result.orderId) + '</strong></p>' +
+        '<label class="form-label" for="recovered-access">Kunci akses baru (10 karakter)</label>' +
+        '<input id="recovered-access" class="form-control" type="text" readonly value="' +
+        safe(result.accessToken) + '">' +
+        '<p class="small mt-2 mb-0">Salin dan sampaikan secara pribadi kepada pelanggan. ' +
+        'Huruf besar dan kecil harus sesuai. Kunci ini tidak dapat dilihat kembali setelah dialog ditutup.</p></div>';
     } else if (form.id === 'order-action-form') {
       if (!confirm('Jalankan tindakan ini pada pesanan?')) {
         return;
