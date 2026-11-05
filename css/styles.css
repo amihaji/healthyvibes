@@ -377,8 +377,19 @@
     margin-bottom: 16px;
   }
   /* Kotak centang dan teks tidak terpisah baris atau melebar berlebihan. */
-  .availability-option { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-  .availability-option .form-check-input { float: none; margin: 0; flex-shrink: 0; }
+  .availability-option { display: flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 44px; }
+  /* Ukuran khusus menghindari aturan input 44px yang membuat checkbox menjadi memanjang. */
+  .availability-option .form-check-input {
+    float: none;
+    margin: 0;
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    min-height: 22px;
+    border-radius: 0;
+  }
+  /* Centang memakai biru tua brand dengan tanda putih dari Bootstrap. */
+  .availability-option .form-check-input:checked { background-color: var(--green); border-color: var(--green); }
 
   /* Kursor tangan pada filter aktif; teks ringkas di samping ikon. */
   #availability-filter:not(:disabled),

@@ -539,6 +539,15 @@ test('Halaman produk dibatasi dua baris dan nomor halaman tetap valid setelah fi
   }
 });
 
+test('Checkbox tersedia berbentuk persegi tanpa mengikuti tinggi minimum input umum', function () {
+  const css = source('css/styles.css');
+  const rule = css.match(/\.availability-option \.form-check-input \{([^}]+)\}/)[1];
+  for (const declaration of ['width: 22px', 'height: 22px', 'min-height: 22px', 'border-radius: 0']) {
+    assert.ok(rule.includes(declaration));
+  }
+  assert.match(css, /\.availability-option \{[^}]*min-height: 44px/);
+});
+
 test('Filter tersedia menyaring stok/kuota aktif sebelum halaman serta bekerja dengan pencarian dan kategori', function () {
   const client = source('js/client.js');
   const context = vm.createContext({ state: { availableOnly: true } });
