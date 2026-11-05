@@ -312,21 +312,21 @@
       'pembayaran maksimal 18.00 WITA. ' +
       (state.catalogLoading || state.catalogError || catalog.settings.ordersEnabled === 'true'
         ? '' : 'Toko belum membuka pemesanan.') +
-      '</div><div class="row g-2 mb-3"><div class="col-7">' +
+      '</div><div class="catalog-filters">' +
       '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat..." value="' +
       safe(state.productSearch || '') + '"' +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
-      '</div><div class="col-5"><select class="form-select" id="category-filter" aria-label="Kategori"' +
+      '<select class="form-select" id="category-filter" aria-label="Kategori"' +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<option value="">Semua kategori</option>' + catalog.categories.map(function (row) {
         return '<option value="' + safe(row.id) + '"' +
           (row.id === state.productCategory ? ' selected' : '') + '>' + safe(row.name) + '</option>';
-      }).join('') + '</select></div><div class="col-12">' +
-      '<div class="form-check"><input class="form-check-input" type="checkbox" id="availability-filter"' +
+      }).join('') + '</select><div class="availability-option">' +
+      '<input class="form-check-input" type="checkbox" id="availability-filter"' +
       (state.availableOnly !== false ? ' checked' : '') +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<label class="form-check-label d-inline-flex align-items-center gap-2" for="availability-filter">' +
-      buttonLabel('stock', 'Tersedia saja') + '</label></div></div></div>' +
+      buttonLabel('stock', 'Tersedia saja') + '</label></div></div>' +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
       '<div id="product-pagination"></div>' +
       '</section><aside class="panel cart-panel">' + renderCart() + '</aside></div>' +

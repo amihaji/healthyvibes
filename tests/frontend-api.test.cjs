@@ -562,6 +562,9 @@ test('Filter tersedia menyaring stok/kuota aktif sebelum halaman serta bekerja d
   context.state.availableOnly = false;
   assert.deepEqual(ids(context.filterCatalogProducts(products, '', '')), ['a', 'b', 'c', 'd']);
   assert.match(client, /id="availability-filter"/);
+  assert.ok(client.includes('class="catalog-filters"'));
+  assert.ok(client.includes('</select><div class="availability-option">'));
+  assert.match(source('css/styles.css'), /\.catalog-filters #product-search \{ grid-column: 1 \/ -1; \}/);
   assert.ok(client.includes("availableOnly: true"));
   assert.ok(client.includes('state.availableOnly = event.target.checked'));
 });
