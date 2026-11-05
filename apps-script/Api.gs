@@ -119,7 +119,6 @@ function dispatch_(request) {
     quote: function () { return quote_(data); },
     createOrder: function () { return createOrder_(data); },
     orderStatus: function () { return customerOrder_(customerAccess_(data)); },
-    cancelRequest: function () { return requestCancellation_(data); },
     customerUpload: function () { return upload_(null, data); },
     customerInvoice: function () {
       return download_(null, Object.assign({}, data, { kind: 'INVOICE' }));
@@ -140,9 +139,6 @@ function dispatch_(request) {
     uploadStoreAsset: ['Admin'],
     verifyPayment: ['Admin', 'Operator'],
     resetOrderAccess: ['Admin'],
-    cancelOrder: ['Admin', 'Operator'],
-    rejectCancellation: ['Admin', 'Operator'],
-    refund: ['Admin', 'Operator'],
     fulfillment: ['Admin', 'Operator'],
     upload: ['Admin', 'Operator'],
     download: ['Admin', 'Operator'],
@@ -163,17 +159,6 @@ function dispatch_(request) {
     uploadStoreAsset: function () { return uploadStoreAsset_(user, data); },
     verifyPayment: function () { return verifyPayment_(user, data); },
     resetOrderAccess: function () { return resetOrderAccess_(user, data); },
-    cancelOrder: function () { return cancelOrder_(user, data); },
-    rejectCancellation: function () {
-      const order = rows_('Orders').find(function (row) { return row.id === data.orderId; });
-      if (!order || !order.cancelRequestedAt || order.fulfillment === 'CANCELLED') {
-        throw new Error('Tidak ada permintaan pembatalan aktif.');
-      }
-      patch_('Orders', order, { cancelRequestedAt: '', cancelReason: '' });
-      audit_(user, 'REJECT_CANCELLATION', order.id, text_(data.reason, 'Alasan', 500));
-      return true;
-    },
-    refund: function () { return completeRefund_(user, data); },
     fulfillment: function () { return fulfillment_(user, data); },
     upload: function () { return upload_(user, data); },
     download: function () { return download_(user, data); },
@@ -243,6 +228,8 @@ function catalog_(data) {
   });
   return {
     products: result,
+    shippingRates: rows_('ShippingRates').filter(function (row) { return active_(row.active); })
+      .map(function (row) { return publicRecord_(row, ['id', 'name', 'price']); }),
     // Voucher harus aktif, masih dalam masa berlaku, dan cocok dengan jenis pesanan.
     vouchers: config.discountRounding ? rows_('Vouchers').filter(function (row) {
       return validPeriod_(row) && (row.orderType === 'ALL' || row.orderType === type);
@@ -256,7 +243,7 @@ function catalog_(data) {
     schedule: schedule,
     settings: publicRecord_(config, [
       'storeName', 'address', 'contact', 'bankInstructions',
-      'ordersEnabled', 'deliveryVerified', 'logoFileId', 'qrisFileId'
+      'ordersEnabled', 'logoFileId', 'qrisFileId'
     ])
   };
 }

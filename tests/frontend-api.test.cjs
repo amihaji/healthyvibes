@@ -839,7 +839,7 @@ function adminContext(tables, reads) {
   return context;
 }
 
-test('Dashboard membaca tiga tabel sekali dan tidak menyusun laporan lengkap', function () {
+test('Dashboard membaca dua tabel sekali dan tidak menyusun laporan lengkap', function () {
   const reads = [];
   const context = adminContext({
     Orders: [
@@ -852,9 +852,9 @@ test('Dashboard membaca tiga tabel sekali dan tidak menyusun laporan lengkap', f
   }, reads);
   context.report_ = function () { throw new Error('Dashboard tidak boleh menyusun laporan'); };
   const result = context.adminData_({ role: 'Admin' }, { page: 'Dashboard' });
-  assert.deepEqual(reads, ['Orders', 'Payments', 'Refunds']);
+  assert.deepEqual(reads, ['Orders', 'Payments']);
   assert.deepEqual(JSON.parse(JSON.stringify(result.kpi)),
-    { orders: 2, payments: 300, refunds: 10, pending: 1, refundPending: 1 });
+    { orders: 2, payments: 300, pending: 1 });
   assert.deepEqual(Object.keys(result.tables), []);
 });
 
@@ -863,7 +863,7 @@ test('Data Admin hanya memuat tabel menu aktif beserta kebutuhan formulirnya', f
     ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products']],
     ['PreorderCapacity', ['PreorderCapacity', 'Products']], ['Discounts', ['Discounts', 'Products']],
     ['Pesanan', ['Orders', 'Files', 'Shipping']], ['Laporan', ['Categories']],
-    ['Pengaturan', ['Settings']], ['Backup', []], ['Users', ['Users']]
+    ['Pengaturan', ['Settings']], ['Backup', []], ['Users', ['Users']], ['ShippingRates', ['ShippingRates']]
   ]) {
     const reads = [];
     const context = adminContext({ Users: [{ id: 'u', name: 'Admin uji', role: 'Admin', passwordHash: 'RAHASIA' }],
@@ -879,7 +879,7 @@ test('Menu Admin tetap memeriksa sesi dan menolak menu di luar hak akses', funct
   const reads = [];
   const context = adminContext({}, reads);
   for (const role of ['Viewer', 'Operator']) {
-    for (const page of ['Users', 'Pengaturan', 'Backup', 'Sessions']) {
+    for (const page of ['Users', 'ShippingRates', 'Pengaturan', 'Backup', 'Sessions']) {
       assert.throws(function () { context.adminData_({ role: role }, { page: page }); }, /tidak diizinkan/);
     }
   }
@@ -964,7 +964,7 @@ test('Navigasi pengelola berikon sesuai role, halaman aktif, dan ukuran layar', 
       assert.ok(app.innerHTML.includes('id="admin-navigation"' + (mobile ? '>' : ' open>')));
       assert.ok(app.innerHTML.includes('aria-current="page"'));
       const buttons = Array.from(app.innerHTML.matchAll(/<button\b[^>]*data-admin-page="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g));
-      assert.equal(buttons.length, role === 'Admin' ? 14 : role === 'Operator' ? 7 : 2);
+      assert.equal(buttons.length, role === 'Admin' ? 15 : role === 'Operator' ? 7 : 2);
       for (const button of buttons) {
         assert.ok(button[2].includes('<svg'), button[1]);
         assert.ok(button[2].includes('class="button-text"'), button[1]);
@@ -1131,7 +1131,7 @@ test('Tampilan WITA memakai DD/MM/YYYY HH:mm dan menolak tanggal yang tidak ada'
   assert.throws(function () { context.fromWitaInput('02/11/2026 24:00'); }, /tidak valid/);
 });
 
-test('Aturan WITA, voucher, refund, dan reservasi tetap lulus', function () {
+test('Aturan WITA, voucher, tagihan ongkir, dan reservasi tetap lulus', function () {
   const context = vm.createContext({});
   for (const file of ['Store.gs', 'Rules.gs', 'Orders.gs', 'Tests.gs']) {
     vm.runInContext(source('apps-script/' + file), context);
@@ -1558,10 +1558,9 @@ function actionFormContext() {
   const nodes = {};
   const form = { dataset: { id: order.id }, elements: { action: { value: '' } },
     querySelector: selector => nodes[selector] || (nodes[selector] = {}) };
-  for (const name of ['status', 'party', 'amount', 'reference', 'reason', 'courier',
-    'tracking', 'customerAgreed', 'feePaidToCourier']) {
+  for (const name of ['status', 'amount', 'reference', 'courier', 'tracking']) {
     form.elements[name] = {
-      type: ['customerAgreed', 'feePaidToCourier'].includes(name) ? 'checkbox' : 'text',
+      type: 'text',
       value: 'nilai lama', checked: true, disabled: false, required: true
     };
   }
@@ -1581,12 +1580,10 @@ test('Semua input tindakan nonaktif secara default; pilihan hanya mengaktifkan i
   assert.ok(Object.entries(form.elements).filter(([key]) => key !== 'action')
     .every(([, input]) => input.disabled && !input.required));
   const expected = {
-    verifyPayment: ['amount', 'reference'], fulfillment: ['status'],
-    cancelOrder: ['party', 'reason'], rejectCancellation: ['reason'],
-    refund: ['reference'], shipping: ['amount', 'courier', 'tracking', 'customerAgreed', 'feePaidToCourier']
+    verifyPayment: ['amount', 'reference'], fulfillment: ['status'], shipping: ['courier', 'tracking']
   };
   for (const [action, fields] of Object.entries(expected)) {
-    order.fulfillment = action === 'refund' ? 'CANCELLED' : 'NEW';
+    order.fulfillment = 'NEW';
     form.elements.action.value = action;
     context.updateOrderAction(form);
     const enabled = Object.entries(form.elements).filter(([key, input]) => key !== 'action' && !input.disabled)
@@ -1600,7 +1597,6 @@ test('Semua input tindakan nonaktif secara default; pilihan hanya mengaktifkan i
   }
   assert.equal(form.elements.reference.value, '');
   assert.equal(form.elements.amount.value, '');
-  assert.equal(form.elements.customerAgreed.checked, false);
   assert.equal(context.orderActionRules('tidak-valid'), null);
 });
 
@@ -1614,9 +1610,6 @@ test('Tahap tidak dapat dilompati; tindakan tidak berlaku tetap disabled', funct
   assert.ok(!form.elements.status.innerHTML.includes('DISPATCHED'));
   const cases = [
     ['shipping', { receipt: 'PICKUP' }], ['verifyPayment', { paymentStatus: 'PAID' }],
-    ['refund', { fulfillment: 'CANCELLED', refundStatus: 'COMPLETED' }],
-    ['rejectCancellation', { cancelRequestedAt: '' }],
-    ['cancelOrder', { fulfillment: 'COMPLETED' }],
     ['fulfillment', { fulfillment: 'COMPLETED' }]
   ];
   for (const [action, changes] of cases) {
@@ -1629,7 +1622,7 @@ test('Tahap tidak dapat dilompati; tindakan tidak berlaku tetap disabled', funct
   }
 });
 
-test('Status pelanggan memisahkan pembayaran, tahap berjalan, pembatalan dan refund', function () {
+test('Status pelanggan memisahkan pembayaran dan tahap; riwayat lama tetap terbaca tanpa opsi pembatalan', function () {
   const client = source('js/client.js');
   const context = vm.createContext({ safe: String, rupiah: String, dateTimeText: String });
   vm.runInContext(client.slice(client.indexOf('  function fulfillmentLabel('),
@@ -1645,20 +1638,15 @@ test('Status pelanggan memisahkan pembayaran, tahap berjalan, pembatalan dan ref
     fulfillment: 'PREPARING', receipt: 'PICKUP', paymentStatus: 'UNPAID', cancelRequestedAt: 'stamp'
   });
   assert.ok(pending.includes('Belum lunas'));
-  assert.ok(pending.includes('Pesanan belum dibatalkan'));
+  assert.ok(!pending.includes('Permintaan pembatalan'));
   assert.ok(!pending.includes('Sedang dikirim'));
   const cancelled = context.orderStatusPanel({
     fulfillment: 'CANCELLED', paymentStatus: 'PAID', refundStatus: 'PENDING',
     refundAmount: 45000, refundDueAt: '2026-11-06'
   });
   assert.ok(cancelled.includes('Dibatalkan'));
-  assert.ok(cancelled.includes('Menunggu transfer toko'));
-  assert.ok(cancelled.includes('45000'));
-  assert.ok(cancelled.includes('Batas pengembalian'));
+  assert.ok(!cancelled.includes('Menunggu transfer toko'));
   assert.ok(!cancelled.includes('order-progress'));
-  assert.ok(context.orderStatusPanel({
-    fulfillment: 'CANCELLED', refundStatus: 'COMPLETED'
-  }).includes('Sudah ditransfer'));
 });
 
 test('Detail pelanggan memuat bagian terpisah dan tidak meminta bukti untuk pesanan lunas', function () {
@@ -1683,7 +1671,7 @@ test('Detail pelanggan memuat bagian terpisah dan tidak meminta bukti untuk pesa
   context.state.order.fulfillment = 'NEW';
   context.renderOrder();
   assert.ok(context.app.innerHTML.includes('id="proof-form"'));
-  assert.ok(context.app.innerHTML.includes('id="cancel-form"'));
+  assert.ok(!context.app.innerHTML.includes('id="cancel-form"'));
 });
 
 test('Detail Admin menampilkan satu struk terbaru dan pemulihan kunci di bawah tindakan', function () {
@@ -1697,7 +1685,7 @@ test('Detail Admin menampilkan satu struk terbaru dan pemulihan kunci di bawah t
         { orderId: 'order1', kind: 'STRUK', driveFileId: 'latest', createdAt: '2026-11-05' },
         { orderId: 'order2', kind: 'STRUK', driveFileId: 'other', createdAt: '2026-11-06' }
       ]
-    } } }, safe: String, rupiah: String, orderStatusPanel: () => '',
+    } } }, safe: String, rupiah: String, orderStatusPanel: () => '', orderCharges: () => '',
     buttonLabel: (icon, label) => label, field: () => '', selectField: () => '',
     showEditor: (title, content) => { html = content; }
   });
@@ -1712,7 +1700,7 @@ test('Detail Admin menampilkan satu struk terbaru dan pemulihan kunci di bawah t
   assert.ok(html.includes('id="order-action-result"'));
 });
 
-test('Tanda terima konsumen hanya tersedia setelah dikirim atau siap diambil', function () {
+test('Status tanda terima selalu terlihat; input hanya aktif setelah dikirim atau siap diambil', function () {
   const client = source('js/client.js');
   const context = vm.createContext({
     app: { innerHTML: '' }, state: { accessToken: 'key', order: { id: 'o1', items: [], paymentStatus: 'PAID' } },
@@ -1726,7 +1714,9 @@ test('Tanda terima konsumen hanya tersedia setelah dikirim atau siap diambil', f
       Object.assign(context.state.order, { receipt, fulfillment, handoverUploaded: false });
       context.renderOrder();
       const eligible = receipt === 'PICKUP' ? fulfillment === 'READY' : fulfillment === 'DISPATCHED';
-      assert.equal(context.app.innerHTML.includes('id="handover-form"'), eligible, receipt + '/' + fulfillment);
+      assert.ok(context.app.innerHTML.includes('Status: Belum diunggah.'));
+      assert.ok(context.app.innerHTML.includes('id="handover-form"'));
+      assert.equal(/id="handover-photo"[^>]* disabled/.test(context.app.innerHTML), !eligible, receipt + '/' + fulfillment);
     }
   }
   context.state.order.handoverUploaded = true;
@@ -1796,25 +1786,17 @@ test('Unggahan tanda terima menolak Admin, kunci salah, tahap awal, dan tanpa ko
   assert.equal(files.length, 1);
 });
 
-test('Sedang dikirim berhasil setelah lunas, ongkir disetujui, dan layanan GoSend aktif', function () {
+test('Sedang dikirim memerlukan pelunasan, tanpa konfirmasi ongkir tambahan', function () {
   const { context, order, writes } = recoveryContext('Admin');
   Object.assign(order, { receipt: 'DELIVERY', fulfillment: 'READY' });
-  let shipping = null;
-  let verified = false;
   let paid = false;
-  context.rows_ = name => name === 'Orders' ? [order] : name === 'Shipping' && shipping ? [shipping] : [];
+  context.rows_ = name => name === 'Orders' ? [order] : [];
   context.paidAmount_ = () => paid ? order.total : 0;
-  context.settings_ = () => ({ deliveryVerified: verified ? 'true' : 'false' });
+  context.settings_ = () => { throw new Error('Tidak perlu pengaturan GoSend'); };
   const run = () => context.fulfillment_({ id: 'admin1' }, { orderId: order.id, status: 'DISPATCHED' });
   assert.throws(run, /lunas/);
   paid = true;
-  assert.throws(run, /Catat GoSend/);
-  shipping = { orderId: order.id, customerAgreedAt: '' };
-  assert.throws(run, /persetujuan/);
-  shipping.customerAgreedAt = 'stamp';
-  assert.throws(run, /Pengaturan/);
   assert.equal(writes.length, 0);
-  verified = true;
   run();
   assert.equal(order.fulfillment, 'DISPATCHED');
   assert.equal(writes.length, 1);
@@ -1840,6 +1822,267 @@ test('Form tanda terima mengirim akses pelanggan, bukan sesi Admin', async funct
   assert.equal(request.data.accessToken, 'customer-key');
   assert.equal(request.data.received, true);
   assert.equal(context.state.order.handoverUploaded, true);
+});
+
+// Seluruh transaksi ongkir memakai Sheets/Drive tiruan, bukan layanan produksi.
+function shippingContext() {
+  const { context, properties } = orderNumberContext();
+  for (const file of ['Schema.gs', 'Admin.gs', 'Api.gs', 'Files.gs']) {
+    vm.runInContext(source('apps-script/' + file), context);
+  }
+  const tables = Object.fromEntries(Object.keys(context.HV_SCHEMA || vm.runInContext('HV_SCHEMA', context))
+    .map(name => [name, []]));
+  tables.Products.push({ id: 'p1', name: 'Produk', categoryId: 'cat', price: 50000, active: true });
+  tables.ReadyStock.push({ id: 'pool1', productId: 'p1', capacity: 20 });
+  tables.PreorderCapacity.push({ id: 'prepool1', productId: 'p1', date: '2026-11-06', capacity: 20 });
+  tables.ServiceAreas.push({ id: 'area1', name: 'Makassar', active: true });
+  tables.ShippingRates.push(
+    { id: 'gojek', name: 'Gojek', price: 10000, active: true },
+    { id: 'grab', name: 'Grab', price: 11000, active: true },
+    { id: 'off', name: 'Tidak aktif', price: 1, active: false });
+  tables.Vouchers.push({ code: 'HEMAT', type: 'AMOUNT', value: 5000, minimum: 50000,
+    maximum: 0, orderType: 'ALL', active: true });
+  const schema = vm.runInContext('HV_SCHEMA', context);
+  context.rows_ = name => tables[name] || [];
+  context.withLock_ = operation => operation();
+  context.settings_ = () => ({ ordersEnabled: 'true', discountRounding: 'NEAREST', storeName: 'Toko Uji' });
+  context.slots_ = type => ({ date: type === 'PREORDER' ? '2026-11-06' : '2026-11-05', times: ['16:00'] });
+  context.clock_ = () => ({ date: '2026-11-05', tomorrow: '2026-11-06' });
+  context.now_ = () => '2026-11-05T07:00:00Z';
+  context.validPeriod_ = row => row.active === true;
+  context.digest_ = value => require('node:crypto').createHash('sha256').update(String(value)).digest('hex');
+  context.equal_ = (a, b) => a === b;
+  let counter = 0;
+  context.id_ = () => 'id' + (++counter);
+  context.audit_ = () => {};
+  context.append_ = (table, record) => {
+    const saved = Object.fromEntries(Array.from(schema[table], key => [key, record[key] == null ? '' : record[key]]));
+    tables[table].push(saved);
+    return saved;
+  };
+  context.patch_ = (table, record, changes) => Object.assign(record, changes);
+  context.SpreadsheetApp = { flush: () => {} };
+  context.authorize_ = (token, roles) => {
+    const role = token || 'Admin';
+    if (!roles.includes(role)) { throw new Error('Tidak berwenang'); }
+    return { id: 'admin1', role };
+  };
+  return { context, tables, properties, data: {
+    requestId: 'order-request-1', accessToken: 'AbC123_-xy', name: 'Pelanggan',
+    phone: '081234567890', type: 'DIRECT', receipt: 'DELIVERY', shippingRateId: 'gojek',
+    areaId: 'area1', address: 'Alamat Makassar', paymentMethod: 'TRANSFER', acceptPolicy: true,
+    date: '2026-11-05', time: '16:00', items: [{ productId: 'p1', quantity: 1 }], voucherCode: 'HEMAT'
+  } };
+}
+
+test('Quote menjumlahkan produk setelah voucher dan ongkir; nominal dari browser diabaikan', function () {
+  const { context, data } = shippingContext();
+  const result = context.quote_({ ...data, shippingFee: 1, total: 1 });
+  assert.equal(result.productTotal, 45000);
+  assert.equal(result.shippingFee, 10000);
+  assert.equal(result.total, 55000);
+  assert.equal(result.shipping.provider, 'Gojek');
+  assert.equal(context.quote_({ ...data, shippingRateId: 'grab' }).total, 56000);
+  const pickup = context.quote_({ ...data, receipt: 'PICKUP', shippingRateId: 'off' });
+  assert.equal(pickup.shippingFee, 0);
+  assert.equal(pickup.total, 45000);
+  for (const id of ['', 'missing', 'off']) {
+    assert.throws(() => context.quote_({ ...data, shippingRateId: id }), /pengiriman/);
+  }
+});
+
+test('Ambil sendiri tidak dikenakan ongkir; preorder antar tetap memasukkan ongkir dan batas pembayaran', function () {
+  const { context, tables, data } = shippingContext();
+  const pickup = context.createOrder_({ ...data, receipt: 'PICKUP', paymentMethod: 'PICKUP_CASH' });
+  assert.equal(pickup.total, 45000);
+  assert.equal(pickup.shippingFee, 0);
+  assert.equal(tables.Shipping.length, 0);
+  const preorder = context.createOrder_({ ...data, requestId: 'preorder-1', type: 'PREORDER', date: '2026-11-06' });
+  assert.equal(preorder.total, 55000);
+  assert.equal(preorder.shippingFee, 10000);
+  assert.equal(preorder.paymentDeadline, '2026-11-05T10:00:00.000Z');
+  assert.equal(tables.Shipping.length, 1);
+  assert.throws(() => context.createOrder_({ ...data, requestId: 'wrong-cash', paymentMethod: 'PICKUP_CASH' }), /Bayar saat ambil/);
+});
+
+test('Minimum voucher tidak dihitung dari ongkir, termasuk layanan dengan tarif nol', function () {
+  const { context, tables, data } = shippingContext();
+  tables.Products[0].price = 49000;
+  assert.throws(() => context.quote_(data), /Minimum belanja/);
+  tables.ShippingRates[0].price = 0;
+  const free = context.quote_({ ...data, voucherCode: '' });
+  assert.equal(free.total, 49000);
+  assert.equal(free.shippingFee, 0);
+  assert.equal(free.shipping.included, true);
+});
+
+test('Ongkir baru disimpan di snapshot; retry dan rekonsiliasi tidak memakai harga terbaru', function () {
+  const { context, tables, data, properties } = shippingContext();
+  const result = context.createOrder_(data);
+  assert.equal(result.total, 55000);
+  assert.equal(result.productTotal, 45000);
+  assert.equal(result.shippingFee, 10000);
+  assert.equal(tables.Shipping.length, 1);
+  assert.equal(tables.Shipping[0].fee, 10000);
+  tables.ShippingRates[0].price = 20000;
+  tables.ShippingRates[0].name = 'Nama baru';
+  assert.equal(context.createOrder_(data).shippingProvider, 'Gojek');
+  assert.equal(context.createOrder_(data).total, 55000);
+  assert.equal(tables.Orders.length, 1);
+  assert.equal(tables.Shipping.length, 1);
+  assert.equal(JSON.parse(properties.get('ORDER_NUMBER_COUNTER')).sequence, 1);
+  assert.throws(() => context.createOrder_({ ...data, shippingRateId: 'grab' }), /data berbeda/);
+  tables.Orders[0].transactionState = 'PREPARING';
+  tables.Shipping.length = 0;
+  context.recoverOrders_();
+  assert.equal(tables.Shipping[0].fee, 10000);
+  assert.equal(tables.Shipping[0].provider, 'Gojek');
+  assert.equal(tables.OrderItems.length, 1);
+  assert.equal(tables.StockLedger.length, 1);
+});
+
+test('Pembayaran dan pengiriman memakai total termasuk ongkir tanpa checkbox tambahan', function () {
+  const { context, tables, data } = shippingContext();
+  const order = context.createOrder_(data);
+  assert.throws(() => context.verifyPayment_({ id: 'admin1' }, {
+    orderId: order.id, amount: 45000, reference: 'BANK-1'
+  }), /total tagihan/);
+  context.verifyPayment_({ id: 'admin1' }, { orderId: order.id, amount: 55000, reference: 'BANK-1' });
+  assert.equal(tables.Payments[0].amount, 55000);
+  for (const status of ['CONFIRMED', 'PREPARING', 'READY', 'DISPATCHED']) {
+    context.fulfillment_({ id: 'admin1' }, { orderId: order.id, status });
+  }
+  assert.equal(tables.Orders[0].fulfillment, 'DISPATCHED');
+  context.saveShipping_({ id: 'admin1' }, { orderId: order.id, fee: 1, courier: 'Kurir Uji', tracking: 'TRACK-1' });
+  assert.equal(tables.Shipping[0].fee, 10000);
+  assert.equal(tables.Shipping[0].provider, 'Gojek');
+  assert.equal(tables.Shipping[0].courier, 'Kurir Uji');
+  assert.equal(tables.Orders[0].total, 55000);
+});
+
+test('Tarif hanya dikelola Admin; katalog hanya menampilkan tarif aktif tanpa data privat', function () {
+  const { context, tables, data } = shippingContext();
+  for (const role of ['Operator', 'Viewer']) {
+    assert.throws(() => context.saveMaster_({ role }, { table: 'ShippingRates', record: { name: 'Lain', price: 12000 } }), /berwenang/);
+  }
+  context.saveMaster_({ role: 'Admin' }, { table: 'ShippingRates', record: { name: 'Lain', price: 12000, active: true } });
+  assert.equal(tables.ShippingRates.length, 4);
+  assert.throws(() => context.saveMaster_({ role: 'Admin' },
+    { table: 'ShippingRates', record: { name: 'Gojek', price: 1 } }), /sudah digunakan/);
+  assert.throws(() => context.saveMaster_({ role: 'Admin' },
+    { table: 'ShippingRates', record: { name: 'Negatif', price: -1 } }), /tidak valid/);
+  assert.throws(() => context.saveMaster_({ role: 'Admin' },
+    { table: 'ShippingRates', record: { name: 'Pecahan', price: 10.5 } }), /tidak valid/);
+  const catalog = context.catalog_(data);
+  assert.equal(catalog.shippingRates.length, 3);
+  assert.deepEqual(Object.keys(catalog.shippingRates[0]).sort(), ['id', 'name', 'price']);
+  assert.ok(!JSON.stringify(catalog).includes('081234567890'));
+});
+
+test('API pembatalan/refund sudah dihapus, sementara riwayat tagihan lama tidak berubah', function () {
+  const { context } = shippingContext();
+  for (const action of ['cancelRequest', 'cancelOrder', 'rejectCancellation', 'refund']) {
+    const reply = context.api_({ action, token: 'Admin', data: {} });
+    assert.equal(reply.ok, false);
+    assert.match(reply.message, /Operasi tidak dikenal/);
+  }
+  const previous = { total: 50000, snapshotJson: '{"items":[],"refundCustomerPercent":90}' };
+  assert.equal(context.orderAmounts_(previous).productTotal, 50000);
+  assert.equal(context.orderAmounts_(previous).shippingIncluded, false);
+  const client = source('js/client.js');
+  for (const old of ['cancel-form', 'cancelRequest', 'cancelOrder', 'rejectCancellation',
+    'refundRounding', 'deliveryVerified', 'customerAgreed', 'feePaidToCourier']) {
+    assert.ok(!client.includes(old), old);
+  }
+  assert.ok(!source('apps-script/Files.gs').includes('refund 90'));
+  assert.ok(!source('apps-script/Rules.gs').includes('function refundValue_'));
+});
+
+test('Invoice dan laporan merinci ongkir dari snapshot tanpa mengubah jumlah pembayaran', function () {
+  const { context, tables, data } = shippingContext();
+  const customer = context.createOrder_(data);
+  let html = '';
+  context.Utilities = {
+    formatDate: () => '05/11/2026 15:00',
+    newBlob: text => {
+      html = text;
+      return { getAs: () => ({ setName: () => ({}) }) };
+    }
+  };
+  context.folder_ = () => ({ getFilesByName: () => ({ hasNext: () => false }),
+    createFile: () => ({ getId: () => 'invoice-id' }) });
+  context.invoice_(tables.Orders[0]);
+  assert.ok(html.includes('Total produk: Rp 45000'));
+  assert.ok(html.includes('Pengiriman Gojek: Rp 10000'));
+  assert.ok(html.includes('Total pembayaran: Rp 55000'));
+  assert.ok(!html.includes('Pembatalan'));
+  context.verifyPayment_({ id: 'admin1' }, { orderId: customer.id, amount: 55000, reference: 'BANK-1' });
+  const report = context.report_({ role: 'Admin' }, {});
+  assert.equal(report.rows[0].produkSetelahDiskon, 45000);
+  assert.equal(report.rows[0].ongkirDalamTagihan, 10000);
+  assert.equal(report.rows[0].pembayaran, 55000);
+  assert.equal(report.summary.payments, 55000);
+});
+
+test('Installer menambah ShippingRates tanpa mengganti database, folder, atau isi tabel lama', function () {
+  const context = setupContext('owner@example.com', 'owner@example.com');
+  const schema = vm.runInContext('HV_SCHEMA', context);
+  const sheets = new Map();
+  const makeSheet = rows => ({
+    rows,
+    getLastRow: () => rows.length,
+    getMaxColumns: () => 100,
+    setFrozenRows: () => {},
+    autoResizeColumns: () => {},
+    getRange: (row, column, count, width) => {
+      const range = {
+        getValues: () => [Array.from({ length: width }, (_, i) => (rows[row - 1] || [])[column - 1 + i] || '')],
+        setValues: values => { rows[row - 1] = Array.from(values[0]); return range; },
+        setBackground: () => range, setFontColor: () => range, setFontWeight: () => range
+      };
+      return range;
+    }
+  });
+  for (const name of Object.keys(schema).filter(name => name !== 'ShippingRates')) {
+    sheets.set(name, makeSheet([Array.from(schema[name]), ['DATA-LAMA-' + name]]));
+  }
+  const before = JSON.stringify(Array.from(sheets, ([name, sheet]) => [name, sheet.rows]));
+  const props = new Map([['ROOT_FOLDER_ID', 'root'], ['DATABASE_ID', 'db']]);
+  for (const name of ['PRODUK', 'INVOICE', 'STRUK', 'TANDATERIMA', 'BACKUP']) {
+    props.set('FOLDER_' + name, 'folder-' + name);
+  }
+  let created = 0;
+  context.PropertiesService = { getScriptProperties: () => ({
+    getProperty: key => props.get(key), setProperty: (key, value) => props.set(key, value)
+  }) };
+  context.DriveApp = {
+    getFolderById: () => ({ getName: () => 'Existing' }),
+    createFolder: () => { throw new Error('Tidak boleh membuat folder lagi'); }
+  };
+  const db = {
+    setSpreadsheetTimeZone: () => {}, setSpreadsheetLocale: () => {},
+    getSheetByName: name => sheets.get(name), getUrl: () => 'https://example.test/existing',
+    insertSheet: name => {
+      assert.equal(name, 'ShippingRates');
+      created += 1;
+      const sheet = makeSheet([]);
+      sheets.set(name, sheet);
+      return sheet;
+    }
+  };
+  context.SpreadsheetApp = {
+    openById: id => { assert.equal(id, 'db'); return db; }, flush: () => {},
+    create: () => { throw new Error('Tidak boleh membuat database lagi'); }
+  };
+  context.rows_ = () => Object.keys(vm.runInContext('HV_DEFAULTS', context)).map(key => ({ key }));
+  context.withLock_ = operation => operation();
+  context.installHealthyVibes_();
+  context.installHealthyVibes_();
+  assert.equal(created, 1);
+  assert.deepEqual(sheets.get('ShippingRates').rows[0], ['id', 'name', 'price', 'active', 'updatedAt']);
+  assert.equal(JSON.stringify(Array.from(sheets, ([name, sheet]) => [name, sheet.rows])
+    .filter(([name]) => name !== 'ShippingRates')), before);
+  assert.equal(props.get('DATABASE_ID'), 'db');
 });
 
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {

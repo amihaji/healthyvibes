@@ -8,6 +8,7 @@ const HV_MASTER_ROLES = {
   Vouchers: ['Admin'],
   ServiceHours: ['Admin'],
   ServiceAreas: ['Admin'],
+  ShippingRates: ['Admin'],
   Users: ['Admin']
 };
 
@@ -23,13 +24,16 @@ function saveMaster_(user, data) {
   record.active = active;
   record.updatedAt = now_();
 
-  if (['Categories', 'ServiceAreas'].includes(table)) {
+  if (['Categories', 'ServiceAreas', 'ShippingRates'].includes(table)) {
     record.name = text_(input.name, 'Nama', 100);
     if (rows_(table).some(function (row) {
       return row.id !== record.id && row.name.toLowerCase() === record.name.toLowerCase();
     })) {
       throw new Error('Nama sudah digunakan.');
     }
+  }
+  if (table === 'ShippingRates') {
+    record.price = integer_(input.price, 'Biaya pengiriman', 0, 1000000);
   }
   if (table === 'Products') {
     record.name = text_(input.name, 'Nama produk', 100);
@@ -176,14 +180,14 @@ function saveSettings_(user, data) {
     if (['intervalMinutes', 'preparationMinutes'].includes(key) && value) {
       integer_(value, key, key === 'intervalMinutes' ? 5 : 0, 1440);
     }
-    if (['refundRounding', 'discountRounding'].includes(key) && value &&
+    if (key === 'discountRounding' && value &&
       !['UP', 'DOWN', 'NEAREST'].includes(value)) {
       throw new Error('Pembulatan tidak valid.');
     }
     if (['sessionIdleMinutes', 'sessionMaxHours', 'uploadMaxBytes', 'backupRetentionDays'].includes(key)) {
       integer_(value, key, 1, key === 'uploadMaxBytes' ? 5242880 : 1440);
     }
-    if (['ordersEnabled', 'deliveryVerified'].includes(key) &&
+    if (key === 'ordersEnabled' &&
       !['true', 'false'].includes(value)) {
       throw new Error('Nilai aktif harus true atau false.');
     }
@@ -198,7 +202,6 @@ function saveSettings_(user, data) {
       requireAuthRuntime_();
       integer_(config.intervalMinutes, 'Interval', 5, 240);
       integer_(config.preparationMinutes, 'Persiapan', 0, 1440);
-      rounded_(1, config.refundRounding);
       rounded_(1, config.discountRounding);
       if (!config.address || !config.contact || !config.bankInstructions ||
         !rows_('ServiceHours').some(function (row) { return active_(row.active); })) {
@@ -245,7 +248,11 @@ function adminData_(user, data) {
         }
         return !sensitive.includes(key);
       });
-      return publicRecord_(row, fields);
+      const record = publicRecord_(row, fields);
+      if (name === 'Orders' && row.transactionState === 'COMMITTED') {
+        Object.assign(record, orderAmounts_(row));
+      }
+      return record;
     });
   });
   if (page === 'Pengaturan') {
@@ -296,13 +303,12 @@ function adminSummary_() {
     }, 0);
   }
   return {
-    orders: orders.length, payments: total('Payments'), refunds: total('Refunds'),
-    pending: orders.filter(function (order) { return order.paymentStatus !== 'PAID'; }).length,
-    refundPending: orders.filter(function (order) { return order.refundStatus === 'PENDING'; }).length
+    orders: orders.length, payments: total('Payments'),
+    pending: orders.filter(function (order) { return order.paymentStatus !== 'PAID'; }).length
   };
 }
 
-// Laporan memakai pembayaran/refund aktual, bukan jumlah invoice atau ongkir.
+// Pembayaran mencakup ongkir baru; pengembalian historis tetap dihitung untuk kas lama.
 function report_(user, data) {
   const orders = rows_('Orders').filter(function (row) {
     const date = clock_(new Date(row.createdAt)).date;
@@ -321,9 +327,10 @@ function report_(user, data) {
       .reduce(function (sum, row) { return sum + Number(row.amount); }, 0);
     const returned = refunds.filter(function (row) { return row.orderId === order.id; })
       .reduce(function (sum, row) { return sum + Number(row.amount); }, 0);
+    const amounts = orderAmounts_(order);
     return {
       nomor: order.id,
-      waktuWita: Utilities.formatDate(new Date(order.createdAt), 'Asia/Makassar', 'yyyy-MM-dd HH:mm'),
+      waktuWita: Utilities.formatDate(new Date(order.createdAt), 'Asia/Makassar', 'dd/MM/yyyy HH:mm'),
       jenis: order.type,
       penerimaan: order.receipt,
       produk: JSON.parse(order.snapshotJson).items.map(function (item) {
@@ -331,6 +338,9 @@ function report_(user, data) {
       }).join('; '),
       subtotal: Number(order.subtotal),
       voucher: Number(order.voucherDiscount),
+      produkSetelahDiskon: amounts.productTotal,
+      pengiriman: amounts.shippingProvider,
+      ongkirDalamTagihan: amounts.shippingFee,
       tagihan: Number(order.total),
       pembayaran: paid,
       refund: returned,
@@ -357,15 +367,14 @@ function saveShipping_(user, data) {
     throw new Error('Bukan pesanan antar.');
   }
   const old = rows_('Shipping').find(function (row) { return row.orderId === order.id; });
+  const amounts = orderAmounts_(order);
   const record = {
     id: old ? old.id : id_(),
     orderId: order.id,
-    provider: 'GoSend',
-    fee: integer_(data.fee, 'Ongkir', 0, 1000000),
-    customerAgreedAt: data.customerAgreed === true ? now_() : '',
+    provider: amounts.shippingIncluded ? amounts.shippingProvider : old ? old.provider : 'Pengiriman pesanan lama',
+    fee: amounts.shippingIncluded ? amounts.shippingFee : old ? old.fee : 0,
     courier: text_(data.courier || '', 'Kurir', 100, true),
     tracking: text_(data.tracking || '', 'Pelacakan', 200, true),
-    feePaidToCourier: data.feePaidToCourier === true,
     updatedAt: now_()
   };
   if (old) {
@@ -373,6 +382,6 @@ function saveShipping_(user, data) {
   } else {
     append_('Shipping', record);
   }
-  audit_(user, 'SHIPPING', order.id, 'Ongkir terpisah, bukan kas toko.');
+  audit_(user, 'SHIPPING', order.id, 'Data kurir diperbarui; tarif pesanan tidak diubah.');
   return true;
 }

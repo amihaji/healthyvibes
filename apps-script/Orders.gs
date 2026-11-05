@@ -8,8 +8,16 @@ function quote_(data) {
   if (['PICKUP', 'DELIVERY'].indexOf(data.receipt) < 0) {
     throw new Error('Cara penerimaan tidak valid.');
   }
-  if (data.receipt === 'DELIVERY' && config.deliveryVerified !== 'true') {
-    throw new Error('Pengantaran belum diaktifkan: dukungan ongkir GoSend belum diverifikasi.');
+  let shipping = null;
+  if (data.receipt === 'DELIVERY') {
+    const rate = rows_('ShippingRates').find(function (row) {
+      return row.id === data.shippingRateId && active_(row.active);
+    });
+    if (!rate) { throw new Error('Pilih biaya pengiriman yang masih aktif.'); }
+    shipping = {
+      id: rate.id, provider: rate.name, fee: integer_(rate.price, 'Biaya pengiriman', 0, 1000000),
+      included: true
+    };
   }
   if (!Array.isArray(data.items) || !data.items.length || data.items.length > 50) {
     throw new Error('Keranjang tidak valid.');
@@ -65,10 +73,12 @@ function quote_(data) {
       throw new Error('Voucher tidak berlaku.');
     }
   }
-  return Object.assign(
-    { items: items, voucherCode: code },
-    calculate_(items, voucher, config)
-  );
+  const priced = calculate_(items, voucher, config);
+  return Object.assign({}, priced, {
+    items: items, voucherCode: code, shipping: shipping, productTotal: priced.total,
+    shippingFee: shipping ? shipping.fee : 0,
+    total: priced.total + (shipping ? shipping.fee : 0)
+  });
 }
 
 // Menyelesaikan tulisan anak yang terputus tanpa membuat reservasi kedua.
@@ -95,6 +105,14 @@ function finishOrder_(order) {
       });
     }
   });
+  // Pilihan ongkir disimpan dari snapshot; pemulihan tidak mengambil tarif terbaru.
+  if (snapshot.shipping && !rows_('Shipping').some(function (row) { return row.orderId === order.id; })) {
+    append_('Shipping', {
+      id: order.id + ':shipping', orderId: order.id,
+      provider: snapshot.shipping.provider, fee: snapshot.shipping.fee,
+      courier: '', tracking: '', updatedAt: order.createdAt
+    });
+  }
   SpreadsheetApp.flush();
   return patch_('Orders', order, { transactionState: 'COMMITTED' });
 }
@@ -165,6 +183,10 @@ function createOrder_(data) {
     voucherCode: data.voucherCode || '',
     items: data.items
   };
+  // Properti opsional menjaga hash retry pesanan lama tetap sama.
+  if (data.shippingRateId) {
+    payload.shippingRateId = text_(data.shippingRateId, 'Pilihan pengiriman', 100);
+  }
   if (!/^0[0-9]{8,14}$/.test(payload.phone)) {
     throw new Error('Nomor HP diawali 0 dan terdiri dari 9-15 angka.');
   }
@@ -220,10 +242,7 @@ function createOrder_(data) {
     transactionState: 'PREPARING',
     snapshotJson: JSON.stringify({
       items: priced.items,
-      refundCustomerPercent: 90,
-      refundStorePercent: 100,
-      refundWithinHours: 24,
-      refundRounding: config.refundRounding
+      shipping: priced.shipping || null
     })
   }));
   SpreadsheetApp.flush();
@@ -249,9 +268,9 @@ function customerOrder_(order) {
     'id', 'createdAt', 'type', 'receipt', 'date', 'time',
     'name', 'phone', 'address', 'paymentMethod', 'subtotal',
     'voucherDiscount', 'total', 'paymentDeadline', 'paymentStatus',
-    'fulfillment', 'preparedAt', 'cancelRequestedAt', 'cancelledAt',
-    'refundAmount', 'refundDueAt', 'refundStatus'
+    'fulfillment', 'preparedAt'
   ]);
+  Object.assign(result, orderAmounts_(order));
   result.items = JSON.parse(order.snapshotJson).items.map(function (item) {
     return publicRecord_(item, ['name', 'quantity', 'unitPrice']);
   });
@@ -262,16 +281,16 @@ function customerOrder_(order) {
   return result;
 }
 
-function requestCancellation_(data) {
-  const order = customerAccess_(data);
-  if (order.preparedAt || ['CANCELLED', 'COMPLETED'].indexOf(order.fulfillment) >= 0) {
-    throw new Error('Pembatalan tidak diperbolehkan pada tahap ini.');
-  }
-  patch_('Orders', order, {
-    cancelRequestedAt: now_(),
-    cancelReason: text_(data.reason, 'Alasan', 500)
-  });
-  return true;
+// Tagihan lama tetap sama; hanya pesanan baru dengan snapshot ongkir memakai total gabungan.
+function orderAmounts_(order) {
+  const shipping = JSON.parse(order.snapshotJson).shipping;
+  const included = !!shipping && shipping.included === true;
+  const fee = included ? Number(shipping.fee) : 0;
+  return {
+    productTotal: Number(order.total) - fee, shippingFee: fee,
+    shippingProvider: included ? shipping.provider : '',
+    shippingIncluded: included
+  };
 }
 
 // Pembayaran diverifikasi dari mutasi masuk dan referensi unik, bukan foto.
@@ -283,7 +302,7 @@ function verifyPayment_(user, data) {
   const reference = text_(data.reference, 'Referensi transaksi', 150);
   const amount = integer_(data.amount, 'Pembayaran', 1, 1000000000);
   if (amount !== Number(order.total)) {
-    throw new Error('Pembayaran produk harus sama dengan total tagihan.');
+    throw new Error('Nominal pembayaran harus sama dengan total tagihan pesanan.');
   }
   const existing = rows_('Payments').find(function (row) {
     return row.orderId === order.id;
@@ -318,85 +337,6 @@ function paidAmount_(orderId) {
   }).reduce(function (sum, row) { return sum + Number(row.amount); }, 0);
 }
 
-// Pembatalan dan pengembalian dipisahkan. Ledger pelepasan punya ID deterministik.
-function cancelOrder_(user, data) {
-  const order = rows_('Orders').find(function (row) { return row.id === data.orderId; });
-  if (!order || order.transactionState !== 'COMMITTED') {
-    throw new Error('Pesanan belum dapat dibatalkan.');
-  }
-  if (order.fulfillment === 'CANCELLED' && order.cancelledBy !== data.party) {
-    throw new Error('Pesanan sudah dibatalkan oleh pihak yang berbeda.');
-  }
-  if (order.fulfillment === 'COMPLETED') {
-    throw new Error('Pesanan selesai tidak dapat dibatalkan.');
-  }
-  const party = data.party;
-  if (['CUSTOMER', 'STORE'].indexOf(party) < 0) {
-    throw new Error('Pihak pembatal tidak valid.');
-  }
-  if (party === 'CUSTOMER' && (order.preparedAt || !order.cancelRequestedAt)) {
-    throw new Error('Permintaan pelanggan tidak memenuhi ketentuan pembatalan.');
-  }
-  if (order.fulfillment !== 'CANCELLED') {
-    const paid = paidAmount_(order.id);
-    const snapshot = JSON.parse(order.snapshotJson);
-    const refund = refundValue_(paid, party, snapshot.refundRounding);
-    patch_('Orders', order, {
-      fulfillment: 'CANCELLED',
-      cancelledAt: now_(),
-      cancelledBy: party,
-      cancelReason: text_(data.reason, 'Alasan', 500),
-      refundAmount: refund,
-      refundDueAt: refund ? new Date(Date.now() + 86400000).toISOString() : '',
-      refundStatus: refund ? 'PENDING' : 'NONE'
-    });
-    SpreadsheetApp.flush();
-  }
-  JSON.parse(order.snapshotJson).items.forEach(function (item, index) {
-    const key = order.id + ':release:' + index;
-    if (!rows_('StockLedger').some(function (row) { return row.id === key; })) {
-      append_('StockLedger', {
-        id: key,
-        orderId: order.id,
-        productId: item.productId,
-        poolId: item.poolId,
-        quantity: order.preparedAt ? 0 : -item.quantity,
-        state: order.preparedAt ? 'CONSUMED_CANCELLED' : 'RELEASED',
-        createdAt: now_()
-      });
-    }
-  });
-  audit_(user, 'CANCEL_ORDER', order.id, party);
-  return true;
-}
-
-function completeRefund_(user, data) {
-  const order = rows_('Orders').find(function (row) { return row.id === data.orderId; });
-  if (!order || order.fulfillment !== 'CANCELLED' || !Number(order.refundAmount)) {
-    throw new Error('Tidak ada refund yang perlu diselesaikan.');
-  }
-  const reference = text_(data.reference, 'Referensi refund', 150);
-  const existing = rows_('Refunds').find(function (row) { return row.orderId === order.id; });
-  if (existing && existing.reference !== reference) {
-    throw new Error('Refund sudah tercatat.');
-  }
-  if (!existing) {
-    append_('Refunds', {
-      id: id_(),
-      requestId: reference,
-      orderId: order.id,
-      amount: Number(order.refundAmount),
-      reference: reference,
-      completedAt: now_(),
-      completedBy: user.id
-    });
-    SpreadsheetApp.flush();
-  }
-  patch_('Orders', order, { refundStatus: 'COMPLETED' });
-  audit_(user, 'COMPLETE_REFUND', order.id, reference);
-  return true;
-}
-
 function fulfillment_(user, data) {
   const order = rows_('Orders').find(function (row) { return row.id === data.orderId; });
   const transitions = {
@@ -424,17 +364,6 @@ function fulfillment_(user, data) {
     return row.orderId === order.id && row.kind === 'TANDATERIMA';
   })) {
     throw new Error('Minta konsumen mengunggah foto tanda terima melalui Status Pesanan sebelum memilih Selesai.');
-  }
-  if (data.status === 'DISPATCHED') {
-    const shipping = rows_('Shipping').find(function (row) {
-      return row.orderId === order.id;
-    });
-    if (!shipping || !shipping.customerAgreedAt) {
-      throw new Error('Pilih Catat GoSend dan ongkir, isi ongkir, centang persetujuan pelanggan, lalu simpan sebelum memilih Sedang dikirim.');
-    }
-    if (settings_().deliveryVerified !== 'true') {
-      throw new Error('Admin perlu membuka Pengaturan dan mengatur dukungan ongkir langsung ke kurir GoSend menjadi Sudah, lalu menyimpan.');
-    }
   }
   if (data.status === 'COMPLETED' &&
     order.receipt === 'DELIVERY' && order.fulfillment !== 'DISPATCHED') {

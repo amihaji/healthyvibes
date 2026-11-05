@@ -503,6 +503,7 @@
       state.accessToken = randomToken();
     }
     state.checkoutStep = 1;
+    state.quote = null;
     dialog.close();
     renderCheckout();
   }
@@ -531,9 +532,14 @@
         field('Nomor HP (diawali 0)', 'phone', recipient.phone, 'tel') +
         selectField('Cara penerimaan', 'receipt', [
           ['PICKUP', 'Ambil sendiri di toko'],
-          ...(state.catalog.settings.deliveryVerified === 'true'
-            ? [['DELIVERY', 'Diantar GoSend']] : [])
+          ...((state.catalog.shippingRates || []).length ? [['DELIVERY', 'Diantar ke alamat']] : [])
         ], recipient.receipt || 'PICKUP') +
+        selectField('Layanan dan biaya pengiriman', 'shippingRateId', [
+          ['', 'Pilih layanan pengiriman'],
+          ...(state.catalog.shippingRates || []).map(function (rate) {
+            return [rate.id, rate.name + ' - ' + rupiah(rate.price)];
+          })
+        ], recipient.shippingRateId, true) +
         selectField('Wilayah (wajib bila diantar)', 'areaId', [
           ['', 'Pilih wilayah'],
           ...state.catalog.areas.map(function (row) { return [row.id, row.name]; })
@@ -551,7 +557,7 @@
       }
     } else if (step === 2) {
       const cash = state.type === 'DIRECT' && recipient.receipt === 'PICKUP';
-      content = selectField('Metode pembayaran produk', 'paymentMethod', [
+      content = selectField('Metode pembayaran pesanan', 'paymentMethod', [
         ['TRANSFER', 'Transfer bank'],
         ['QRIS', 'QRIS manual'],
         ...(cash ? [['PICKUP_CASH', 'Bayar saat diambil']] : [])
@@ -567,15 +573,18 @@
         ' | ' + safe(dateText(schedule.date) + ' ' + recipient.time) + ' WITA</p>' +
         '<p>' + safe(recipient.address || state.catalog.settings.address) + '</p>' +
         '<p>Pembayaran: ' + safe(recipient.paymentMethod) + '</p>' +
-        '<div class="alert alert-warning small">Pembatalan pelanggan sebelum persiapan ' +
-        'yang disetujui: refund 90% pembayaran produk. Setelah persiapan dimulai, ' +
-        'pembatalan tidak diperbolehkan. Pembatalan toko: refund 100%. ' +
-        'Refund manual maksimal 1 x 24 jam sejak konfirmasi pembatalan. ' +
-        'Ongkir tidak termasuk pembayaran produk.</div>' +
+        '<div class="alert alert-info small">Total pembayaran sudah mencakup biaya pengiriman yang dipilih, ' +
+        'jika pesanan diantar. Periksa penerima, alamat, jadwal, dan nominal sebelum membuat pesanan.</div>' +
         '<label class="d-flex gap-2"><input name="acceptPolicy" type="checkbox" required>' +
-        '<span>Saya menyetujui data pesanan dan kebijakan di atas.</span></label>';
+        '<span>Data pesanan dan total pembayaran sudah benar.</span></label>';
     }
-    const priced = state.quote || cartSummary();
+    const estimate = cartSummary();
+    const rate = recipient.receipt === 'DELIVERY'
+      ? (state.catalog.shippingRates || []).find(function (row) { return row.id === recipient.shippingRateId; }) : null;
+    const priced = state.quote || {
+      productTotal: estimate.total, voucherDiscount: estimate.voucherDiscount,
+      shippingFee: rate ? Number(rate.price) : 0, total: estimate.total + (rate ? Number(rate.price) : 0)
+    };
     app.innerHTML = '<h1>Checkout</h1><div class="steps">' +
       ['Penerima', 'Pembayaran', 'Tinjau Pesanan'].map(function (label, index) {
         return '<span class="' + (index + 1 === step ? 'current' : '') + '">' +
@@ -586,12 +595,16 @@
       'type="button">' + buttonLabel('back', 'Kembali') + '</button><button class="btn btn-primary" type="submit"' +
       (step === 1 && !schedule.times.length ? ' disabled' : '') + '>' +
       buttonLabel(step === 3 ? 'check' : 'next', step === 3 ? 'Buat Pesanan' : 'Lanjut') + '</button></div></form></section>' +
-      '<aside class="panel"><h2 class="h5">Ringkasan Produk</h2>' +
+      '<aside class="panel"><h2 class="h5">Ringkasan Pembayaran</h2>' +
       cartLines().map(function (item) {
         return '<p>' + safe(item.product.name) + ' x ' + item.quantity + '</p>';
       }).join('') + '<p>Voucher: ' + rupiah(priced.voucherDiscount || 0) + '</p>' +
-      '<strong>Total produk: ' + rupiah(priced.total) + '</strong>' +
-      '<p class="small mt-3">Ongkir terpisah dan belum dikonfirmasi.</p></aside></div>';
+      '<p>Total produk: ' + rupiah(priced.productTotal) + '</p>' +
+      '<p>Biaya pengiriman: ' + rupiah(priced.shippingFee) + '</p>' +
+      '<strong>Total pembayaran: ' + rupiah(priced.total) + '</strong>' +
+      '<p class="small mt-3">' + (state.quote ? 'Harga sudah diperiksa oleh toko.' : 'Perkiraan, harga akan diperiksa sebelum pesanan dibuat.') +
+      '</p></aside></div>';
+    if (step === 1) { updateCheckoutDelivery(document.getElementById('checkout-form')); }
     if (step === 2 && state.catalog.settings.qrisFileId) {
       rpc('storeAsset', { asset: 'qrisFileId' }).then(function (photo) {
         const holder = document.getElementById('qris-image');
@@ -604,6 +617,19 @@
         }
       }).catch(function (error) { notify(error.message, true); });
     }
+  }
+
+  // Isian pengantaran hanya wajib dan aktif ketika konsumen memilih diantar.
+  function updateCheckoutDelivery(form) {
+    const delivery = form.elements.receipt.value === 'DELIVERY';
+    ['shippingRateId', 'areaId', 'address'].forEach(function (name) {
+      form.elements[name].disabled = !delivery;
+      form.elements[name].required = delivery;
+      if (!delivery) {
+        form.elements[name].value = '';
+        state.recipient[name] = '';
+      }
+    });
   }
 
   // Menyimpan isian tiap langkah, memeriksa harga di server, lalu membuat pesanan.
@@ -657,9 +683,7 @@
       READY: order.receipt === 'DELIVERY' ? 'Produk siap diserahkan kepada kurir.' : 'Produk siap diambil di toko.',
       DISPATCHED: 'Produk sedang dalam perjalanan ke alamat penerima.',
       COMPLETED: 'Pesanan sudah diterima dan proses pesanan selesai.',
-      CANCELLED: Number(order.refundAmount) > 0
-        ? 'Pesanan telah dibatalkan. Periksa informasi pengembalian dana di bawah.'
-        : 'Pesanan telah dibatalkan. Tidak ada dana yang perlu dikembalikan.'
+      CANCELLED: 'Riwayat pesanan lama yang telah dibatalkan.'
     };
     const stages = ['NEW', 'CONFIRMED', 'PREPARING', 'READY']
       .concat(order.receipt === 'DELIVERY' ? ['DISPATCHED'] : []).concat(['COMPLETED']);
@@ -683,15 +707,36 @@
             (index < current ? 'Sudah dilewati' : index === current ? 'Tahap saat ini' : 'Tahap berikutnya') +
             '</small></li>';
         }).join('') + '</ol>' : '') +
-      (order.cancelRequestedAt && !cancelled ? '<p class="order-notice">Permintaan pembatalan sedang diperiksa toko. ' +
-        'Pesanan belum dibatalkan.</p>' : '') +
-      (order.refundStatus && order.refundStatus !== 'NONE'
-        ? '<div class="order-notice"><strong>Pengembalian dana: ' +
-          (order.refundStatus === 'COMPLETED' ? 'Sudah ditransfer' : 'Menunggu transfer toko') +
-          '</strong><p class="mb-0">' + rupiah(order.refundAmount) +
-          (order.refundStatus === 'PENDING' && order.refundDueAt
-            ? ' · Batas pengembalian: ' + safe(dateTimeText(order.refundDueAt)) + ' WITA' : '') +
-          '</p></div>' : '') + '</section>';
+      '</section>';
+  }
+
+  // Rincian tagihan memakai harga tersimpan, bukan daftar ongkir yang sedang berlaku.
+  function orderCharges(order) {
+    return '<p>Total produk: ' + rupiah(order.productTotal == null ? order.total : order.productTotal) + '</p>' +
+      (order.shippingIncluded ? '<p>Pengiriman ' + safe(order.shippingProvider) + ': ' + rupiah(order.shippingFee) + '</p>'
+        : order.receipt === 'DELIVERY' ? '<p class="small">Pesanan lama: ongkir mengikuti kesepakatan saat pemesanan.</p>' : '') +
+      '<h3 class="h5">Total pembayaran: ' + rupiah(order.total) + '</h3>';
+  }
+
+  // Status tanda terima selalu terlihat; input baru aktif pada tahap penerimaan.
+  function handoverForm(order) {
+    if (order.handoverUploaded) {
+      return '<section class="order-section"><h2 class="h5">Tanda Terima</h2>' +
+        '<p class="alert alert-success">Sudah diunggah. Foto tanda terima sudah tersimpan sebagai bukti penerimaan produk.</p></section>';
+    }
+    const eligible = order.receipt === 'DELIVERY' ? order.fulfillment === 'DISPATCHED'
+      : order.receipt === 'PICKUP' && order.fulfillment === 'READY';
+    const disabled = eligible ? '' : ' disabled';
+    return '<form id="handover-form" class="order-section"><h2 class="h5">Tanda Terima</h2>' +
+      '<p><strong>Status: Belum diunggah.</strong></p><p>' + (eligible
+        ? 'Setelah produk benar-benar diterima, unggah foto tanda terima agar Admin dapat menyelesaikan pesanan.'
+        : 'Unggahan akan aktif saat status pesanan ' + (order.receipt === 'DELIVERY' ? 'Sedang dikirim' : 'Siap diterima') + '.') +
+      '</p><label class="form-label" for="handover-photo">Foto tanda terima (JPG/PNG/WebP)</label>' +
+      '<input id="handover-photo" type="file" name="photo" class="form-control mb-3" accept="image/jpeg,image/png,image/webp" required' + disabled + '>' +
+      '<label class="order-check mb-3"><input type="checkbox" name="received" required' + disabled +
+      '> Saya sudah menerima produk pesanan ini.</label><div id="handover-result" role="status" aria-live="polite"></div>' +
+      '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit"' + disabled + '>' +
+      buttonLabel('upload', 'Unggah Tanda Terima') + '</button></div></form>';
   }
 
   // Menampilkan status, jadwal, rincian produk, dan tindakan pelanggan secara terpisah.
@@ -719,7 +764,7 @@
           '</td><td>' + rupiah(item.unitPrice) + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       '<p>Potongan voucher: ' + rupiah(order.voucherDiscount || 0) + '</p>' +
-      '<h3 class="h5">Total produk: ' + rupiah(order.total) + '</h3>' +
+      orderCharges(order) +
       '<p class="small">Batas pembayaran: ' + (order.paymentDeadline
         ? safe(dateTimeText(order.paymentDeadline)) + ' WITA'
         : 'Sebelum dikirim; pesanan langsung ambil dapat dibayar saat diambil.') +
@@ -739,24 +784,7 @@
       '<label class="form-label">Struk bukti transfer (JPG/PNG/WebP)</label>' +
       '<input class="form-control mb-2" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>' +
       '<button class="btn btn-primary" type="submit">' + buttonLabel('upload', 'Unggah Bukti Transfer') + '</button></form>' : '') +
-      (order.handoverUploaded
-        ? '<section class="order-section"><h2 class="h5">Tanda Terima</h2>' +
-          '<p class="alert alert-success">Foto tanda terima sudah tersimpan. Admin dapat memeriksa dan menyelesaikan pesanan.</p></section>'
-        : (order.receipt === 'DELIVERY' && order.fulfillment === 'DISPATCHED') ||
-          (order.receipt === 'PICKUP' && order.fulfillment === 'READY')
-          ? '<form id="handover-form" class="order-section"><h2 class="h5">Konfirmasi Penerimaan</h2>' +
-            '<p>Setelah produk benar-benar diterima, unggah foto tanda terima agar Admin dapat menyelesaikan pesanan.</p>' +
-            '<label class="form-label" for="handover-photo">Foto tanda terima (JPG/PNG/WebP)</label>' +
-            '<input id="handover-photo" type="file" name="photo" class="form-control mb-3" accept="image/jpeg,image/png,image/webp" required>' +
-            '<label class="order-check mb-3"><input type="checkbox" name="received" required> Saya sudah menerima produk pesanan ini.</label>' +
-            '<div id="handover-result" role="status" aria-live="polite"></div>' +
-            '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit">' +
-            buttonLabel('upload', 'Unggah Tanda Terima') + '</button></div></form>' : '') +
-      (!order.preparedAt && !['CANCELLED', 'COMPLETED'].includes(order.fulfillment)
-        ? '<form id="cancel-form" class="order-section"><h2 class="h5">Permintaan Pembatalan</h2>' +
-        field('Alasan pembatalan', 'reason', '') +
-        '<button class="btn btn-outline-danger" type="submit">' + buttonLabel('close', 'Ajukan Pembatalan') + '</button></form>'
-        : '') + '</section>';
+      handoverForm(order) + '</section>';
   }
 
   // Menampilkan formulir login pengelola menggunakan username dan password.
@@ -814,7 +842,7 @@
       'Dashboard', 'Pesanan', 'Categories', 'Products', 'ReadyStock', 'PreorderCapacity'
     ];
     if (role === 'Admin') {
-      list.push('Discounts', 'Vouchers', 'Users', 'ServiceHours', 'ServiceAreas', 'Pengaturan', 'Backup');
+      list.push('Discounts', 'Vouchers', 'Users', 'ServiceHours', 'ServiceAreas', 'ShippingRates', 'Pengaturan', 'Backup');
     }
     if (role !== 'Viewer') {
       list.push('Laporan');
@@ -832,7 +860,7 @@
     Vouchers: 'Voucher',
     Users: 'Setup User',
     ServiceHours: 'Jam Layanan',
-    ServiceAreas: 'Wilayah Layanan'
+    ServiceAreas: 'Wilayah Layanan', ShippingRates: 'Biaya Pengiriman'
   };
 
   // Ikon khusus membantu membedakan menu pengelola tanpa mengubah hak akses.
@@ -840,7 +868,7 @@
     Dashboard: 'dashboard', Pesanan: 'orders', Categories: 'categories',
     Products: 'product', ReadyStock: 'stock', PreorderCapacity: 'calendar',
     Discounts: 'tag', Vouchers: 'voucher', Users: 'users', ServiceHours: 'clock',
-    ServiceAreas: 'location', Pengaturan: 'settings', Backup: 'backup', Laporan: 'report'
+    ServiceAreas: 'location', ShippingRates: 'shipping', Pengaturan: 'settings', Backup: 'backup', Laporan: 'report'
   };
 
   // Menampilkan panel pengelola dan isi menu yang sedang dipilih.
@@ -878,15 +906,13 @@
       body.innerHTML = '<div class="kpis">' + [
         ['Pesanan', kpi.orders],
         ['Belum lunas', kpi.pending],
-        ['Pembayaran produk', rupiah(kpi.payments)],
-        ['Refund tertunda', kpi.refundPending]
+        ['Pembayaran diterima', rupiah(kpi.payments)]
       ].map(function (item) {
         return '<div class="kpi"><small>' + safe(item[0]) + '</small><strong>' +
           safe(item[1]) + '</strong></div>';
       }).join('') + '</div><section class="panel"><h2 class="h4">Ringkasan Operasional</h2>' +
         '<p>Data berasal dari transaksi tersimpan, bukan contoh.</p>' +
-        '<p>Refund dibayar: ' + rupiah(kpi.refunds) + '</p>' +
-        '<p>Ongkir ke kurir bukan kas toko. Sisa kas bukan laba.</p>' +
+        '<p>Pembayaran pesanan baru sudah termasuk ongkir. Total penerimaan bukan laba.</p>' +
         '<button class="btn btn-green" id="refresh-admin" type="button">' + buttonLabel('refresh', 'Perbarui Data') + '</button></section>';
     } else if (page === 'Pesanan') {
       renderOrders();
@@ -960,7 +986,7 @@
       (state.listPage + 1 >= pageCount ? ' disabled' : '') + '>' + buttonLabel('next', 'Berikutnya') + '</button></div>';
   }
 
-  // Membuka detail pesanan dan formulir tindakan pembayaran, pemenuhan, refund, atau kurir.
+  // Detail pesanan memisahkan tagihan tersimpan dari tindakan pembayaran dan kurir.
   function orderEditor(id) {
     const order = state.admin.tables.Orders.find(function (row) { return row.id === id; });
     // Tampilkan struk terbaru saja; berkas lama tetap tersimpan untuk riwayat.
@@ -975,8 +1001,7 @@
       });
     showEditor('Detail Pesanan', '<p class="text-break">' + safe(id) + '</p><p>' +
       safe(order.name + ' | ' + order.phone) + '</p><p>' + safe(order.address) + '</p>' +
-      '<p>Total produk: ' + rupiah(order.total) + '</p>' + orderStatusPanel(order) +
-      '<p>Permintaan pembatalan: ' + safe(order.cancelReason || 'Tidak ada') + '</p>' +
+      orderCharges(order) + orderStatusPanel(order) +
       '<div class="d-flex gap-2 flex-wrap mb-3">' +
       files.map(function (file) {
         return '<button class="btn btn-outline-dark" data-file="' + safe(file.driveFileId) +
@@ -990,10 +1015,7 @@
         ['', 'Pilih tindakan terlebih dahulu'],
         ['verifyPayment', 'Verifikasi pembayaran dari transaksi masuk'],
         ['fulfillment', 'Ubah tahap pesanan'],
-        ['cancelOrder', 'Konfirmasi pembatalan'],
-        ['rejectCancellation', 'Tolak permintaan pembatalan'],
-        ['refund', 'Catat refund yang sudah ditransfer'],
-        ['shipping', 'Catat GoSend dan ongkir']
+        ['shipping', 'Catat kurir dan pelacakan']
       ], '') +
       '<p id="order-action-help" class="order-notice small" role="status" aria-live="polite">' +
       'Pilih tindakan untuk melihat kegunaannya dan mengaktifkan isian yang diperlukan.</p>' +
@@ -1003,17 +1025,10 @@
         ['CONFIRMED', 'Dikonfirmasi'], ['PREPARING', 'Mulai disiapkan'],
         ['READY', 'Siap'], ['DISPATCHED', 'Dikirim'], ['COMPLETED', 'Selesai']
       ], '', true) +
-      selectField('Pihak pembatal (untuk pembatalan)', 'party', [
-        ['', 'Pilih pihak pembatal'],
-        ['CUSTOMER', 'Pelanggan'], ['STORE', 'Toko']
-      ], '', true) +
-      field('Nominal pembayaran / ongkir', 'amount', '', 'number', false, true) +
-      field('Referensi transaksi / refund', 'reference', '', 'text', false, true) +
-      field('Alasan (pembatalan / penolakan)', 'reason', '', 'text', false, true) +
+      field('Nominal pembayaran pesanan', 'amount', '', 'number', false, true) +
+      field('Referensi transaksi pembayaran', 'reference', '', 'text', false, true) +
       field('Nama kurir', 'courier', '', 'text', false, true) +
       field('Nomor/link pelacakan', 'tracking', '', 'text', false, true) + '</div>' +
-      '<label class="order-check"><input type="checkbox" name="customerAgreed" disabled> Ongkir telah disetujui pelanggan</label>' +
-      '<label class="order-check mb-3"><input type="checkbox" name="feePaidToCourier" disabled> Pelanggan mengonfirmasi ongkir sudah dibayar ke kurir</label>' +
       '<div id="order-action-result" role="status" aria-live="polite"></div>' +
       '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit" disabled>' +
       buttonLabel('check', 'Jalankan Tindakan') + '</button></div></form><hr>' +
@@ -1025,27 +1040,15 @@
     return {
       verifyPayment: {
         fields: ['amount', 'reference'], required: ['amount', 'reference'],
-        help: 'Gunakan setelah uang benar-benar masuk ke rekening toko. Isi nominal sesuai total produk dan referensi transaksi bank. Bukti transfer saja belum cukup.'
+        help: 'Gunakan setelah uang benar-benar masuk ke rekening toko. Isi nominal sesuai total pembayaran pesanan (termasuk ongkir pada pesanan baru) dan referensi transaksi bank. Bukti transfer saja belum cukup.'
       },
       fulfillment: {
         fields: ['status'], required: ['status'],
-        help: 'Gunakan ketika pesanan maju ke tahap berikutnya. Sedang dikirim memerlukan pembayaran lunas, GoSend dan persetujuan ongkir yang sudah disimpan, serta dukungan GoSend di Pengaturan berstatus Sudah. Untuk Selesai, konsumen harus mengunggah tanda terima melalui Status Pesanan terlebih dahulu.'
-      },
-      cancelOrder: {
-        fields: ['party', 'reason'], required: ['party', 'reason'],
-        help: 'Gunakan untuk benar-benar membatalkan pesanan. Pilih siapa yang membatalkan dan isi alasannya. Pembatalan pelanggan hanya sebelum disiapkan dan setelah permintaan pembatalan masuk. Refund dihitung oleh sistem, bukan otomatis ditransfer.'
-      },
-      rejectCancellation: {
-        fields: ['reason'], required: ['reason'],
-        help: 'Gunakan untuk menolak permintaan pembatalan pelanggan yang sedang aktif. Isi alasan penolakan; tahap pesanan tetap berjalan.'
-      },
-      refund: {
-        fields: ['reference'], required: ['reference'],
-        help: 'Gunakan hanya setelah dana refund benar-benar ditransfer kepada pelanggan. Nominal mengikuti perhitungan sistem; isi referensi transfer untuk mencatat pengembalian.'
+        help: 'Gunakan ketika pesanan maju ke tahap berikutnya. Pengiriman memerlukan pembayaran lunas; tidak ada konfirmasi ongkir tambahan. Untuk Selesai, konsumen harus mengunggah tanda terima melalui Status Pesanan terlebih dahulu.'
       },
       shipping: {
-        fields: ['amount', 'courier', 'tracking', 'customerAgreed', 'feePaidToCourier'], required: ['amount'],
-        help: 'Gunakan untuk pesanan antar: catat ongkir GoSend, kurir, pelacakan, dan persetujuan pelanggan. Ongkir terpisah dari pembayaran produk. Tindakan ini tidak otomatis mengubah tahap menjadi Dikirim.'
+        fields: ['courier', 'tracking'], required: [],
+        help: 'Gunakan untuk mencatat nama kurir dan nomor atau tautan pelacakan. Biaya pengiriman sudah ditentukan saat Checkout dan tidak diubah di sini. Setelah pengiriman dimulai, pilih Ubah tahap pesanan untuk menetapkan Sedang dikirim.'
       }
     }[action] || null;
   }
@@ -1057,29 +1060,21 @@
     const rule = orderActionRules(action);
     const order = state.admin.tables.Orders.find(function (row) { return row.id === form.dataset.id; });
     const shipping = (state.admin.tables.Shipping || []).find(function (row) { return row.orderId === order.id; });
-    const fields = ['status', 'party', 'amount', 'reference', 'reason', 'courier', 'tracking', 'customerAgreed', 'feePaidToCourier'];
+    const fields = ['status', 'amount', 'reference', 'courier', 'tracking'];
     fields.forEach(function (name) {
       const input = form.elements[name];
       input.disabled = !rule || !rule.fields.includes(name);
       input.required = !!rule && rule.required.includes(name);
       if (input.type === 'checkbox') { input.checked = false; } else { input.value = ''; }
     });
-    form.querySelector('label[for="f-amount"]').textContent = action === 'shipping'
-      ? 'Ongkir GoSend (Rp, terpisah dari produk)'
-      : action === 'refund' ? 'Nominal refund dari sistem (tidak dapat diubah)' : 'Nominal pembayaran produk (Rp)';
-    form.querySelector('label[for="f-reference"]').textContent = action === 'refund'
-      ? 'Referensi transfer refund' : 'Referensi transaksi pembayaran';
+    form.querySelector('label[for="f-amount"]').textContent = 'Nominal pembayaran pesanan (Rp)';
     const amount = form.elements.amount;
     amount.min = action === 'verifyPayment' ? '1' : '0';
     amount.step = '1';
     if (action === 'verifyPayment') { amount.value = order.total; }
-    if (action === 'refund') { amount.value = Number(order.refundAmount) || 0; }
     if (action === 'shipping' && shipping) {
-      amount.value = shipping.fee;
       form.elements.courier.value = shipping.courier || '';
       form.elements.tracking.value = shipping.tracking || '';
-      form.elements.customerAgreed.checked = !!shipping.customerAgreedAt;
-      form.elements.feePaidToCourier.checked = shipping.feePaidToCourier === true || shipping.feePaidToCourier === 'true';
     }
     // Batasi pilihan tahap berikutnya sesuai urutan yang juga dijaga backend.
     const next = { NEW: ['CONFIRMED'], CONFIRMED: ['PREPARING'], PREPARING: ['READY'],
@@ -1091,18 +1086,9 @@
       }).join('');
     let unavailable = '';
     if (action === 'fulfillment' && !stages.length) { unavailable = 'Tidak ada tahap lanjutan untuk pesanan ini.'; }
-    if (action === 'shipping' && order.receipt !== 'DELIVERY') { unavailable = 'Pesanan ini diambil di toko, sehingga GoSend tidak berlaku.'; }
-    if (action === 'refund' && (order.fulfillment !== 'CANCELLED' || !Number(order.refundAmount) || order.refundStatus === 'COMPLETED')) {
-      unavailable = 'Tidak ada refund yang menunggu pencatatan untuk pesanan ini.';
-    }
-    if (action === 'rejectCancellation' && (!order.cancelRequestedAt || order.fulfillment === 'CANCELLED')) {
-      unavailable = 'Tidak ada permintaan pembatalan aktif untuk ditolak.';
-    }
+    if (action === 'shipping' && order.receipt !== 'DELIVERY') { unavailable = 'Pesanan ini diambil di toko; data kurir tidak diperlukan.'; }
     if (action === 'verifyPayment' && (order.paymentStatus === 'PAID' || order.fulfillment === 'CANCELLED')) {
       unavailable = 'Pesanan ini sudah lunas atau dibatalkan; pembayaran tidak perlu dicatat lagi.';
-    }
-    if (action === 'cancelOrder' && ['CANCELLED', 'COMPLETED'].includes(order.fulfillment)) {
-      unavailable = 'Pesanan sudah dibatalkan atau selesai.';
     }
     if (unavailable) {
       fields.forEach(function (name) { form.elements[name].disabled = true; form.elements[name].required = false; });
@@ -1135,8 +1121,12 @@
       return [item.id, item.name];
     });
     let html = '';
-    if (['Categories', 'Products', 'ServiceAreas', 'Users'].includes(table)) {
+    if (['Categories', 'Products', 'ServiceAreas', 'ShippingRates', 'Users'].includes(table)) {
       html += field('Nama', 'name', row.name);
+    }
+    if (table === 'ShippingRates') {
+      html += field('Biaya pengiriman (Rp)', 'price', row.price, 'number');
+      html += '<p class="small">Tarif tetap untuk layanan ini. Perubahan hanya berlaku pada pesanan baru.</p>';
     }
     if (table === 'Products') {
       html += selectField('Kategori', 'categoryId',
@@ -1226,7 +1216,8 @@
       '<div class="table-wrap"><table class="table"><thead><tr>' +
       keys.map(function (key) {
         const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
-          active: 'Aktif', date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA' };
+          active: 'Aktif', name: 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
+          date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA' };
         return '<th>' + safe(label[key] || key) + '</th>';
       }).join('') +
       '<th>Aksi</th></tr></thead><tbody id="master-rows">' +
@@ -1268,13 +1259,8 @@
     let html = Object.keys(labels).map(function (key) {
       return field(labels[key], key, config[key], 'text', false);
     }).join('');
-    ['discountRounding', 'refundRounding'].forEach(function (key) {
-      html += selectField(key === 'discountRounding' ? 'Pembulatan diskon' : 'Pembulatan refund',
-        key, [['', 'Pilih aturan'], ['NEAREST', 'Rupiah terdekat'], ['UP', 'Ke atas'], ['DOWN', 'Ke bawah']],
-        config[key]);
-    });
-    html += selectField('Dukungan ongkir langsung ke kurir GoSend sudah diverifikasi',
-      'deliveryVerified', [['false', 'Belum'], ['true', 'Sudah']], config.deliveryVerified);
+    html += selectField('Pembulatan diskon', 'discountRounding',
+      [['', 'Pilih aturan'], ['NEAREST', 'Rupiah terdekat'], ['UP', 'Ke atas'], ['DOWN', 'Ke bawah']], config.discountRounding);
     html += selectField('Buka pemesanan', 'ordersEnabled', [
       ['false', 'Tutup'], ['true', 'Buka']
     ], config.ordersEnabled);
@@ -1308,15 +1294,14 @@
       '<div id="report-result" class="mt-4"></div></section>';
   }
 
-  // Menampilkan ringkasan pembayaran/refund dan tabel laporan beserta tombol ekspor.
+  // Laporan memisahkan harga produk dan ongkir di dalam total tagihan.
   function renderReport() {
     const report = state.report;
     const keys = report.rows.length ? Object.keys(report.rows[0]) : [];
     document.getElementById('report-result').innerHTML =
-      '<p>Pembayaran: ' + rupiah(report.summary.payments) +
-      ' | Refund: ' + rupiah(report.summary.refunds) + '</p>' +
-      '<p class="small">Periode berdasarkan tanggal pesanan WITA. Pembayaran/refund ' +
-      'adalah yang tercatat sampai saat laporan dibuka. Sisa kas bukan laba.</p>' +
+      '<p>Pembayaran diterima: ' + rupiah(report.summary.payments) + '</p>' +
+      '<p class="small">Periode berdasarkan tanggal pesanan WITA. Pembayaran termasuk ongkir ' +
+      'pada pesanan baru. Sisa kas bukan laba; data pengembalian historis tetap tercatat di laporan.</p>' +
       '<div class="d-flex gap-2 mb-3"><button class="btn btn-primary" id="export-xlsx" ' +
       'type="button">' + buttonLabel('report', 'Excel .xlsx') + '</button><button class="btn btn-outline-dark" id="export-pdf" ' +
       'type="button">' + buttonLabel('download', 'PDF') + '</button></div><div class="table-wrap"><table class="table"><thead><tr>' +
@@ -1577,6 +1562,12 @@
 
   // Perubahan pilihan tindakan langsung mengatur input yang berkaitan saja.
   document.addEventListener('change', function (event) {
+    if (event.target.form?.id === 'checkout-form' && state.checkoutStep === 1 &&
+      ['receipt', 'shippingRateId'].includes(event.target.name)) {
+      Object.assign(state.recipient, formData(event.target.form));
+      state.quote = null;
+      renderCheckout();
+    }
     if (event.target.name === 'action' && event.target.form?.id === 'order-action-form') {
       updateOrderAction(event.target.form);
     }
@@ -1639,13 +1630,6 @@
       dialog.close();
       renderLogin();
       notify('Password diganti. Silakan login kembali.');
-    } else if (form.id === 'cancel-form') {
-      if (confirm('Ajukan pembatalan untuk diperiksa pengelola?')) {
-        await rpc('cancelRequest', {
-          orderId: state.order.id, accessToken: state.accessToken, reason: data.reason
-        });
-        notify('Permintaan dikirim. Pesanan belum dibatalkan.');
-      }
     } else if (['proof-form', 'handover-form', 'product-photo-form'].includes(form.id)) {
       if (form.id === 'handover-form' && data.received !== 'on') {
         throw new Error('Konfirmasi bahwa produk sudah diterima terlebih dahulu.');
@@ -1713,9 +1697,6 @@
         return;
       }
       data.orderId = form.dataset.id;
-      data.fee = data.amount;
-      data.customerAgreed = data.customerAgreed === 'on';
-      data.feePaidToCourier = data.feePaidToCourier === 'on';
       await rpc(data.action, data);
       if (data.action !== 'fulfillment') { dialog.close(); }
       await loadAdmin();

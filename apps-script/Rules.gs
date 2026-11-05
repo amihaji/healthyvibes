@@ -103,10 +103,6 @@ function rounded_(value, mode) {
   throw new Error('Aturan pembulatan belum diatur Admin.');
 }
 
-function refundValue_(paid, party, rounding) {
-  return party === 'STORE' ? paid : rounded_(paid * 90 / 100, rounding);
-}
-
 // Snapshot Orders adalah sumber reservasi; ledger merupakan jejak mutasi.
 function usedCapacity_(poolId, orders) {
   return orders.reduce(function (sum, order) {

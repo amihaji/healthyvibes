@@ -138,6 +138,7 @@ function invoice_(order) {
     file = matches.next();
   } else {
     const config = settings_();
+    const amounts = orderAmounts_(order);
     const lines = JSON.parse(order.snapshotJson).items.map(function (item) {
       return '<tr><td>' + escapeHtml_(item.name) + '</td><td>' +
         item.quantity + '</td><td>' + item.unitPrice + '</td><td>' +
@@ -154,11 +155,12 @@ function invoice_(order) {
       ' WITA</p><table><thead><tr><th>Produk</th><th>Jumlah</th>' +
       '<th>Harga Rp</th><th>Subtotal Rp</th></tr></thead><tbody>' +
       lines + '</tbody></table><p>Voucher: Rp ' + order.voucherDiscount +
-      '</p><h3>Total produk: Rp ' + order.total + '</h3>' +
-      '<p>Ongkir GoSend terpisah, dibayar langsung ke kurir sesuai kesepakatan.</p>' +
+      '</p><p>Total produk: Rp ' + amounts.productTotal + '</p>' +
+      (amounts.shippingIncluded ? '<p>Pengiriman ' + escapeHtml_(amounts.shippingProvider) +
+        ': Rp ' + amounts.shippingFee + '</p>'
+        : order.receipt === 'DELIVERY' ? '<p>Pesanan lama: ongkir mengikuti kesepakatan saat pemesanan.</p>' : '') +
+      '<h3>Total pembayaran: Rp ' + order.total + '</h3>' +
       '<p>Invoice bukan bukti pembayaran. Verifikasi manual dari transaksi masuk.</p>' +
-      '<p>Pembatalan pelanggan sebelum persiapan: refund 90%; setelah persiapan ' +
-      'tidak diperbolehkan. Pembatalan toko: 100%. Refund manual maksimal 24 jam.</p>' +
       '</body></html>';
     const pdf = Utilities.newBlob(html, 'text/html', 'invoice.html').getAs('application/pdf');
     file = folder_('INVOICE').createFile(pdf.setName(name));

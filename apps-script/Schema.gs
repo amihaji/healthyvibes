@@ -20,6 +20,7 @@ const HV_SCHEMA = {
   PreorderCapacity: ['id', 'productId', 'date', 'capacity', 'updatedAt'],
   ServiceHours: ['id', 'weekday', 'opens', 'closes', 'active'],
   ServiceAreas: ['id', 'name', 'active', 'updatedAt'],
+  ShippingRates: ['id', 'name', 'price', 'active', 'updatedAt'],
   Users: [
     'id', 'username', 'name', 'passwordHash', 'role', 'active',
     'mustChangePassword', 'version', 'updatedAt'
@@ -74,9 +75,7 @@ const HV_DEFAULTS = {
   qrisFileId: '',
   intervalMinutes: '',
   preparationMinutes: '',
-  deliveryVerified: 'false',
   ordersEnabled: 'false',
-  refundRounding: '',
   discountRounding: '',
   maxVouchersPerOrder: '1',
   sessionIdleMinutes: '30',

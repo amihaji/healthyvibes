@@ -69,9 +69,11 @@ function runRuleTests_() {
     ], { type: 'AMOUNT', value: 90000, minimum: 0, maximum: 0 }, config);
     assert(result.voucherDiscount === 20000);
   });
-  test('Refund pelanggan 90% dan toko 100%', function () {
-    assert(refundValue_(48000, 'CUSTOMER', 'UP') === 43200);
-    assert(refundValue_(48000, 'STORE', 'UP') === 48000);
+  test('Tagihan ongkir baru dan pesanan lama dibedakan dari snapshot', function () {
+    const priced = orderAmounts_({ total: 58000,
+      snapshotJson: JSON.stringify({ shipping: { included: true, provider: 'Gojek', fee: 10000 } }) });
+    assert(priced.productTotal === 48000 && priced.shippingFee === 10000);
+    assert(orderAmounts_({ total: 48000, snapshotJson: '{"items":[]}' }).shippingFee === 0);
   });
   test('Stok aktif dan reservasi terputus tetap dihitung', function () {
     const snapshot = JSON.stringify({ items: [{ poolId: 'p', quantity: 2 }] });
@@ -82,7 +84,7 @@ function runRuleTests_() {
     assert(usedCapacity_('p', orders) === 4);
     assert(usedCapacity_('lain', orders) === 0);
   });
-  test('Batal sebelum persiapan lepas, sudah disiapkan tidak kembali stok', function () {
+  test('Reservasi pesanan lama tetap sesuai riwayat tersimpan', function () {
     const snapshot = JSON.stringify({ items: [{ poolId: 'p', quantity: 2 }] });
     assert(usedCapacity_('p', [
       { transactionState: 'COMMITTED', fulfillment: 'CANCELLED', preparedAt: '', snapshotJson: snapshot },
