@@ -1686,6 +1686,162 @@ test('Detail pelanggan memuat bagian terpisah dan tidak meminta bukti untuk pesa
   assert.ok(context.app.innerHTML.includes('id="cancel-form"'));
 });
 
+test('Detail Admin menampilkan satu struk terbaru dan pemulihan kunci di bawah tindakan', function () {
+  const client = source('js/client.js');
+  let html = '';
+  const context = vm.createContext({
+    state: { user: { role: 'Admin' }, admin: { tables: {
+      Orders: [{ id: 'order1', name: 'Uji', phone: '08123', transactionState: 'COMMITTED' }],
+      Files: [
+        { orderId: 'order1', kind: 'STRUK', driveFileId: 'old', createdAt: '2026-11-01' },
+        { orderId: 'order1', kind: 'STRUK', driveFileId: 'latest', createdAt: '2026-11-05' },
+        { orderId: 'order2', kind: 'STRUK', driveFileId: 'other', createdAt: '2026-11-06' }
+      ]
+    } } }, safe: String, rupiah: String, orderStatusPanel: () => '',
+    buttonLabel: (icon, label) => label, field: () => '', selectField: () => '',
+    showEditor: (title, content) => { html = content; }
+  });
+  vm.runInContext(client.slice(client.indexOf('  function orderEditor('),
+    client.indexOf('  function masterFields(')), context);
+  context.orderEditor('order1');
+  assert.equal((html.match(/Lihat Struk/g) || []).length, 1);
+  assert.ok(html.includes('data-file="latest"'));
+  assert.ok(!html.includes('data-file="old"'));
+  assert.ok(!html.includes('id="handover-form"'));
+  assert.ok(html.indexOf('id="reset-access-form"') > html.indexOf('id="order-action-form"'));
+  assert.ok(html.includes('id="order-action-result"'));
+});
+
+test('Tanda terima konsumen hanya tersedia setelah dikirim atau siap diambil', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({
+    app: { innerHTML: '' }, state: { accessToken: 'key', order: { id: 'o1', items: [], paymentStatus: 'PAID' } },
+    safe: String, rupiah: String, dateText: String, dateTimeText: String,
+    buttonLabel: (icon, label) => label, field: () => ''
+  });
+  vm.runInContext(client.slice(client.indexOf('  function fulfillmentLabel('),
+    client.indexOf('  function renderLogin(')), context);
+  for (const receipt of ['PICKUP', 'DELIVERY']) {
+    for (const fulfillment of ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DISPATCHED', 'COMPLETED', 'CANCELLED']) {
+      Object.assign(context.state.order, { receipt, fulfillment, handoverUploaded: false });
+      context.renderOrder();
+      const eligible = receipt === 'PICKUP' ? fulfillment === 'READY' : fulfillment === 'DISPATCHED';
+      assert.equal(context.app.innerHTML.includes('id="handover-form"'), eligible, receipt + '/' + fulfillment);
+    }
+  }
+  context.state.order.handoverUploaded = true;
+  context.renderOrder();
+  assert.ok(context.app.innerHTML.includes('Foto tanda terima sudah tersimpan'));
+  assert.ok(!context.app.innerHTML.includes('id="handover-form"'));
+});
+
+// Drive dan gambar ditiru; pemeriksaan nomor pesanan/kunci memakai fungsi backend asli.
+function handoverContext() {
+  const fixture = recoveryContext('Admin');
+  const context = fixture.context;
+  const files = [];
+  Object.assign(fixture.order, { receipt: 'DELIVERY', fulfillment: 'DISPATCHED' });
+  vm.runInContext(source('apps-script/Files.gs'), context);
+  context.rows_ = name => name === 'Orders' ? [fixture.order] : name === 'Files' ? files : [];
+  context.id_ = () => 'record1';
+  context.now_ = () => '2026-11-05T08:00:00Z';
+  context.append_ = (table, record) => { assert.equal(table, 'Files'); files.push(record); };
+  context.imageBlob_ = () => ({
+    getName: () => 'proof.jpg', getBytes: () => Array(32).fill(0),
+    setName: function () { return this; }
+  });
+  context.folder_ = kind => {
+    assert.equal(kind, 'TANDATERIMA');
+    return { getFiles: () => ({ hasNext: () => false }), createFile: () => ({ getId: () => 'private-proof-id' }) };
+  };
+  return { ...fixture, files, data: {
+    orderId: fixture.order.id, accessToken: 'oldKey1234', received: true,
+    kind: 'TANDATERIMA', requestId: 'upload-1', mimeType: 'image/jpeg', base64: 'test'
+  } };
+}
+
+test('Konsumen mengunggah tanda terima dengan kunci valid; retry tidak menggandakan berkas', function () {
+  const { context, files, data, order } = handoverContext();
+  const result = context.api_({ action: 'customerUpload', data });
+  assert.equal(result.ok, true);
+  assert.equal(files.length, 1);
+  assert.equal(files[0].uploadedBy, 'CUSTOMER');
+  assert.equal(files[0].orderId, order.id);
+  assert.equal(context.api_({ action: 'customerUpload', data }).ok, true);
+  assert.equal(files.length, 1);
+  const customer = context.customerOrder_(order);
+  assert.equal(customer.handoverUploaded, true);
+  assert.ok(!JSON.stringify(customer).includes('private-proof-id'));
+  assert.ok(!Object.hasOwn(customer, 'accessHash'));
+  context.paidAmount_ = () => Number(order.total);
+  context.fulfillment_({ id: 'admin1' }, { orderId: order.id, status: 'COMPLETED' });
+  assert.equal(order.fulfillment, 'COMPLETED');
+});
+
+test('Unggahan tanda terima menolak Admin, kunci salah, tahap awal, dan tanpa konfirmasi', function () {
+  const { context, files, data, order } = handoverContext();
+  for (const role of ['Admin', 'Operator', 'Viewer']) {
+    assert.throws(() => context.upload_({ role }, data), /konsumen/);
+  }
+  for (const changes of [{ accessToken: '' }, { accessToken: 'wrong' }, { received: false }, { received: 'true' }]) {
+    assert.equal(context.api_({ action: 'customerUpload', data: { ...data, ...changes } }).ok, false);
+  }
+  for (const fulfillment of ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED']) {
+    order.fulfillment = fulfillment;
+    assert.equal(context.api_({ action: 'customerUpload', data }).ok, false);
+  }
+  order.receipt = 'PICKUP';
+  order.fulfillment = 'READY';
+  assert.equal(context.api_({ action: 'customerUpload', data }).ok, true);
+  assert.equal(files.length, 1);
+});
+
+test('Sedang dikirim berhasil setelah lunas, ongkir disetujui, dan layanan GoSend aktif', function () {
+  const { context, order, writes } = recoveryContext('Admin');
+  Object.assign(order, { receipt: 'DELIVERY', fulfillment: 'READY' });
+  let shipping = null;
+  let verified = false;
+  let paid = false;
+  context.rows_ = name => name === 'Orders' ? [order] : name === 'Shipping' && shipping ? [shipping] : [];
+  context.paidAmount_ = () => paid ? order.total : 0;
+  context.settings_ = () => ({ deliveryVerified: verified ? 'true' : 'false' });
+  const run = () => context.fulfillment_({ id: 'admin1' }, { orderId: order.id, status: 'DISPATCHED' });
+  assert.throws(run, /lunas/);
+  paid = true;
+  assert.throws(run, /Catat GoSend/);
+  shipping = { orderId: order.id, customerAgreedAt: '' };
+  assert.throws(run, /persetujuan/);
+  shipping.customerAgreedAt = 'stamp';
+  assert.throws(run, /Pengaturan/);
+  assert.equal(writes.length, 0);
+  verified = true;
+  run();
+  assert.equal(order.fulfillment, 'DISPATCHED');
+  assert.equal(writes.length, 1);
+  assert.throws(() => context.fulfillment_({ id: 'admin1' }, { orderId: order.id, status: 'COMPLETED' }), /konsumen/);
+});
+
+test('Form tanda terima mengirim akses pelanggan, bukan sesi Admin', async function () {
+  const client = source('js/client.js');
+  let request;
+  const context = vm.createContext({
+    state: { order: { id: 'order1' }, accessToken: 'customer-key' }, crypto,
+    formData: () => ({ received: 'on' }),
+    photoData: async () => ({ mimeType: 'image/jpeg', base64: 'photo' }),
+    rpc: async (action, data) => { request = { action, data }; },
+    renderOrder: () => {}, notify: () => {}
+  });
+  vm.runInContext(client.slice(client.indexOf('  async function submitAction('),
+    client.indexOf('  // Menangani halaman sebelum instalasi')), context);
+  await context.submitAction({ id: 'handover-form', elements: { photo: { files: [{}] } } });
+  assert.equal(request.action, 'customerUpload');
+  assert.equal(request.data.kind, 'TANDATERIMA');
+  assert.equal(request.data.orderId, 'order1');
+  assert.equal(request.data.accessToken, 'customer-key');
+  assert.equal(request.data.received, true);
+  assert.equal(context.state.order.handoverUploaded, true);
+});
+
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
   let callbackCalled = false;

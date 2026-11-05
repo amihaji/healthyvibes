@@ -52,12 +52,18 @@ function upload_(user, data) {
       throw new Error('Bukti transfer tidak dapat diunggah.');
     }
   } else if (kind === 'TANDATERIMA') {
-    if (!user || !['Admin', 'Operator'].includes(user.role)) {
-      throw new Error('Tanda terima diunggah pengelola.');
+    if (user) {
+      throw new Error('Tanda terima harus diunggah konsumen melalui Status Pesanan.');
     }
-    order = rows_('Orders').find(function (row) { return row.id === data.orderId; });
-    if (!order || !['READY', 'DISPATCHED'].includes(order.fulfillment)) {
-      throw new Error('Tanda terima hanya untuk pesanan siap atau telah dikirim.');
+    order = customerAccess_(data);
+    const eligible = order.receipt === 'DELIVERY'
+      ? order.fulfillment === 'DISPATCHED'
+      : order.receipt === 'PICKUP' && order.fulfillment === 'READY';
+    if (!eligible) {
+      throw new Error('Tanda terima hanya setelah pesanan dikirim atau siap diambil, dan produk sudah diterima.');
+    }
+    if (data.received !== true) {
+      throw new Error('Konfirmasi bahwa produk sudah diterima sebelum mengunggah tanda terima.');
     }
   } else {
     throw new Error('Jenis unggahan tidak diizinkan.');

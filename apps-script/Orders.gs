@@ -255,6 +255,10 @@ function customerOrder_(order) {
   result.items = JSON.parse(order.snapshotJson).items.map(function (item) {
     return publicRecord_(item, ['name', 'quantity', 'unitPrice']);
   });
+  // Hanya status keberadaan tanda terima; ID berkas privat tidak dibagikan.
+  result.handoverUploaded = rows_('Files').some(function (file) {
+    return file.orderId === order.id && file.kind === 'TANDATERIMA';
+  });
   return result;
 }
 
@@ -419,15 +423,17 @@ function fulfillment_(user, data) {
   if (data.status === 'COMPLETED' && !rows_('Files').some(function (row) {
     return row.orderId === order.id && row.kind === 'TANDATERIMA';
   })) {
-    throw new Error('Unggah foto tanda terima sebelum menyelesaikan pesanan.');
+    throw new Error('Minta konsumen mengunggah foto tanda terima melalui Status Pesanan sebelum memilih Selesai.');
   }
   if (data.status === 'DISPATCHED') {
     const shipping = rows_('Shipping').find(function (row) {
       return row.orderId === order.id;
     });
-    if (!shipping || !shipping.customerAgreedAt ||
-      settings_().deliveryVerified !== 'true') {
-      throw new Error('Verifikasi layanan dan persetujuan ongkir diperlukan sebelum pengiriman.');
+    if (!shipping || !shipping.customerAgreedAt) {
+      throw new Error('Pilih Catat GoSend dan ongkir, isi ongkir, centang persetujuan pelanggan, lalu simpan sebelum memilih Sedang dikirim.');
+    }
+    if (settings_().deliveryVerified !== 'true') {
+      throw new Error('Admin perlu membuka Pengaturan dan mengatur dukungan ongkir langsung ke kurir GoSend menjadi Sudah, lalu menyimpan.');
     }
   }
   if (data.status === 'COMPLETED' &&

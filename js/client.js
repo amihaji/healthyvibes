@@ -739,6 +739,19 @@
       '<label class="form-label">Struk bukti transfer (JPG/PNG/WebP)</label>' +
       '<input class="form-control mb-2" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>' +
       '<button class="btn btn-primary" type="submit">' + buttonLabel('upload', 'Unggah Bukti Transfer') + '</button></form>' : '') +
+      (order.handoverUploaded
+        ? '<section class="order-section"><h2 class="h5">Tanda Terima</h2>' +
+          '<p class="alert alert-success">Foto tanda terima sudah tersimpan. Admin dapat memeriksa dan menyelesaikan pesanan.</p></section>'
+        : (order.receipt === 'DELIVERY' && order.fulfillment === 'DISPATCHED') ||
+          (order.receipt === 'PICKUP' && order.fulfillment === 'READY')
+          ? '<form id="handover-form" class="order-section"><h2 class="h5">Konfirmasi Penerimaan</h2>' +
+            '<p>Setelah produk benar-benar diterima, unggah foto tanda terima agar Admin dapat menyelesaikan pesanan.</p>' +
+            '<label class="form-label" for="handover-photo">Foto tanda terima (JPG/PNG/WebP)</label>' +
+            '<input id="handover-photo" type="file" name="photo" class="form-control mb-3" accept="image/jpeg,image/png,image/webp" required>' +
+            '<label class="order-check mb-3"><input type="checkbox" name="received" required> Saya sudah menerima produk pesanan ini.</label>' +
+            '<div id="handover-result" role="status" aria-live="polite"></div>' +
+            '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit">' +
+            buttonLabel('upload', 'Unggah Tanda Terima') + '</button></div></form>' : '') +
       (!order.preparedAt && !['CANCELLED', 'COMPLETED'].includes(order.fulfillment)
         ? '<form id="cancel-form" class="order-section"><h2 class="h5">Permintaan Pembatalan</h2>' +
         field('Alasan pembatalan', 'reason', '') +
@@ -950,7 +963,16 @@
   // Membuka detail pesanan dan formulir tindakan pembayaran, pemenuhan, refund, atau kurir.
   function orderEditor(id) {
     const order = state.admin.tables.Orders.find(function (row) { return row.id === id; });
-    const files = (state.admin.tables.Files || []).filter(function (row) { return row.orderId === id; });
+    // Tampilkan struk terbaru saja; berkas lama tetap tersimpan untuk riwayat.
+    const seen = new Set();
+    const files = (state.admin.tables.Files || []).filter(function (row) { return row.orderId === id; })
+      .slice().sort(function (a, b) { return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); })
+      .filter(function (file) {
+        const key = file.kind === 'STRUK' ? 'STRUK' : file.driveFileId;
+        if (seen.has(key)) { return false; }
+        seen.add(key);
+        return true;
+      });
     showEditor('Detail Pesanan', '<p class="text-break">' + safe(id) + '</p><p>' +
       safe(order.name + ' | ' + order.phone) + '</p><p>' + safe(order.address) + '</p>' +
       '<p>Total produk: ' + rupiah(order.total) + '</p>' + orderStatusPanel(order) +
@@ -958,10 +980,10 @@
       '<div class="d-flex gap-2 flex-wrap mb-3">' +
       files.map(function (file) {
         return '<button class="btn btn-outline-dark" data-file="' + safe(file.driveFileId) +
-          '" type="button">' + buttonLabel('eye', 'Lihat ' + file.kind) + '</button>';
+          '" type="button">' + buttonLabel('eye', file.kind === 'STRUK'
+            ? 'Lihat Struk' : file.kind === 'TANDATERIMA' ? 'Lihat Tanda Terima' : 'Lihat ' + file.kind) + '</button>';
       }).join('') + '<button class="btn btn-green" data-invoice="' + safe(id) +
       '" type="button">' + buttonLabel('download', 'Invoice PDF') + '</button></div><hr>' +
-      (state.user.role === 'Admin' ? orderAccessForm(order) : '') +
       '<form id="order-action-form" data-id="' + safe(id) + '">' +
       '<h2 class="h5">Tindakan Admin</h2>' +
       selectField('Tindakan', 'action', [
@@ -992,13 +1014,10 @@
       field('Nomor/link pelacakan', 'tracking', '', 'text', false, true) + '</div>' +
       '<label class="order-check"><input type="checkbox" name="customerAgreed" disabled> Ongkir telah disetujui pelanggan</label>' +
       '<label class="order-check mb-3"><input type="checkbox" name="feePaidToCourier" disabled> Pelanggan mengonfirmasi ongkir sudah dibayar ke kurir</label>' +
+      '<div id="order-action-result" role="status" aria-live="polite"></div>' +
       '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit" disabled>' +
       buttonLabel('check', 'Jalankan Tindakan') + '</button></div></form><hr>' +
-      '<form id="handover-form" data-id="' + safe(id) + '">' +
-      '<h2 class="h5">Tanda Terima</h2><p class="small">Unggah setelah produk diterima pelanggan, sebelum mengubah tahap menjadi Selesai.</p>' +
-      '<label class="form-label">Foto tanda terima</label>' +
-      '<input type="file" name="photo" class="form-control mb-2" accept="image/jpeg,image/png,image/webp" required>' +
-      '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('upload', 'Unggah ke TANDATERIMA') + '</button></form>');
+      (state.user.role === 'Admin' ? orderAccessForm(order) : ''));
   }
 
   // Setiap tindakan menentukan isian aktif, kewajiban isian, dan petunjuk penggunaan.
@@ -1010,7 +1029,7 @@
       },
       fulfillment: {
         fields: ['status'], required: ['status'],
-        help: 'Gunakan ketika proses pesanan maju ke tahap berikutnya. Pembayaran harus terverifikasi sebelum disiapkan (kecuali langsung ambil), dikirim, atau selesai. Untuk Selesai, unggah tanda terima terlebih dahulu.'
+        help: 'Gunakan ketika pesanan maju ke tahap berikutnya. Sedang dikirim memerlukan pembayaran lunas, GoSend dan persetujuan ongkir yang sudah disimpan, serta dukungan GoSend di Pengaturan berstatus Sudah. Untuk Selesai, konsumen harus mengunggah tanda terima melalui Status Pesanan terlebih dahulu.'
       },
       cancelOrder: {
         fields: ['party', 'reason'], required: ['party', 'reason'],
@@ -1033,6 +1052,7 @@
 
   // Aktifkan hanya isian tindakan terpilih dan hapus nilai dari tindakan sebelumnya.
   function updateOrderAction(form) {
+    form.querySelector('#order-action-result').innerHTML = '';
     const action = form.elements.action.value;
     const rule = orderActionRules(action);
     const order = state.admin.tables.Orders.find(function (row) { return row.id === form.dataset.id; });
@@ -1574,9 +1594,14 @@
     try {
       await submitAction(form);
     } catch (error) {
-      if (form.id === 'reset-access-form') {
-        form.querySelector('#reset-access-result').innerHTML =
-          '<p class="alert alert-danger">' + safe(error.message) + '</p>';
+      if (['reset-access-form', 'order-action-form', 'handover-form'].includes(form.id)) {
+        const selector = form.id === 'reset-access-form' ? '#reset-access-result'
+          : form.id === 'handover-form' ? '#handover-result' : '#order-action-result';
+        const result = form.querySelector(selector);
+        if (result) {
+          result.innerHTML = '<p class="alert alert-danger">' + safe(error.message) + '</p>';
+          result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
       } else {
         notify(error.message, true);
       }
@@ -1622,16 +1647,26 @@
         notify('Permintaan dikirim. Pesanan belum dibatalkan.');
       }
     } else if (['proof-form', 'handover-form', 'product-photo-form'].includes(form.id)) {
+      if (form.id === 'handover-form' && data.received !== 'on') {
+        throw new Error('Konfirmasi bahwa produk sudah diterima terlebih dahulu.');
+      }
       const photo = await photoData(form.elements.photo.files[0], form.id === 'product-photo-form');
-      const customer = form.id === 'proof-form';
+      const customer = form.id !== 'product-photo-form';
       await rpc(customer ? 'customerUpload' : 'upload', Object.assign({}, photo, {
         requestId: crypto.randomUUID(),
-        kind: customer ? 'STRUK' : form.id === 'handover-form' ? 'TANDATERIMA' : 'PRODUK',
-        orderId: customer ? state.order.id : form.id === 'handover-form' ? form.dataset.id : '',
+        kind: form.id === 'handover-form' ? 'TANDATERIMA' : customer ? 'STRUK' : 'PRODUK',
+        orderId: customer ? state.order.id : '',
         productId: form.id === 'product-photo-form' ? form.dataset.id : '',
+        received: form.id === 'handover-form' && data.received === 'on',
         accessToken: customer ? state.accessToken : ''
       }));
-      notify('Berkas tersimpan privat. Bukti transfer tidak otomatis melunasi pesanan.');
+      if (form.id === 'handover-form') {
+        state.order.handoverUploaded = true;
+        renderOrder();
+        notify('Tanda terima tersimpan. Admin dapat memeriksa dan menyelesaikan pesanan.');
+      } else {
+        notify('Berkas tersimpan privat. Bukti transfer tidak otomatis melunasi pesanan.');
+      }
       if (!customer) {
         dialog.close();
         await loadAdmin();
@@ -1682,8 +1717,19 @@
       data.customerAgreed = data.customerAgreed === 'on';
       data.feePaidToCourier = data.feePaidToCourier === 'on';
       await rpc(data.action, data);
-      dialog.close();
+      if (data.action !== 'fulfillment') { dialog.close(); }
       await loadAdmin();
+      // Setelah perubahan tahap, tampilkan detail terbaru agar hasil langsung terlihat.
+      if (data.action === 'fulfillment') {
+        if (state.page === 'admin' && state.adminPage === 'Pesanan' && !state.adminError &&
+          state.admin?.tables.Orders?.some(function (row) { return row.id === data.orderId; })) {
+          orderEditor(data.orderId);
+          document.getElementById('order-action-result').innerHTML =
+            '<p class="alert alert-success">Tahap diperbarui menjadi ' + safe(fulfillmentLabel(data.status)) + '.</p>';
+        } else {
+          dialog.close();
+        }
+      }
       notify('Tindakan berhasil dicatat.');
     } else if (form.id === 'report-form') {
       state.report = await rpc('report', data);
