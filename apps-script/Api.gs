@@ -227,6 +227,10 @@ function catalog_(data) {
         ? view.unitPrice * Number(discount.value) / 100
         : Number(discount.value);
       view.unitPrice -= Math.min(view.unitPrice, rounded_(amount, config.discountRounding));
+      // Rincian publik hanya diberikan jika diskon benar-benar mengurangi harga.
+      if (view.unitPrice < Number(product.price)) {
+        view.discount = publicRecord_(discount, ['type', 'value', 'startsAt', 'endsAt']);
+      }
     }
     const pool = pools.find(function (row) {
       return row.productId === product.id && (type === 'DIRECT' || row.date === schedule.date);
@@ -237,6 +241,12 @@ function catalog_(data) {
   });
   return {
     products: result,
+    // Voucher harus aktif, masih dalam masa berlaku, dan cocok dengan jenis pesanan.
+    vouchers: config.discountRounding ? rows_('Vouchers').filter(function (row) {
+      return validPeriod_(row) && (row.orderType === 'ALL' || row.orderType === type);
+    }).map(function (row) {
+      return publicRecord_(row, ['code', 'type', 'value', 'minimum', 'maximum', 'orderType', 'startsAt', 'endsAt']);
+    }) : [],
     categories: rows_('Categories').filter(function (row) { return active_(row.active); })
       .map(function (row) { return publicRecord_(row, ['id', 'name']); }),
     areas: rows_('ServiceAreas').filter(function (row) { return active_(row.active); })

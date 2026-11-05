@@ -695,6 +695,78 @@ test('Foto latar tidak menahan indikator tindakan pengguna', async function () {
   assert.deepEqual(changes, ['show', 'hide']);
 });
 
+test('Katalog menampilkan rincian diskon dan voucher yang aktif sesuai jenis pesanan', function () {
+  const context = backend();
+  vm.runInContext(source('apps-script/Rules.gs'), context);
+  const stamp = Date.parse('2026-11-05T03:00:00Z');
+  context.validPeriod_ = function (row) {
+    return row.active && Date.parse(row.startsAt) <= stamp && Date.parse(row.endsAt) >= stamp;
+  };
+  let rounding = 'NEAREST';
+  context.settings_ = function () { return { discountRounding: rounding }; };
+  context.slots_ = function () { return { date: '2026-11-06', times: [] }; };
+  const period = { active: true, startsAt: '2026-11-01T00:00:00Z', endsAt: '2026-11-10T09:00:00Z' };
+  const tables = {
+    Products: [{ id: 'p1', price: 10000, active: true }, { id: 'p2', price: 10000, active: true }],
+    Discounts: [
+      Object.assign({}, period, { productId: 'p1', type: 'PERCENT', value: 20, internal: 'RAHASIA' }),
+      Object.assign({}, period, { productId: 'p2', type: 'AMOUNT', value: 1000, endsAt: '2026-11-02T00:00:00Z' })
+    ],
+    Vouchers: ['ALL', 'DIRECT', 'PREORDER'].map(function (type) {
+      return Object.assign({}, period, { code: type, orderType: type, type: 'PERCENT', value: 10,
+        minimum: 5000, maximum: 20000, internal: 'RAHASIA' });
+    })
+  };
+  tables.Vouchers.push(Object.assign({}, tables.Vouchers[0], { code: 'EXPIRED', endsAt: '2026-11-02T00:00:00Z' }));
+  tables.Vouchers.push(Object.assign({}, tables.Vouchers[0], { code: 'FUTURE', startsAt: '2026-11-08T00:00:00Z' }));
+  tables.Vouchers.push(Object.assign({}, tables.Vouchers[0], { code: 'INACTIVE', active: false }));
+  context.rows_ = function (name) { return tables[name] || []; };
+  for (const type of ['DIRECT', 'PREORDER']) {
+    const result = context.catalog_({ type: type });
+    assert.equal(result.products[0].unitPrice, 8000);
+    assert.equal(result.products[0].discount.startsAt, period.startsAt);
+    assert.equal(result.products[0].discount.endsAt, period.endsAt);
+    assert.equal(result.products[1].discount, undefined);
+    assert.deepEqual(Array.from(result.vouchers, function (row) { return row.code; }), ['ALL', type]);
+    assert.ok(!JSON.stringify(result).includes('RAHASIA'));
+  }
+  rounding = '';
+  const result = context.catalog_({ type: 'DIRECT' });
+  assert.equal(result.products[0].unitPrice, 10000);
+  assert.equal(result.products[0].discount, undefined);
+  assert.equal(result.vouchers.length, 0);
+});
+
+test('Tampilan promo memberi tanggal WITA, syarat voucher, dan mengamankan kode', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({ window: {}, state: {} });
+  vm.runInContext(source('js/icons.js'), context);
+  context.buttonLabel = context.window.HV_UI.label;
+  vm.runInContext(client.slice(client.indexOf('  function safe('), client.indexOf('  let pending =')), context);
+  vm.runInContext(client.slice(client.indexOf('  function renderVouchers('),
+    client.indexOf('  const productPhotos =')), context);
+  vm.runInContext(client.slice(client.indexOf('  function renderProductDiscount('),
+    client.indexOf('  function renderProducts(')), context);
+  const period = { startsAt: '2026-11-01T00:00:00Z', endsAt: '2026-11-10T09:00:00Z' };
+  const discount = Object.assign({}, period, { type: 'PERCENT', value: 20 });
+  const html = context.renderProductDiscount({ price: 10000, unitPrice: 8000, discount: discount });
+  assert.ok(html.includes('Diskon 20%'));
+  assert.ok(html.includes('01/11/2026 08:00 WITA'));
+  assert.ok(html.includes('10/11/2026 17:00 WITA'));
+  assert.equal(context.renderProductDiscount({ price: 10000, unitPrice: 10000 }), '');
+  const voucher = Object.assign({}, period, { code: '<img src=x>', type: 'PERCENT', value: 10,
+    minimum: 5000, maximum: 20000, orderType: 'ALL' });
+  const vouchers = context.renderVouchers([voucher]);
+  assert.ok(vouchers.includes('Minimum belanja'));
+  assert.ok(vouchers.includes('Maksimal potongan'));
+  assert.ok(vouchers.includes('produk tanpa diskon'));
+  assert.ok(vouchers.includes('&lt;img'));
+  assert.ok(!vouchers.includes('<img'));
+  assert.equal(context.renderVouchers([]), '');
+  context.state.catalogLoading = true;
+  assert.equal(context.renderVouchers([voucher]), '');
+});
+
 test('Katalog membaca stok sekali dan mempertahankan aturan reservasi', function () {
   const context = backend();
   vm.runInContext(source('apps-script/Rules.gs'), context);

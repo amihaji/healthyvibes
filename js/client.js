@@ -327,6 +327,7 @@
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<label class="form-check-label d-inline-flex align-items-center gap-2" for="availability-filter">' +
       buttonLabel('stock', 'Tersedia saja') + '</label></div></div>' +
+      renderVouchers(catalog.vouchers || []) +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
       '<div id="product-pagination"></div>' +
       '</section><aside class="panel cart-panel">' + renderCart() + '</aside></div>' +
@@ -335,6 +336,24 @@
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       buttonLabel('cart', 'Keranjang & Checkout') + '</button></div>';
     renderProducts();
+  }
+
+  // Voucher aktif ditampilkan sebagai informasi; kode tetap dimasukkan dan diperiksa saat Checkout.
+  function renderVouchers(vouchers) {
+    if (!vouchers.length || state.catalogLoading || state.catalogError) { return ''; }
+    return '<section class="panel voucher-offers" aria-labelledby="voucher-title">' +
+      '<h2 id="voucher-title" class="h5">' + buttonLabel('voucher', 'Voucher Berlaku') + '</h2>' +
+      '<p class="small text-secondary">Masukkan kode saat Checkout. Potongan voucher hanya untuk produk tanpa diskon.</p>' +
+      '<div class="voucher-grid">' + vouchers.map(function (voucher) {
+        const cut = voucher.type === 'PERCENT' ? safe(voucher.value) + '%' : rupiah(voucher.value);
+        return '<article class="voucher-card"><strong class="voucher-code">' + safe(voucher.code) + '</strong>' +
+          '<span>Potongan ' + cut + '</span><span>Minimum belanja ' + rupiah(voucher.minimum) + '</span>' +
+          (Number(voucher.maximum) > 0 ? '<span>Maksimal potongan ' + rupiah(voucher.maximum) + '</span>' : '') +
+          '<span>' + (voucher.orderType === 'ALL' ? 'Langsung dan Preorder' :
+            voucher.orderType === 'PREORDER' ? 'Preorder' : 'Pesanan Langsung') + '</span>' +
+          '<div class="promo-period"><span>Mulai: ' + safe(dateTimeText(voucher.startsAt)) + ' WITA</span>' +
+          '<span>Sampai: ' + safe(dateTimeText(voucher.endsAt)) + ' WITA</span></div></article>';
+      }).join('') + '</div></section>';
   }
 
   // Foto publik digunakan ulang selama halaman terbuka; perubahan ID foto memuat versi baru.
@@ -383,6 +402,17 @@
     });
   }
 
+  // Label diskon dan tanggal mengikuti harga server, bukan menghitung ulang harga di browser.
+  function renderProductDiscount(product) {
+    if (!product.discount || Number(product.unitPrice) >= Number(product.price)) { return ''; }
+    const discount = product.discount;
+    const cut = discount.type === 'PERCENT' ? safe(discount.value) + '%' : rupiah(product.price - product.unitPrice);
+    return '<div class="product-promo"><span class="promo-badge">' +
+      buttonLabel('tag', 'Diskon ' + cut) + '</span><div class="promo-period">' +
+      '<span>Mulai: ' + safe(dateTimeText(discount.startsAt)) + ' WITA</span>' +
+      '<span>Sampai: ' + safe(dateTimeText(discount.endsAt)) + ' WITA</span></div></div>';
+  }
+
   // Menampilkan halaman produk aktif saja; foto halaman lain belum diminta ke server.
   function renderProducts() {
     if (photoObserver) { photoObserver.disconnect(); }
@@ -410,9 +440,12 @@
           (product.photoFileId ? '<div data-photo="' + safe(product.id) +
             '" data-photo-file="' + safe(product.photoFileId) + '"></div>' : '') +
           '<h2>' + safe(product.name) + '</h2><p class="description">' +
-          safe(product.description) + '</p><small>Tersedia: ' + product.available +
+          safe(product.description) + '</p>' + renderProductDiscount(product) + '<small>Tersedia: ' + product.available +
           '</small><div class="price d-flex flex-wrap gap-2 justify-content-between align-items-center mt-2">' +
-          '<strong>' + rupiah(product.unitPrice) + '</strong>' +
+          '<div class="product-prices">' +
+          (product.discount && Number(product.unitPrice) < Number(product.price)
+            ? '<del aria-label="Harga sebelum diskon">' + rupiah(product.price) + '</del>' : '') +
+          '<strong>' + rupiah(product.unitPrice) + '</strong></div>' +
           '<button class="btn btn-primary" data-add="' + safe(product.id) +
           '" type="button" aria-label="Tambah ' + safe(product.name) + '"' +
           (product.available < 1 ? ' disabled' : '') + '>' + buttonLabel('plus', 'Tambah') + '</button></div></article>';
