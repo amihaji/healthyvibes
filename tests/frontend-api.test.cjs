@@ -546,6 +546,14 @@ test('Checkbox tersedia berbentuk persegi tanpa mengikuti tinggi minimum input u
     assert.ok(rule.includes(declaration));
   }
   assert.match(css, /\.availability-option \{[^}]*min-height: 44px/);
+  const frame = css.match(/\.availability-option \{([^}]+)\}/)[1];
+  for (const declaration of [
+    'height: 44px', 'padding: 6px 10px',
+    'border: 1px solid var(--bs-border-color, #dee2e6)',
+    'border-radius: var(--bs-border-radius, .375rem)', 'background: white'
+  ]) {
+    assert.ok(frame.includes(declaration), 'Bingkai filter: ' + declaration);
+  }
 });
 
 test('Filter tersedia menyaring stok/kuota aktif sebelum halaman serta bekerja dengan pencarian dan kategori', function () {

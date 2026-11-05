@@ -376,8 +376,19 @@
     align-items: center;
     margin-bottom: 16px;
   }
-  /* Kotak centang dan teks tidak terpisah baris atau melebar berlebihan. */
-  .availability-option { display: flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 44px; }
+  /* Satu bingkai untuk centang dan teks, setinggi pencarian dan kategori. */
+  .availability-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    min-height: 44px;
+    height: 44px;
+    padding: 6px 10px;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--bs-border-radius, .375rem);
+    background: white;
+  }
   /* Ukuran khusus menghindari aturan input 44px yang membuat checkbox menjadi memanjang. */
   .availability-option .form-check-input {
     float: none;
