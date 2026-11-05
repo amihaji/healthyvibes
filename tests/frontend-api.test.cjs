@@ -1548,6 +1548,144 @@ test('Salt dan bcrypt cost 12 tetap berjalan sinkron tanpa timer', function () {
   assert.equal(bcrypt.compareSync('Password-salah-123', hash), false);
 });
 
+// Form tiruan memeriksa aturan enabled/disabled tanpa mengakses backend nyata.
+function actionFormContext() {
+  const client = source('js/client.js');
+  const order = {
+    id: 'order1', total: 50000, fulfillment: 'NEW', paymentStatus: 'UNPAID',
+    receipt: 'DELIVERY', cancelRequestedAt: '2026-11-05T00:00:00Z', refundAmount: 45000
+  };
+  const nodes = {};
+  const form = { dataset: { id: order.id }, elements: { action: { value: '' } },
+    querySelector: selector => nodes[selector] || (nodes[selector] = {}) };
+  for (const name of ['status', 'party', 'amount', 'reference', 'reason', 'courier',
+    'tracking', 'customerAgreed', 'feePaidToCourier']) {
+    form.elements[name] = {
+      type: ['customerAgreed', 'feePaidToCourier'].includes(name) ? 'checkbox' : 'text',
+      value: 'nilai lama', checked: true, disabled: false, required: true
+    };
+  }
+  const context = vm.createContext({
+    state: { admin: { tables: { Orders: [order], Shipping: [] } } },
+    safe: String, fulfillmentLabel: String
+  });
+  vm.runInContext(client.slice(client.indexOf('  function orderActionRules('),
+    client.indexOf('  function orderAccessForm(')), context);
+  return { context, form, order };
+}
+
+test('Semua input tindakan nonaktif secara default; pilihan hanya mengaktifkan input terkait', function () {
+  const { context, form, order } = actionFormContext();
+  context.updateOrderAction(form);
+  assert.ok(form.querySelector('[type="submit"]').disabled);
+  assert.ok(Object.entries(form.elements).filter(([key]) => key !== 'action')
+    .every(([, input]) => input.disabled && !input.required));
+  const expected = {
+    verifyPayment: ['amount', 'reference'], fulfillment: ['status'],
+    cancelOrder: ['party', 'reason'], rejectCancellation: ['reason'],
+    refund: ['reference'], shipping: ['amount', 'courier', 'tracking', 'customerAgreed', 'feePaidToCourier']
+  };
+  for (const [action, fields] of Object.entries(expected)) {
+    order.fulfillment = action === 'refund' ? 'CANCELLED' : 'NEW';
+    form.elements.action.value = action;
+    context.updateOrderAction(form);
+    const enabled = Object.entries(form.elements).filter(([key, input]) => key !== 'action' && !input.disabled)
+      .map(([key]) => key).sort();
+    assert.deepEqual(enabled, fields.slice().sort());
+    assert.equal(form.querySelector('[type="submit"]').disabled, false);
+    assert.ok(form.querySelector('#order-action-help').textContent.length > 40);
+    for (const name of context.orderActionRules(action).required) {
+      assert.equal(form.elements[name].required, true);
+    }
+  }
+  assert.equal(form.elements.reference.value, '');
+  assert.equal(form.elements.amount.value, '');
+  assert.equal(form.elements.customerAgreed.checked, false);
+  assert.equal(context.orderActionRules('tidak-valid'), null);
+});
+
+test('Tahap tidak dapat dilompati; tindakan tidak berlaku tetap disabled', function () {
+  const { context, form, order } = actionFormContext();
+  form.elements.action.value = 'fulfillment';
+  order.fulfillment = 'READY';
+  order.receipt = 'PICKUP';
+  context.updateOrderAction(form);
+  assert.ok(form.elements.status.innerHTML.includes('COMPLETED'));
+  assert.ok(!form.elements.status.innerHTML.includes('DISPATCHED'));
+  const cases = [
+    ['shipping', { receipt: 'PICKUP' }], ['verifyPayment', { paymentStatus: 'PAID' }],
+    ['refund', { fulfillment: 'CANCELLED', refundStatus: 'COMPLETED' }],
+    ['rejectCancellation', { cancelRequestedAt: '' }],
+    ['cancelOrder', { fulfillment: 'COMPLETED' }],
+    ['fulfillment', { fulfillment: 'COMPLETED' }]
+  ];
+  for (const [action, changes] of cases) {
+    Object.assign(order, changes);
+    form.elements.action.value = action;
+    context.updateOrderAction(form);
+    assert.equal(form.querySelector('[type="submit"]').disabled, true, action);
+    assert.ok(Object.entries(form.elements).filter(([key]) => key !== 'action')
+      .every(([, input]) => input.disabled && !input.required));
+  }
+});
+
+test('Status pelanggan memisahkan pembayaran, tahap berjalan, pembatalan dan refund', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({ safe: String, rupiah: String, dateTimeText: String });
+  vm.runInContext(client.slice(client.indexOf('  function fulfillmentLabel('),
+    client.indexOf('  function renderOrder(')), context);
+  for (const fulfillment of ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DISPATCHED', 'COMPLETED']) {
+    const html = context.orderStatusPanel({ fulfillment, receipt: 'DELIVERY', paymentStatus: 'PAID' });
+    assert.ok(html.includes('Lunas'));
+    assert.equal((html.match(/aria-current="step"/g) || []).length, 1);
+    assert.ok(html.includes(context.fulfillmentLabel(fulfillment)));
+    assert.ok(!html.includes('>PAID<'));
+  }
+  const pending = context.orderStatusPanel({
+    fulfillment: 'PREPARING', receipt: 'PICKUP', paymentStatus: 'UNPAID', cancelRequestedAt: 'stamp'
+  });
+  assert.ok(pending.includes('Belum lunas'));
+  assert.ok(pending.includes('Pesanan belum dibatalkan'));
+  assert.ok(!pending.includes('Sedang dikirim'));
+  const cancelled = context.orderStatusPanel({
+    fulfillment: 'CANCELLED', paymentStatus: 'PAID', refundStatus: 'PENDING',
+    refundAmount: 45000, refundDueAt: '2026-11-06'
+  });
+  assert.ok(cancelled.includes('Dibatalkan'));
+  assert.ok(cancelled.includes('Menunggu transfer toko'));
+  assert.ok(cancelled.includes('45000'));
+  assert.ok(cancelled.includes('Batas pengembalian'));
+  assert.ok(!cancelled.includes('order-progress'));
+  assert.ok(context.orderStatusPanel({
+    fulfillment: 'CANCELLED', refundStatus: 'COMPLETED'
+  }).includes('Sudah ditransfer'));
+});
+
+test('Detail pelanggan memuat bagian terpisah dan tidak meminta bukti untuk pesanan lunas', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({
+    app: { innerHTML: '' }, state: { accessToken: 'AbC123_-xy', order: {
+      id: 'order1', receipt: 'PICKUP', fulfillment: 'COMPLETED', paymentStatus: 'PAID',
+      items: [{ name: 'Produk', quantity: 2, unitPrice: 10000 }], total: 20000
+    } }, safe: String, rupiah: String, dateText: String, dateTimeText: String,
+    buttonLabel: (icon, label) => label, field: () => ''
+  });
+  vm.runInContext(client.slice(client.indexOf('  function fulfillmentLabel('),
+    client.indexOf('  function renderLogin(')), context);
+  context.renderOrder();
+  const html = context.app.innerHTML;
+  for (const title of ['Jadwal dan Penerima', 'Rincian Produk', 'Dokumen dan Kunci Akses', 'Perbarui Status']) {
+    assert.ok(html.includes(title));
+  }
+  assert.ok(!html.includes('id="proof-form"'));
+  assert.ok(!html.includes('id="cancel-form"'));
+  context.state.order.paymentStatus = 'UNPAID';
+  context.state.order.fulfillment = 'NEW';
+  context.renderOrder();
+  assert.ok(context.app.innerHTML.includes('id="proof-form"'));
+  assert.ok(context.app.innerHTML.includes('id="cancel-form"'));
+});
+
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
   let callbackCalled = false;

@@ -558,6 +558,61 @@
     font-size: 12px;
   }
 
+  /* Status pembayaran dan pengerjaan dipisahkan dalam ringkasan yang mudah dibaca. */
+  .order-status-panel {
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #f5f7fa;
+  }
+  .order-info-grid,
+  .order-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .order-info-grid > div,
+  .order-action-grid > div { min-width: 0; overflow-wrap: anywhere; }
+  .order-caption { display: block; font-size: 12px; color: #586675; margin-bottom: 4px; }
+  .order-status-title { display: block; font-size: 20px; color: var(--green); margin-bottom: 4px; }
+
+  /* Tahap saat ini diberi aksen orange; tahap mendatang tetap netral. */
+  .order-progress {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+    list-style: none;
+    padding: 0;
+    margin: 18px 0 0;
+    gap: 8px;
+  }
+  .order-progress li { border-left: 3px solid #c6ced8; padding: 8px; background: white; font-size: 12px; }
+  .order-progress li span,
+  .order-progress li small { display: block; }
+  .order-progress li small { color: #586675; margin-top: 3px; }
+  .order-progress .is-done { border-color: var(--green); }
+  .order-progress .is-current { border-color: var(--orange); background: #fff3e7; font-weight: 700; }
+
+  /* Pemisah untuk jadwal, produk, dokumen, dan form pelanggan. */
+  .order-section { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 20px; }
+  .order-notice { background: #fff3e7; border-left: 3px solid var(--orange); padding: 12px; margin: 16px 0; }
+  .order-action-grid { gap: 12px 18px; margin-bottom: 16px; }
+  .order-action-grid > .mb-3 { margin-bottom: 0 !important; }
+  .order-action-grid input:disabled,
+  .order-action-grid select:disabled { background: #edf0f3; color: #66717d; opacity: 1; }
+
+  /* Checkbox tindakan dan pemulihan tetap persegi, bukan setinggi input teks. */
+  .order-check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
+  .order-check input,
+  #reset-access-form input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; accent-color: var(--green); }
+
+  /* Form satu kolom pada HP; indikator tahap tetap muat tanpa gulir horizontal. */
+  @media (max-width: 600px) {
+    .order-info-grid,
+    .order-action-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .order-status-panel { padding: 14px; }
+    .order-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
   /* Menyusun indikator tiga langkah checkout dan membungkusnya bila perlu. */
   .steps {
     display: flex;

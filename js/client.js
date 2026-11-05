@@ -135,7 +135,7 @@
   }
 
   // Membuat input beserta label, nilai awal, dan aturan pengisian.
-  function field(label, name, value, type, required) {
+  function field(label, name, value, type, required, disabled) {
     const minimum = ['username', 'password', 'newPassword'].includes(name)
       ? ' minlength="6"' : '';
     // Input teks menjaga tampilan 24 jam, terlepas dari bahasa browser.
@@ -154,14 +154,14 @@
       safe(label) + '</label><input class="form-control" id="f-' + name +
       '" name="' + name + '" type="' + (clock || dateClock ? 'text' : type || 'text') + '" value="' +
       safe(value || '') + '"' + minimum + clockAttributes + dateClockAttributes +
-      (required === false ? '' : ' required') + '></div>';
+      (required === false ? '' : ' required') + (disabled ? ' disabled' : '') + '></div>';
   }
 
   // Membuat daftar pilihan dan memilih nilai awal yang sesuai.
-  function selectField(label, name, options, value) {
+  function selectField(label, name, options, value, disabled) {
     return '<div class="mb-3"><label class="form-label" for="f-' + name + '">' +
       safe(label) + '</label><select class="form-select" id="f-' + name +
-      '" name="' + name + '">' + options.map(function (option) {
+      '" name="' + name + '"' + (disabled ? ' disabled' : '') + '>' + options.map(function (option) {
         return '<option value="' + safe(option[0]) + '"' +
           (String(option[0]) === String(value) ? ' selected' : '') + '>' +
           safe(option[1]) + '</option>';
@@ -639,35 +639,109 @@
       '<button class="btn btn-primary" type="submit">' + buttonLabel('eye', 'Lihat Pesanan') + '</button></form></section>';
   }
 
-  // Menampilkan detail pesanan, status, unduhan invoice, dan formulir bukti/pembatalan.
+  // Mengubah kode internal menjadi status yang mudah dipahami pelanggan.
+  function fulfillmentLabel(status) {
+    return {
+      NEW: 'Pesanan baru', CONFIRMED: 'Dikonfirmasi', PREPARING: 'Sedang disiapkan',
+      READY: 'Siap diterima', DISPATCHED: 'Sedang dikirim', COMPLETED: 'Selesai',
+      CANCELLED: 'Dibatalkan'
+    }[status] || 'Status belum diketahui';
+  }
+
+  // Pisahkan pembayaran dari pengerjaan; permintaan batal belum berarti dibatalkan.
+  function orderStatusPanel(order) {
+    const descriptions = {
+      NEW: 'Pesanan sudah tercatat dan menunggu konfirmasi toko.',
+      CONFIRMED: 'Toko sudah mengonfirmasi pesanan Anda.',
+      PREPARING: 'Produk Anda sedang disiapkan oleh toko.',
+      READY: order.receipt === 'DELIVERY' ? 'Produk siap diserahkan kepada kurir.' : 'Produk siap diambil di toko.',
+      DISPATCHED: 'Produk sedang dalam perjalanan ke alamat penerima.',
+      COMPLETED: 'Pesanan sudah diterima dan proses pesanan selesai.',
+      CANCELLED: Number(order.refundAmount) > 0
+        ? 'Pesanan telah dibatalkan. Periksa informasi pengembalian dana di bawah.'
+        : 'Pesanan telah dibatalkan. Tidak ada dana yang perlu dikembalikan.'
+    };
+    const stages = ['NEW', 'CONFIRMED', 'PREPARING', 'READY']
+      .concat(order.receipt === 'DELIVERY' ? ['DISPATCHED'] : []).concat(['COMPLETED']);
+    const current = stages.indexOf(order.fulfillment);
+    const cancelled = order.fulfillment === 'CANCELLED';
+    return '<section class="order-status-panel" aria-label="Status terkini pesanan">' +
+      '<div class="order-info-grid"><div><span class="order-caption">Tahap pesanan</span>' +
+      '<strong class="order-status-title">' + safe(fulfillmentLabel(order.fulfillment)) +
+      '</strong><p class="small mb-0">' + safe(descriptions[order.fulfillment] || 'Silakan hubungi Admin untuk informasi status.') +
+      '</p></div><div><span class="order-caption">Pembayaran produk</span>' +
+      '<strong class="order-status-title">' + (order.paymentStatus === 'PAID' ? 'Lunas' : 'Belum lunas') +
+      '</strong><p class="small mb-0">' + (order.paymentStatus === 'PAID'
+        ? 'Pembayaran sudah diverifikasi oleh toko.'
+        : 'Pembayaran belum diverifikasi toko. Unggah bukti transfer tidak otomatis membuat pesanan lunas.') +
+      '</p></div></div>' +
+      (!cancelled && current >= 0 ? '<ol class="order-progress" aria-label="Urutan tahap pesanan">' +
+        stages.map(function (stage, index) {
+          return '<li class="' + (index < current ? 'is-done' : index === current ? 'is-current' : '') +
+            '"' + (index === current ? ' aria-current="step"' : '') + '><span>' +
+            safe(fulfillmentLabel(stage)) + '</span><small>' +
+            (index < current ? 'Sudah dilewati' : index === current ? 'Tahap saat ini' : 'Tahap berikutnya') +
+            '</small></li>';
+        }).join('') + '</ol>' : '') +
+      (order.cancelRequestedAt && !cancelled ? '<p class="order-notice">Permintaan pembatalan sedang diperiksa toko. ' +
+        'Pesanan belum dibatalkan.</p>' : '') +
+      (order.refundStatus && order.refundStatus !== 'NONE'
+        ? '<div class="order-notice"><strong>Pengembalian dana: ' +
+          (order.refundStatus === 'COMPLETED' ? 'Sudah ditransfer' : 'Menunggu transfer toko') +
+          '</strong><p class="mb-0">' + rupiah(order.refundAmount) +
+          (order.refundStatus === 'PENDING' && order.refundDueAt
+            ? ' · Batas pengembalian: ' + safe(dateTimeText(order.refundDueAt)) + ' WITA' : '') +
+          '</p></div>' : '') + '</section>';
+  }
+
+  // Menampilkan status, jadwal, rincian produk, dan tindakan pelanggan secara terpisah.
   function renderOrder() {
     const order = state.order;
     app.innerHTML = '<section class="panel mx-auto" style="max-width:850px">' +
       '<h1 class="h2">Pesanan Anda</h1><p class="text-break"><strong>' + safe(order.id) +
-      '</strong></p><div class="alert alert-warning">Simpan kunci akses berikut secara privat. ' +
-      'Kunci ini memberikan akses pesanan.<br><code class="text-break">' +
-      safe(state.accessToken) + '</code></div><p>Pembayaran: <span class="status-tag">' +
-      safe(order.paymentStatus) + '</span> | Pemenuhan: <span class="status-tag">' +
-      safe(order.fulfillment) + '</span></p>' +
-      '<p>' + safe(dateText(order.date) + ' ' + order.time) + ' WITA</p>' +
+      '</strong></p>' + orderStatusPanel(order) +
+      '<p class="small text-secondary mt-3">Status sesuai pembaruan terakhir yang dimuat. ' +
+      'Klik Perbarui Status untuk mengambil informasi terbaru dari toko.</p>' +
+      '<div class="d-flex justify-content-center mb-4"><button class="btn btn-outline-dark btn-sm" ' +
+      'id="refresh-order" type="button">' + buttonLabel('refresh', 'Perbarui Status') + '</button></div>' +
+      '<section class="order-section"><h2 class="h5">Jadwal dan Penerima</h2><div class="order-info-grid">' +
+      '<div><span class="order-caption">' + (order.receipt === 'DELIVERY' ? 'Pengantaran' : 'Pengambilan di toko') +
+      '</span><strong>' + safe(dateText(order.date) + ' ' + order.time) + ' WITA</strong><p class="small mb-0">' +
+      (order.type === 'PREORDER' ? 'Preorder' : 'Pesanan langsung') + '</p></div>' +
+      '<div><span class="order-caption">Penerima</span><strong>' + safe(order.name) +
+      '</strong><p class="small mb-0">' + safe(order.phone) + '</p>' +
+      (order.receipt === 'DELIVERY' ? '<p class="small mb-0 text-break">' + safe(order.address) + '</p>' : '') +
+      '</div></div></section>' +
+      '<section class="order-section"><h2 class="h5">Rincian Produk</h2><div class="table-wrap">' +
+      '<table class="table"><thead><tr><th>Produk</th><th>Jumlah</th><th>Harga Satuan</th></tr></thead><tbody>' +
       order.items.map(function (item) {
-        return '<p>' + safe(item.name) + ' x ' + item.quantity + ' — ' +
-          rupiah(item.unitPrice) + '</p>';
-      }).join('') + '<h2 class="h4">Total produk ' + rupiah(order.total) + '</h2>' +
-      '<p>Batas pembayaran: ' + (order.paymentDeadline
-        ? safe(dateTimeText(order.paymentDeadline)) +
-        ' WITA' : 'Sebelum dikirim; langsung ambil dapat bayar saat diambil.') +
-      '</p><p>Refund: ' + safe(order.refundStatus) + ' ' + rupiah(order.refundAmount) +
-      '</p><div class="d-flex gap-2 flex-wrap"><button class="btn btn-outline-dark" ' +
-      'id="refresh-order" type="button">' + buttonLabel('refresh', 'Perbarui Status') + '</button>' +
-      '<button class="btn btn-green" id="download-invoice" type="button">' + buttonLabel('download', 'Unduh Invoice PDF') + '</button>' +
-      '<button class="btn btn-outline-dark" id="save-access" type="button">' + buttonLabel('key', 'Unduh Kunci Akses') + '</button>' +
-      '</div>' + (order.fulfillment !== 'CANCELLED' ? '<form id="proof-form" class="mt-4">' +
+        return '<tr><td>' + safe(item.name) + '</td><td>' + safe(item.quantity) +
+          '</td><td>' + rupiah(item.unitPrice) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<p>Potongan voucher: ' + rupiah(order.voucherDiscount || 0) + '</p>' +
+      '<h3 class="h5">Total produk: ' + rupiah(order.total) + '</h3>' +
+      '<p class="small">Batas pembayaran: ' + (order.paymentDeadline
+        ? safe(dateTimeText(order.paymentDeadline)) + ' WITA'
+        : 'Sebelum dikirim; pesanan langsung ambil dapat dibayar saat diambil.') +
+      '</p></section>' +
+      '<section class="order-section"><h2 class="h5">Dokumen dan Kunci Akses</h2>' +
+      '<div class="alert alert-warning">Simpan kunci akses berikut secara privat. ' +
+      'Kunci ini memberikan akses pesanan.<br><code class="text-break">' +
+      safe(state.accessToken) + '</code></div>' +
+      '<div class="d-flex gap-2 flex-wrap justify-content-center">' +
+      '<button class="btn btn-green btn-sm" id="download-invoice" type="button">' + buttonLabel('download', 'Unduh Invoice PDF') + '</button>' +
+      '<button class="btn btn-outline-dark btn-sm" id="save-access" type="button">' + buttonLabel('key', 'Unduh Kunci Akses') + '</button>' +
+      '</div></section>' +
+      (order.paymentStatus !== 'PAID' && !['CANCELLED', 'COMPLETED'].includes(order.fulfillment)
+        ? '<form id="proof-form" class="order-section">' +
+      '<h2 class="h5">Bukti Pembayaran</h2>' +
+      '<p class="small">Setelah transfer, unggah bukti agar toko dapat memeriksa pembayaran Anda.</p>' +
       '<label class="form-label">Struk bukti transfer (JPG/PNG/WebP)</label>' +
       '<input class="form-control mb-2" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>' +
       '<button class="btn btn-primary" type="submit">' + buttonLabel('upload', 'Unggah Bukti Transfer') + '</button></form>' : '') +
       (!order.preparedAt && !['CANCELLED', 'COMPLETED'].includes(order.fulfillment)
-        ? '<form id="cancel-form" class="mt-4">' + field('Alasan pembatalan', 'reason', '') +
+        ? '<form id="cancel-form" class="order-section"><h2 class="h5">Permintaan Pembatalan</h2>' +
+        field('Alasan pembatalan', 'reason', '') +
         '<button class="btn btn-outline-danger" type="submit">' + buttonLabel('close', 'Ajukan Pembatalan') + '</button></form>'
         : '') + '</section>';
   }
@@ -879,11 +953,8 @@
     const files = (state.admin.tables.Files || []).filter(function (row) { return row.orderId === id; });
     showEditor('Detail Pesanan', '<p class="text-break">' + safe(id) + '</p><p>' +
       safe(order.name + ' | ' + order.phone) + '</p><p>' + safe(order.address) + '</p>' +
-      '<p>Total produk: ' + rupiah(order.total) + '</p><p>' +
-      safe(order.paymentStatus + ' / ' + order.fulfillment) + '</p>' +
+      '<p>Total produk: ' + rupiah(order.total) + '</p>' + orderStatusPanel(order) +
       '<p>Permintaan pembatalan: ' + safe(order.cancelReason || 'Tidak ada') + '</p>' +
-      '<p>Refund: ' + rupiah(order.refundAmount) + ' — ' + safe(order.refundStatus) +
-      '</p><p>Tenggat refund: ' + safe(order.refundDueAt || '-') + '</p>' +
       '<div class="d-flex gap-2 flex-wrap mb-3">' +
       files.map(function (file) {
         return '<button class="btn btn-outline-dark" data-file="' + safe(file.driveFileId) +
@@ -892,7 +963,9 @@
       '" type="button">' + buttonLabel('download', 'Invoice PDF') + '</button></div><hr>' +
       (state.user.role === 'Admin' ? orderAccessForm(order) : '') +
       '<form id="order-action-form" data-id="' + safe(id) + '">' +
+      '<h2 class="h5">Tindakan Admin</h2>' +
       selectField('Tindakan', 'action', [
+        ['', 'Pilih tindakan terlebih dahulu'],
         ['verifyPayment', 'Verifikasi pembayaran dari transaksi masuk'],
         ['fulfillment', 'Ubah tahap pesanan'],
         ['cancelOrder', 'Konfirmasi pembatalan'],
@@ -900,25 +973,123 @@
         ['refund', 'Catat refund yang sudah ditransfer'],
         ['shipping', 'Catat GoSend dan ongkir']
       ], '') +
+      '<p id="order-action-help" class="order-notice small" role="status" aria-live="polite">' +
+      'Pilih tindakan untuk melihat kegunaannya dan mengaktifkan isian yang diperlukan.</p>' +
+      '<div class="order-action-grid">' +
       selectField('Tahap (untuk ubah tahap)', 'status', [
+        ['', 'Pilih tahap'],
         ['CONFIRMED', 'Dikonfirmasi'], ['PREPARING', 'Mulai disiapkan'],
         ['READY', 'Siap'], ['DISPATCHED', 'Dikirim'], ['COMPLETED', 'Selesai']
-      ], '') +
+      ], '', true) +
       selectField('Pihak pembatal (untuk pembatalan)', 'party', [
+        ['', 'Pilih pihak pembatal'],
         ['CUSTOMER', 'Pelanggan'], ['STORE', 'Toko']
-      ], '') +
-      field('Nominal pembayaran / ongkir', 'amount', order.total, 'number', false) +
-      field('Referensi transaksi / refund', 'reference', '', 'text', false) +
-      field('Alasan (pembatalan / penolakan)', 'reason', '', 'text', false) +
-      field('Nama kurir', 'courier', '', 'text', false) +
-      field('Nomor/link pelacakan', 'tracking', '', 'text', false) +
-      '<label class="d-block"><input type="checkbox" name="customerAgreed"> Ongkir telah disetujui pelanggan</label>' +
-      '<label class="d-block mb-3"><input type="checkbox" name="feePaidToCourier"> Pelanggan mengonfirmasi ongkir sudah dibayar ke kurir</label>' +
-      '<button class="btn btn-primary" type="submit">' + buttonLabel('check', 'Jalankan Tindakan') + '</button></form><hr>' +
+      ], '', true) +
+      field('Nominal pembayaran / ongkir', 'amount', '', 'number', false, true) +
+      field('Referensi transaksi / refund', 'reference', '', 'text', false, true) +
+      field('Alasan (pembatalan / penolakan)', 'reason', '', 'text', false, true) +
+      field('Nama kurir', 'courier', '', 'text', false, true) +
+      field('Nomor/link pelacakan', 'tracking', '', 'text', false, true) + '</div>' +
+      '<label class="order-check"><input type="checkbox" name="customerAgreed" disabled> Ongkir telah disetujui pelanggan</label>' +
+      '<label class="order-check mb-3"><input type="checkbox" name="feePaidToCourier" disabled> Pelanggan mengonfirmasi ongkir sudah dibayar ke kurir</label>' +
+      '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit" disabled>' +
+      buttonLabel('check', 'Jalankan Tindakan') + '</button></div></form><hr>' +
       '<form id="handover-form" data-id="' + safe(id) + '">' +
+      '<h2 class="h5">Tanda Terima</h2><p class="small">Unggah setelah produk diterima pelanggan, sebelum mengubah tahap menjadi Selesai.</p>' +
       '<label class="form-label">Foto tanda terima</label>' +
       '<input type="file" name="photo" class="form-control mb-2" accept="image/jpeg,image/png,image/webp" required>' +
       '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('upload', 'Unggah ke TANDATERIMA') + '</button></form>');
+  }
+
+  // Setiap tindakan menentukan isian aktif, kewajiban isian, dan petunjuk penggunaan.
+  function orderActionRules(action) {
+    return {
+      verifyPayment: {
+        fields: ['amount', 'reference'], required: ['amount', 'reference'],
+        help: 'Gunakan setelah uang benar-benar masuk ke rekening toko. Isi nominal sesuai total produk dan referensi transaksi bank. Bukti transfer saja belum cukup.'
+      },
+      fulfillment: {
+        fields: ['status'], required: ['status'],
+        help: 'Gunakan ketika proses pesanan maju ke tahap berikutnya. Pembayaran harus terverifikasi sebelum disiapkan (kecuali langsung ambil), dikirim, atau selesai. Untuk Selesai, unggah tanda terima terlebih dahulu.'
+      },
+      cancelOrder: {
+        fields: ['party', 'reason'], required: ['party', 'reason'],
+        help: 'Gunakan untuk benar-benar membatalkan pesanan. Pilih siapa yang membatalkan dan isi alasannya. Pembatalan pelanggan hanya sebelum disiapkan dan setelah permintaan pembatalan masuk. Refund dihitung oleh sistem, bukan otomatis ditransfer.'
+      },
+      rejectCancellation: {
+        fields: ['reason'], required: ['reason'],
+        help: 'Gunakan untuk menolak permintaan pembatalan pelanggan yang sedang aktif. Isi alasan penolakan; tahap pesanan tetap berjalan.'
+      },
+      refund: {
+        fields: ['reference'], required: ['reference'],
+        help: 'Gunakan hanya setelah dana refund benar-benar ditransfer kepada pelanggan. Nominal mengikuti perhitungan sistem; isi referensi transfer untuk mencatat pengembalian.'
+      },
+      shipping: {
+        fields: ['amount', 'courier', 'tracking', 'customerAgreed', 'feePaidToCourier'], required: ['amount'],
+        help: 'Gunakan untuk pesanan antar: catat ongkir GoSend, kurir, pelacakan, dan persetujuan pelanggan. Ongkir terpisah dari pembayaran produk. Tindakan ini tidak otomatis mengubah tahap menjadi Dikirim.'
+      }
+    }[action] || null;
+  }
+
+  // Aktifkan hanya isian tindakan terpilih dan hapus nilai dari tindakan sebelumnya.
+  function updateOrderAction(form) {
+    const action = form.elements.action.value;
+    const rule = orderActionRules(action);
+    const order = state.admin.tables.Orders.find(function (row) { return row.id === form.dataset.id; });
+    const shipping = (state.admin.tables.Shipping || []).find(function (row) { return row.orderId === order.id; });
+    const fields = ['status', 'party', 'amount', 'reference', 'reason', 'courier', 'tracking', 'customerAgreed', 'feePaidToCourier'];
+    fields.forEach(function (name) {
+      const input = form.elements[name];
+      input.disabled = !rule || !rule.fields.includes(name);
+      input.required = !!rule && rule.required.includes(name);
+      if (input.type === 'checkbox') { input.checked = false; } else { input.value = ''; }
+    });
+    form.querySelector('label[for="f-amount"]').textContent = action === 'shipping'
+      ? 'Ongkir GoSend (Rp, terpisah dari produk)'
+      : action === 'refund' ? 'Nominal refund dari sistem (tidak dapat diubah)' : 'Nominal pembayaran produk (Rp)';
+    form.querySelector('label[for="f-reference"]').textContent = action === 'refund'
+      ? 'Referensi transfer refund' : 'Referensi transaksi pembayaran';
+    const amount = form.elements.amount;
+    amount.min = action === 'verifyPayment' ? '1' : '0';
+    amount.step = '1';
+    if (action === 'verifyPayment') { amount.value = order.total; }
+    if (action === 'refund') { amount.value = Number(order.refundAmount) || 0; }
+    if (action === 'shipping' && shipping) {
+      amount.value = shipping.fee;
+      form.elements.courier.value = shipping.courier || '';
+      form.elements.tracking.value = shipping.tracking || '';
+      form.elements.customerAgreed.checked = !!shipping.customerAgreedAt;
+      form.elements.feePaidToCourier.checked = shipping.feePaidToCourier === true || shipping.feePaidToCourier === 'true';
+    }
+    // Batasi pilihan tahap berikutnya sesuai urutan yang juga dijaga backend.
+    const next = { NEW: ['CONFIRMED'], CONFIRMED: ['PREPARING'], PREPARING: ['READY'],
+      READY: order.receipt === 'DELIVERY' ? ['DISPATCHED'] : ['COMPLETED'], DISPATCHED: ['COMPLETED'] };
+    const stages = next[order.fulfillment] || [];
+    form.elements.status.innerHTML = '<option value="">Pilih tahap berikutnya</option>' +
+      stages.map(function (status) {
+        return '<option value="' + status + '">' + safe(fulfillmentLabel(status)) + '</option>';
+      }).join('');
+    let unavailable = '';
+    if (action === 'fulfillment' && !stages.length) { unavailable = 'Tidak ada tahap lanjutan untuk pesanan ini.'; }
+    if (action === 'shipping' && order.receipt !== 'DELIVERY') { unavailable = 'Pesanan ini diambil di toko, sehingga GoSend tidak berlaku.'; }
+    if (action === 'refund' && (order.fulfillment !== 'CANCELLED' || !Number(order.refundAmount) || order.refundStatus === 'COMPLETED')) {
+      unavailable = 'Tidak ada refund yang menunggu pencatatan untuk pesanan ini.';
+    }
+    if (action === 'rejectCancellation' && (!order.cancelRequestedAt || order.fulfillment === 'CANCELLED')) {
+      unavailable = 'Tidak ada permintaan pembatalan aktif untuk ditolak.';
+    }
+    if (action === 'verifyPayment' && (order.paymentStatus === 'PAID' || order.fulfillment === 'CANCELLED')) {
+      unavailable = 'Pesanan ini sudah lunas atau dibatalkan; pembayaran tidak perlu dicatat lagi.';
+    }
+    if (action === 'cancelOrder' && ['CANCELLED', 'COMPLETED'].includes(order.fulfillment)) {
+      unavailable = 'Pesanan sudah dibatalkan atau selesai.';
+    }
+    if (unavailable) {
+      fields.forEach(function (name) { form.elements[name].disabled = true; form.elements[name].required = false; });
+    }
+    form.querySelector('[type="submit"]').disabled = !rule || !!unavailable;
+    form.querySelector('#order-action-help').textContent = unavailable || (rule ? rule.help
+      : 'Pilih tindakan untuk melihat kegunaannya dan mengaktifkan isian yang diperlukan.');
   }
 
   // Nomor HP harus diketik dari informasi pelanggan, bukan diisi otomatis.
@@ -1384,6 +1555,13 @@
     }
   });
 
+  // Perubahan pilihan tindakan langsung mengatur input yang berkaitan saja.
+  document.addEventListener('change', function (event) {
+    if (event.target.name === 'action' && event.target.form?.id === 'order-action-form') {
+      updateOrderAction(event.target.form);
+    }
+  });
+
   // Tombol submit dikunci selama request agar klik ganda tidak membuat dua operasi.
   document.addEventListener('submit', async function (event) {
     event.preventDefault();
@@ -1493,6 +1671,9 @@
         '<p class="small mt-2 mb-0">Salin dan sampaikan secara pribadi kepada pelanggan. ' +
         'Huruf besar dan kecil harus sesuai. Kunci ini tidak dapat dilihat kembali setelah dialog ditutup.</p></div>';
     } else if (form.id === 'order-action-form') {
+      if (!orderActionRules(data.action)) {
+        throw new Error('Pilih tindakan terlebih dahulu.');
+      }
       if (!confirm('Jalankan tindakan ini pada pesanan?')) {
         return;
       }
