@@ -11,6 +11,7 @@
     productPage: 0,
     productSearch: '',
     productCategory: '',
+    availableOnly: true,
     type: 'DIRECT',
     cart: {},
     page: 'shop',
@@ -320,7 +321,12 @@
       '<option value="">Semua kategori</option>' + catalog.categories.map(function (row) {
         return '<option value="' + safe(row.id) + '"' +
           (row.id === state.productCategory ? ' selected' : '') + '>' + safe(row.name) + '</option>';
-      }).join('') + '</select></div></div>' +
+      }).join('') + '</select></div><div class="col-12">' +
+      '<div class="form-check"><input class="form-check-input" type="checkbox" id="availability-filter"' +
+      (state.availableOnly !== false ? ' checked' : '') +
+      (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
+      '<label class="form-check-label d-inline-flex align-items-center gap-2" for="availability-filter">' +
+      buttonLabel('stock', 'Tersedia saja') + '</label></div></div></div>' +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
       '<div id="product-pagination"></div>' +
       '</section><aside class="panel cart-panel">' + renderCart() + '</aside></div>' +
@@ -368,6 +374,15 @@
     };
   }
 
+  // Saring seluruh katalog sebelum pembagian halaman, memakai stok/kuota dari jenis pesanan aktif.
+  function filterCatalogProducts(products, search, category) {
+    return products.filter(function (row) {
+      return row.name.toLowerCase().includes(search) &&
+        (!category || row.categoryId === category) &&
+        (state.availableOnly === false || Number(row.available) > 0);
+    });
+  }
+
   // Menampilkan halaman produk aktif saja; foto halaman lain belum diminta ke server.
   function renderProducts() {
     if (photoObserver) { photoObserver.disconnect(); }
@@ -387,10 +402,7 @@
     }
     const search = document.getElementById('product-search').value.toLowerCase();
     const category = document.getElementById('category-filter').value;
-    const products = state.catalog.products.filter(function (row) {
-      return row.name.toLowerCase().includes(search) &&
-        (!category || row.categoryId === category);
-    });
+    const products = filterCatalogProducts(state.catalog.products, search, category);
     const pagination = productPageData(products);
     document.getElementById('products').innerHTML = products.length
       ? pagination.items.map(function (product) {
@@ -405,7 +417,10 @@
           '" type="button" aria-label="Tambah ' + safe(product.name) + '"' +
           (product.available < 1 ? ' disabled' : '') + '>' + buttonLabel('plus', 'Tambah') + '</button></div></article>';
       }).join('')
-      : '<p class="text-secondary">Belum ada produk sesuai pencarian.</p>';
+      : '<p class="catalog-status" role="status">' +
+        (state.availableOnly !== false
+          ? 'Belum ada produk tersedia sesuai filter. Nonaktifkan "Tersedia saja" untuk melihat semua produk.'
+          : 'Belum ada produk sesuai pencarian.') + '</p>';
     if (pagination.count > 1) {
       pager.innerHTML = '<nav class="product-pagination" aria-label="Halaman produk">' +
         '<button class="btn btn-outline-dark" data-product-page="previous" type="button"' +
@@ -1296,10 +1311,11 @@
 
   // Memperbarui hasil pencarian dan filter segera saat pengguna mengubah isian.
   document.addEventListener('input', function (event) {
-    if (['product-search', 'category-filter'].includes(event.target.id)) {
+    if (['product-search', 'category-filter', 'availability-filter'].includes(event.target.id)) {
       state.productPage = 0;
       state.productSearch = document.getElementById('product-search').value;
       state.productCategory = document.getElementById('category-filter').value;
+      if (event.target.id === 'availability-filter') { state.availableOnly = event.target.checked; }
       renderProducts();
     } else if (['order-search', 'order-filter'].includes(event.target.id)) {
       state.listPage = 0;

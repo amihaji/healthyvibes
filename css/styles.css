@@ -368,6 +368,13 @@
   .product-card [data-photo] { aspect-ratio: 4 / 3; margin-bottom: 14px; }
   .product-card [data-photo] img { display: block; margin-bottom: 0; }
 
+  /* Kursor tangan pada filter aktif; teks ringkas di samping ikon. */
+  #availability-filter:not(:disabled),
+  #availability-filter + label { cursor: pointer; }
+  #availability-filter + label { font-size: 14px; }
+  /* Filter tidak dapat digunakan selama stok sebenarnya masih dimuat. */
+  #availability-filter:disabled + label { cursor: not-allowed; }
+
   /* Status katalog memenuhi seluruh kolom tanpa menahan tampilan banner dan navigasi. */
   .catalog-status { grid-column: 1 / -1; color: #5b6b80; font-size: 14px; }
 

@@ -539,6 +539,33 @@ test('Halaman produk dibatasi dua baris dan nomor halaman tetap valid setelah fi
   }
 });
 
+test('Filter tersedia menyaring stok/kuota aktif sebelum halaman serta bekerja dengan pencarian dan kategori', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({ state: { availableOnly: true } });
+  vm.runInContext(client.slice(client.indexOf('  function filterCatalogProducts('),
+    client.indexOf('  function renderProducts(')), context);
+  const products = [
+    { id: 'a', name: 'Wafel', categoryId: 'snack', available: 0 },
+    { id: 'b', name: 'Wafel Keju', categoryId: 'snack', available: 5 },
+    { id: 'c', name: 'Teh', categoryId: 'drink', available: 10 },
+    { id: 'd', name: 'Produk rusak', categoryId: 'snack', available: 'bukan angka' }
+  ];
+  const ids = function (result) { return Array.from(result, function (row) { return row.id; }); };
+  assert.deepEqual(ids(context.filterCatalogProducts(products, '', '')), ['b', 'c']);
+  assert.deepEqual(ids(context.filterCatalogProducts(products, 'wafel', 'snack')), ['b']);
+  assert.deepEqual(ids(context.filterCatalogProducts(products, 'wafel', 'drink')), []);
+  // Saat jenis pesanan berubah, hasil mengikuti kuota katalog terbaru, bukan stok sebelumnya.
+  const preorder = products.map(function (row) {
+    return Object.assign({}, row, { available: row.id === 'a' ? 20 : 0 });
+  });
+  assert.deepEqual(ids(context.filterCatalogProducts(preorder, '', '')), ['a']);
+  context.state.availableOnly = false;
+  assert.deepEqual(ids(context.filterCatalogProducts(products, '', '')), ['a', 'b', 'c', 'd']);
+  assert.match(client, /id="availability-filter"/);
+  assert.ok(client.includes("availableOnly: true"));
+  assert.ok(client.includes('state.availableOnly = event.target.checked'));
+});
+
 test('Render halaman hanya meminta foto produk pada halaman aktif', function () {
   const client = source('js/client.js');
   const requested = [];
@@ -571,6 +598,16 @@ test('Render halaman hanya meminta foto produk pada halaman aktif', function () 
   context.renderProducts();
   assert.deepEqual(requested, ['p8', 'p9', 'p10', 'p11']);
   assert.ok(pager.innerHTML.includes('Halaman 3 dari 5'));
+  products.forEach(function (row, index) { row.available = index < 18 ? 0 : 5; });
+  requested.length = 0;
+  context.state.availableOnly = true;
+  context.renderProducts();
+  assert.deepEqual(requested, ['p18', 'p19']);
+  assert.equal(pager.innerHTML, '');
+  assert.equal(context.state.productPage, 0);
+  products.forEach(function (row) { row.available = 0; });
+  context.renderProducts();
+  assert.ok(holder.innerHTML.includes('Belum ada produk tersedia sesuai filter'));
 });
 
 // Halaman tidak menunggu server, tetapi harga/stok tidak dianggap siap sebelum balasan.
