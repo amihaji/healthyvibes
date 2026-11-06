@@ -543,15 +543,15 @@
     font-size: 13px;
   }
 
-  /* Ikon aksi berukuran sama dan tetap mudah disentuh pada layar HP. */
+  /* Tombol ikon aksi ringkas dengan ukuran yang sama pada setiap form. */
   .btn.action-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 44px;
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
     padding: 0;
     color: var(--green);
     background: white;
@@ -559,6 +559,8 @@
     border-radius: 6px;
     cursor: pointer;
   }
+
+  .action-icon .ui-icon { width: 16px; height: 16px; }
 
   .btn.action-icon:not(:disabled):hover,
   .btn.action-icon:not(:disabled):focus-visible {

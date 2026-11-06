@@ -35,9 +35,9 @@
   const adminViewport = window.matchMedia('(max-width: 1050px)');
 
   // Tombol ringkas tetap memiliki nama aksesibel dan tooltip fungsi.
-  function iconButton(icon, label, attributes) {
+  function iconButton(icon, label, attributes, tooltip) {
     return '<button class="btn action-icon" type="button" aria-label="' +
-      safe(label) + '" title="' + safe(label) + '" ' + (attributes || '') + '>' +
+      safe(label) + '" title="' + safe(tooltip || label) + '" ' + (attributes || '') + '>' +
       window.HV_UI.icon(icon) + '</button>';
   }
 
@@ -982,7 +982,7 @@
           '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
           '</td><td>' + safe(order.paymentStatus + ' / ' + order.fulfillment) +
           '</td><td>' + iconButton('eye', 'Lihat detail pesanan ' + order.id,
-            'data-order="' + safe(order.id) + '"') + '</td></tr>';
+            'data-order="' + safe(order.id) + '"', 'Detail') + '</td></tr>';
       }).join('') + '</tbody></table></div><div class="order-mobile">' +
       orders.map(function (order) {
         return '<article class="panel"><strong>' + safe(order.name) + '</strong><p class="text-break">' +
@@ -990,7 +990,7 @@
           ' WITA</p><p>' + rupiah(order.total) + '</p><p>' +
           safe(order.paymentStatus + ' / ' + order.fulfillment) + '</p>' +
           iconButton('eye', 'Lihat detail pesanan ' + order.id,
-            'data-order="' + safe(order.id) + '"') + '</article>';
+            'data-order="' + safe(order.id) + '"', 'Detail') + '</article>';
       }).join('') + '</div>' +
       '<div class="d-flex align-items-center gap-2 mt-3">' +
       '<button class="btn btn-outline-dark" id="previous-orders" type="button"' +
@@ -1244,11 +1244,11 @@
           return '<td>' + safe(masterText(key, product ? product.name : row[key])) + '</td>';
         }).join('') + '<td class="record-action-cell">' + (editable ? '<div class="record-actions">' +
           iconButton('edit', 'Edit ' + tableLabels[table], 'data-edit="' + safe(row.id) +
-            '" data-table="' + safe(table) + '"') +
+            '" data-table="' + safe(table) + '"', 'Edit') +
           iconButton('trash', 'Hapus ' + tableLabels[table], 'data-delete="' + safe(row.id) +
-            '" data-table="' + safe(table) + '"') +
+            '" data-table="' + safe(table) + '"', 'Hapus') +
           (table === 'Products' ? iconButton('photo', 'Unggah foto produk',
-            'data-product-upload="' + safe(row.id) + '"') : '') + '</div>' : '') + '</td></tr>';
+            'data-product-upload="' + safe(row.id) + '"', 'Foto') : '') + '</div>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       (!rows.length ? '<p>Belum ada data. Tambahkan data aktual toko.</p>' : '') + '</section>';
   }

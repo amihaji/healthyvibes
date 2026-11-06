@@ -2271,9 +2271,11 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
     client.indexOf('  // Membuka formulir tambah')), context);
   context.renderMaster('Products');
   const html = elements['admin-body'].innerHTML;
-  assert.ok(html.includes('aria-label="Edit Produk" title="Edit Produk"'));
-  assert.ok(html.includes('aria-label="Hapus Produk" title="Hapus Produk"'));
-  assert.ok(html.includes('title="Unggah foto produk"'));
+  assert.ok(html.includes('aria-label="Edit Produk" title="Edit"'));
+  assert.ok(html.includes('aria-label="Hapus Produk" title="Hapus"'));
+  assert.ok(html.includes('title="Foto"'));
+  assert.ok(context.iconButton('eye', 'Lihat detail pesanan Uji', '', 'Detail')
+    .includes('aria-label="Lihat detail pesanan Uji" title="Detail"'));
   assert.ok(html.indexOf('data-edit=') < html.indexOf('data-delete='));
   assert.ok(html.indexOf('data-delete=') < html.indexOf('data-product-upload='));
   assert.ok(!html.includes('>Edit<'));
@@ -2284,9 +2286,13 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.ok(!elements['admin-body'].innerHTML.includes('data-delete='));
   const close = source('index.html').match(/<button[^>]+id="close-editor"[\s\S]*?<\/button>/)[0];
   assert.ok(close.includes('aria-label="Tutup dialog"'));
+  assert.ok(close.includes('title="Tutup"'));
   assert.ok(!close.includes('<span>'));
   assert.ok(source('css/styles.css').includes('background: #e9ecef'));
   assert.ok(source('css/styles.css').includes('flex-wrap: nowrap'));
+  const css = source('css/styles.css');
+  assert.match(css, /\.btn\.action-icon\s*\{[^}]*flex: 0 0 36px;[^}]*width: 36px;[^}]*height: 36px;[^}]*min-height: 36px;/);
+  assert.match(css, /\.action-icon \.ui-icon\s*\{[^}]*width: 16px;[^}]*height: 16px;/);
 });
 
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
