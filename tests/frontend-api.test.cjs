@@ -2417,6 +2417,57 @@ test('Notifikasi atas hilang setelah 4 detik dan pesan baru tidak memakai timer 
     /\.confirmation-dialog,\s*#editor:has\(#delete-master-form\)\s*\{[^}]*width: max-content;[^}]*max-width: min\(400px, calc\(100% - 24px\)\);[^}]*padding: 16px;/);
 });
 
+test('Keranjang memakai ikon minus/plus tanpa teks, jumlah sejajar dan perhitungan tetap berjalan', async function () {
+  const product = { id: 'p1', name: 'Wafel Coklat', unitPrice: 13500, available: 3 };
+  let renders = 0;
+  const context = vm.createContext({
+    window: {}, safe: String, rupiah: String,
+    state: { cart: { p1: 1 }, requestId: 'old', catalog: { products: [product] } },
+    cartSummary: () => ({ lines: [{ product, quantity: 1 }], total: 13500 }),
+    renderShop: () => { renders += 1; }, dialog: { open: false }
+  });
+  vm.runInContext(source('js/icons.js'), context);
+  context.buttonLabel = context.window.HV_UI.label;
+  const client = source('js/client.js');
+  vm.runInContext(client.slice(client.indexOf('  function iconButton('),
+    client.indexOf('  // Menu pengelola terbuka')), context);
+  vm.runInContext(client.slice(client.indexOf('  function renderCart('),
+    client.indexOf('  // Menampilkan banner')), context);
+  const html = context.renderCart();
+  const minus = html.match(/<button[^>]*data-minus="p1"[\s\S]*?<\/button>/)[0];
+  const plus = html.match(/<button[^>]*data-add="p1"[\s\S]*?<\/button>/)[0];
+  for (const button of [minus, plus]) {
+    assert.ok(button.includes('<svg'));
+    assert.ok(!button.includes('<span'));
+  }
+  assert.ok(minus.includes('title="Kurangi"'));
+  assert.ok(plus.includes('title="Tambah"'));
+  assert.ok(html.includes('<span class="cart-count">1</span>'));
+  assert.ok(html.indexOf('data-minus=') < html.indexOf('cart-count'));
+  assert.ok(html.indexOf('cart-count') < html.indexOf('data-add='));
+  vm.runInContext(client.slice(client.indexOf('  async function clickAction('),
+    client.indexOf('  // Memperbarui hasil pencarian')), context);
+  await context.clickAction({ dataset: { add: 'p1' } });
+  assert.equal(context.state.cart.p1, 2);
+  assert.equal(context.state.requestId, '');
+  await context.clickAction({ dataset: { minus: 'p1' } });
+  await context.clickAction({ dataset: { minus: 'p1' } });
+  assert.ok(!Object.hasOwn(context.state.cart, 'p1'));
+  assert.equal(renders, 3);
+  context.state.cart.p1 = 3;
+  await assert.rejects(context.clickAction({ dataset: { add: 'p1' } }), /Ketersediaan/);
+  let modalHtml;
+  context.dialog.open = true;
+  context.document = { getElementById: () => ({ querySelector: () => ({}) }) };
+  context.showEditor = (title, content) => { modalHtml = content; };
+  context.state.cart.p1 = 1;
+  context.cartSummary = () => ({ lines: [{ product, quantity: context.state.cart.p1 }],
+    total: product.unitPrice * context.state.cart.p1 });
+  await context.clickAction({ dataset: { add: 'p1' } });
+  assert.ok(modalHtml.includes('<span class="cart-count">2</span>'));
+  assert.ok(modalHtml.includes('27000'));
+});
+
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
   let callbackCalled = false;

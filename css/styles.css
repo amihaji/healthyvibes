@@ -459,6 +459,11 @@
     top: 142px;
   }
 
+  /* Pengubah jumlah keranjang selalu sejajar: minus, jumlah, lalu plus. */
+  .cart-quantity { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
+  .cart-count { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+  .cart-item-price { white-space: nowrap; }
+
   /* Bilah keranjang HP tidak ditampilkan pada layar desktop. */
   .mobile-cart {
     display: none;

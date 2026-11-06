@@ -333,11 +333,13 @@
         return '<div class="border-bottom py-2">' +
           '<div>' + safe(item.product.name) + '</div>' +
           '<div class="d-flex justify-content-between align-items-center gap-2">' +
-          '<span>' + rupiah(item.product.unitPrice) + '</span>' +
-          '<div><button class="btn btn-sm btn-outline-dark" data-minus="' +
-          safe(item.product.id) + '" type="button">' + buttonLabel('minus', 'Kurangi') + '</button> ' + item.quantity +
-          ' <button class="btn btn-sm btn-outline-dark" data-add="' +
-          safe(item.product.id) + '" type="button">' + buttonLabel('plus', 'Tambah') + '</button></div></div></div>';
+          '<span class="cart-item-price">' + rupiah(item.product.unitPrice) + '</span>' +
+          '<div class="cart-quantity">' +
+          iconButton('minus', 'Kurangi jumlah ' + item.product.name,
+            'data-minus="' + safe(item.product.id) + '"', 'Kurangi') +
+          '<span class="cart-count">' + safe(item.quantity) + '</span>' +
+          iconButton('plus', 'Tambah jumlah ' + item.product.name,
+            'data-add="' + safe(item.product.id) + '"', 'Tambah') + '</div></div></div>';
       }).join('') : '<p class="text-secondary">Belum ada produk.</p>') +
       '<p class="mt-3"><strong>Total produk: ' + rupiah(summary.total) + '</strong></p>' +
       '<p class="small text-secondary">Pilih layanan pengiriman saat Checkout; ongkir masuk total pembayaran. ' +
@@ -1531,6 +1533,10 @@
       }
       state.requestId = '';
       renderShop();
+      // Keranjang HP berada dalam dialog, jadi jumlah dan totalnya juga diperbarui.
+      if (dialog.open && document.getElementById('editor-content').querySelector('.cart-quantity')) {
+        showEditor('Keranjang', renderCart());
+      }
       return;
     }
     if (button.dataset.adminPage) {
