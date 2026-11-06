@@ -30,6 +30,7 @@
   };
   const app = document.getElementById('app');
   const dialog = document.getElementById('editor');
+  const confirmation = document.getElementById('confirmation-dialog');
   // Semua tombol memakai pembuat ikon dan teks yang sama.
   const buttonLabel = window.HV_UI.label;
   const adminViewport = window.matchMedia('(max-width: 1050px)');
@@ -199,6 +200,41 @@
   // Hapus isi dialog setelah ditutup agar kunci pemulihan tidak tertinggal.
   dialog.addEventListener('close', function () {
     document.getElementById('editor-content').innerHTML = '';
+  });
+
+  let resolveConfirmation = null;
+
+  // Menunggu keputusan modal HTML; satu konfirmasi aktif mencegah klik ganda.
+  function confirmAction(message, title) {
+    if (resolveConfirmation) { return Promise.resolve(false); }
+    document.getElementById('confirmation-title').textContent = title || 'Konfirmasi';
+    document.getElementById('confirmation-message').textContent = message;
+    confirmation.returnValue = 'cancelled';
+    return new Promise(function (resolve, reject) {
+      resolveConfirmation = resolve;
+      try {
+        confirmation.showModal();
+      } catch (error) {
+        resolveConfirmation = null;
+        reject(error);
+      }
+    });
+  }
+
+  document.getElementById('confirmation-accept').addEventListener('click', function () {
+    confirmation.close('accepted');
+  });
+  ['confirmation-cancel', 'confirmation-close'].forEach(function (id) {
+    document.getElementById(id).addEventListener('click', function () {
+      confirmation.close('cancelled');
+    });
+  });
+  // Tombol Batal, X, dan Escape tidak menjalankan tindakan maupun menghapus isian editor.
+  confirmation.addEventListener('close', function () {
+    const resolve = resolveConfirmation;
+    resolveConfirmation = null;
+    document.getElementById('confirmation-message').textContent = '';
+    if (resolve) { resolve(confirmation.returnValue === 'accepted'); }
   });
 
   // Kunci pelanggan 10 karakter memakai Web Crypto; 64 karakter memberi pilihan acak merata.
@@ -1571,9 +1607,14 @@
       state.listPage += id === 'next-orders' ? 1 : -1;
       filterOrders();
     } else if (id === 'backup') {
-      if (confirm('Buat salinan privat database dan seluruh berkas?')) {
-        const result = await rpc('backup');
-        notify('Backup selesai: ' + result.folderUrl);
+      button.disabled = true;
+      try {
+        if (await confirmAction('Buat salinan privat database dan seluruh berkas?', 'Konfirmasi Backup')) {
+          const result = await rpc('backup');
+          notify('Backup selesai: ' + result.folderUrl);
+        }
+      } finally {
+        button.disabled = false;
       }
     } else if (id === 'export-xlsx') {
       await exportXlsx();
@@ -1742,7 +1783,7 @@
       if (!orderActionRules(data.action)) {
         throw new Error('Pilih tindakan terlebih dahulu.');
       }
-      if (!confirm('Jalankan tindakan ini pada pesanan?')) {
+      if (!await confirmAction('Jalankan tindakan ini pada pesanan?', 'Konfirmasi Tindakan')) {
         return;
       }
       data.orderId = form.dataset.id;

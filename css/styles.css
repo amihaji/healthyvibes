@@ -687,6 +687,10 @@
     background: #00000060;
   }
 
+  /* Modal konfirmasi lebih ringkas daripada editor dan tetap muat pada layar HP. */
+  .confirmation-dialog { width: min(440px, calc(100% - 24px)); }
+  #confirmation-message { overflow-wrap: anywhere; }
+
   /* Indikator Memproses mengambang tanpa menghalangi klik pada halaman. */
   .busy {
     pointer-events: none;

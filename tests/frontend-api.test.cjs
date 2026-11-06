@@ -2295,6 +2295,73 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.match(css, /\.action-icon \.ui-icon\s*\{[^}]*width: 16px;[^}]*height: 16px;/);
 });
 
+test('Modal HTML menerima, membatalkan, Escape dan klik ganda tanpa confirm browser', async function () {
+  const elements = {};
+  for (const id of ['confirmation-title', 'confirmation-message', 'confirmation-accept',
+    'confirmation-cancel', 'confirmation-close']) {
+    elements[id] = { textContent: '', events: {}, addEventListener(name, callback) { this.events[name] = callback; } };
+  }
+  const confirmation = {
+    open: false, events: {},
+    addEventListener(name, callback) { this.events[name] = callback; },
+    showModal() { this.open = true; },
+    close(value) {
+      this.open = false;
+      if (value !== undefined) { this.returnValue = value; }
+      this.events.close();
+    }
+  };
+  const context = vm.createContext({ confirmation, document: { getElementById: id => elements[id] } });
+  const client = source('js/client.js');
+  vm.runInContext(client.slice(client.indexOf('  let resolveConfirmation = null;'),
+    client.indexOf('  // Kunci pelanggan 10 karakter')), context);
+  const first = context.confirmAction('<img src=x onerror=alert(1)>', 'Konfirmasi Uji');
+  assert.equal(elements['confirmation-message'].textContent, '<img src=x onerror=alert(1)>');
+  assert.equal(await context.confirmAction('Klik ganda'), false);
+  elements['confirmation-accept'].events.click();
+  assert.equal(await first, true);
+  assert.equal(elements['confirmation-message'].textContent, '');
+  for (const id of ['confirmation-cancel', 'confirmation-close', 'Escape']) {
+    const pending = context.confirmAction('Uji pembatalan');
+    if (id === 'Escape') { confirmation.close(); }
+    else { elements[id].events.click(); }
+    assert.equal(await pending, false);
+    assert.equal(confirmation.open, false);
+  }
+  confirmation.showModal = () => { throw new Error('Modal tidak tersedia'); };
+  await assert.rejects(context.confirmAction('Uji gagal buka'), /Modal tidak tersedia/);
+  confirmation.showModal = () => { confirmation.open = true; };
+  const retry = context.confirmAction('Uji ulang');
+  confirmation.close();
+  assert.equal(await retry, false);
+  assert.ok(!/\b(?:alert|confirm|prompt)\s*\(/.test(client));
+  assert.ok(source('index.html').includes('aria-describedby="confirmation-message"'));
+});
+
+test('Tindakan pesanan dan backup hanya dikirim setelah modal disetujui', async function () {
+  const client = source('js/client.js');
+  for (const accepted of [false, true]) {
+    const calls = [];
+    const context = vm.createContext({
+      formData: () => ({ action: 'shipping' }), orderActionRules: () => ({}),
+      confirmAction: async () => accepted, rpc: async action => {
+        calls.push(action); return { folderUrl: 'https://example.test/backup' };
+      },
+      notify: () => {}, dialog: { close: () => {} }, loadAdmin: async () => {}
+    });
+    vm.runInContext(client.slice(client.indexOf('  async function submitAction('),
+      client.indexOf('  // Menangani halaman sebelum instalasi')), context);
+    await context.submitAction({ id: 'order-action-form', dataset: { id: 'order1' } });
+    assert.deepEqual(calls, accepted ? ['shipping'] : []);
+    vm.runInContext(client.slice(client.indexOf('  async function clickAction('),
+      client.indexOf('  // Memperbarui hasil pencarian')), context);
+    const button = { id: 'backup', dataset: {}, disabled: false };
+    await context.clickAction(button);
+    assert.equal(button.disabled, false);
+    assert.deepEqual(calls, accepted ? ['shipping', 'backup'] : []);
+  }
+});
+
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
   let callbackCalled = false;
