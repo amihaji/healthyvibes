@@ -4,11 +4,11 @@ const HV_MASTER_ROLES = {
   Products: ['Admin', 'Operator'],
   ReadyStock: ['Admin', 'Operator'],
   PreorderCapacity: ['Admin', 'Operator'],
-  Discounts: ['Admin'],
-  Vouchers: ['Admin'],
-  ServiceHours: ['Admin'],
-  ServiceAreas: ['Admin'],
-  ShippingRates: ['Admin'],
+  Discounts: ['Admin', 'Operator'],
+  Vouchers: ['Admin', 'Operator'],
+  ServiceHours: ['Admin', 'Operator'],
+  ServiceAreas: ['Admin', 'Operator'],
+  ShippingRates: ['Admin', 'Operator'],
   Users: ['Admin']
 };
 
@@ -17,6 +17,7 @@ function saveMaster_(user, data) {
   if (!HV_MASTER_ROLES[table] || !HV_MASTER_ROLES[table].includes(user.role)) {
     throw new Error('Anda tidak berwenang mengubah tabel ini.');
   }
+  requireMenu_(user, table, true);
   const input = data.record || {};
   const old = rows_(table).find(function (row) { return row.id === input.id; });
   const record = Object.assign({}, old || {}, { id: old ? old.id : id_() });
@@ -136,21 +137,27 @@ function saveMaster_(user, data) {
     record.username = username_(input.username);
     record.name = text_(input.name, 'Nama', 100);
     record.role = input.role;
-    if (!['Admin', 'Operator', 'Viewer'].includes(record.role)) {
+    if (!['Admin', 'Operator', 'Viewer', 'Konsumen'].includes(record.role)) {
       throw new Error('Level akun tidak valid.');
+    }
+    Object.assign(record, accountContact_(input, old));
+    if (old && old.role === 'Admin' && active_(old.active) &&
+      (record.role !== 'Admin' || !active || !userMenus_(record).includes('Users')) &&
+      !rows_('Users').some(function (row) {
+        return row.id !== record.id && row.role === 'Admin' && active_(row.active) &&
+          !row.blockedAt && userMenus_(row).includes('Users');
+      })) {
+      throw new Error('Sedikitnya satu Admin aktif harus memiliki akses Setup User.');
     }
     if (rows_('Users').some(function (row) {
       return row.id !== record.id && row.username === record.username;
     })) {
       throw new Error('Username sudah digunakan.');
     }
-    if (old && old.role === 'Admin' && active_(old.active) &&
-      (!active || record.role !== 'Admin') && !rows_('Users').some(function (row) {
-        return row.id !== record.id && row.role === 'Admin' && active_(row.active);
-      })) {
-      throw new Error('Admin aktif terakhir tidak boleh dihapus atau diturunkan.');
+    if (old && input.password) {
+      throw new Error('Gunakan Reset untuk mengganti password akun yang sudah ada.');
     }
-    if (!old || input.password) {
+    if (!old) {
       record.passwordHash = bcrypt_().hashSync(password_(input.password), 12);
       record.mustChangePassword = true;
     }
@@ -173,6 +180,7 @@ function deleteMaster_(user, data) {
     !HV_MASTER_ROLES[table].includes(user.role)) {
     throw new Error('Anda tidak berwenang menghapus tabel ini.');
   }
+  requireMenu_(user, table, true);
   if (data.confirmed !== true) { throw new Error('Konfirmasi penghapusan diperlukan.'); }
   const record = rows_(table).find(function (row) { return row.id === data.id; });
   if (!record) { throw new Error('Record tidak ditemukan. Perbarui data terlebih dahulu.'); }
@@ -200,7 +208,8 @@ function deleteMaster_(user, data) {
   if (table === 'Users') {
     if (record.id === user.id) { throw new Error('Akun yang sedang Anda gunakan tidak boleh dihapus.'); }
     if (record.role === 'Admin' && active_(record.active) && !rows_('Users').some(function (row) {
-      return row.id !== record.id && row.role === 'Admin' && active_(row.active);
+      return row.id !== record.id && row.role === 'Admin' && active_(row.active) &&
+        !row.blockedAt && userMenus_(row).includes('Users');
     })) {
       throw new Error('Admin aktif terakhir tidak boleh dihapus.');
     }
@@ -269,15 +278,7 @@ function saveSettings_(user, data) {
 // Ambil hanya data menu aktif; hak akses dan kolom rahasia tetap dibatasi di server.
 function adminData_(user, data) {
   const page = (data || {}).page || 'Dashboard';
-  const common = ['Dashboard', 'Laporan'];
-  const allowed = user.role === 'Admin'
-    ? common.concat(['Pesanan', 'Pengaturan', 'Backup'], Object.keys(HV_MASTER_ROLES))
-    : user.role === 'Operator'
-      ? common.concat(['Pesanan', 'Categories', 'Products', 'ReadyStock', 'PreorderCapacity'])
-      : user.role === 'Viewer' ? common : [];
-  if (!allowed.includes(page)) {
-    throw new Error('Menu pengelola tidak diizinkan.');
-  }
+  requireMenu_(user, page, false);
   const result = { user: userView_(user), tables: {}, settings: {} };
   const dependencies = {
     Dashboard: [], Pesanan: ['Orders', 'Files', 'Shipping'], Pengaturan: [], Backup: [],
@@ -293,7 +294,7 @@ function adminData_(user, data) {
       }
       const fields = HV_SCHEMA[name].filter(function (key) {
         const sensitive = ['accessHash', 'requestHash', 'snapshotJson'];
-        if (user.role === 'Viewer') {
+        if (user.role === 'Viewer' && name === 'Orders') {
           sensitive.push('name', 'phone', 'address', 'areaId', 'cancelReason');
         }
         return !sensitive.includes(key);

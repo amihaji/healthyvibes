@@ -1,0 +1,147 @@
+# Panduan Login dan Setup User Healthy Vibes
+
+Perubahan sudah tersedia di kode lokal. Website belum berubah sampai backend
+diperbarui dan frontend di-push. Database dan URL API yang lama tetap digunakan.
+
+## 1. Perbarui Backend Google Apps Script
+
+Di editor Apps Script yang sekarang, ganti isi file berikut dengan isi file lokal
+di folder `apps-script`:
+
+- `Admin.gs`
+- `Api.gs`
+- `Auth.gs`
+- `Files.gs`
+- `Recovery.gs`
+- `Schema.gs`
+
+Buat file script baru bernama **Accounts**, lalu masukkan seluruh isi `Accounts.gs`.
+Jangan menempelkan isinya ke file lain agar fungsi tidak terduplikasi.
+
+Buka **Project Settings / Setelan Project**, aktifkan tampilan file manifest
+`appsscript.json` di editor. Perbarui isinya dari file lokal dengan nama yang sama.
+Manifest menambahkan izin pengiriman email dan request ke penyedia WhatsApp.
+
+Simpan semua perubahan.
+
+## 2. Lengkapi Database yang Sudah Ada
+
+Pilih fungsi **installHealthyVibes** pada editor, lalu klik **Run / Jalankan**.
+Jika Google meminta izin, setujui menggunakan akun pemilik.
+
+Installer menambahkan kolom baru di kanan tab `Users` dan membuat tab
+`PasswordResets`. Akun, password, pesanan, dan ID database lama tidak diganti.
+Jangan menjalankan `createFirstAdmin` lagi.
+
+Sebelum mengaktifkan versi baru, buka tab `Users` di Google Sheets dan isi
+**email** milik akun Admin Anda. Ini pengecualian untuk melengkapi kontak
+pemulihan akun lama. Setelah aplikasi aktif, perubahan akun dilakukan melalui
+Setup User.
+
+Untuk WhatsApp, isi kolom **phone** dengan format `628...` tanpa tanda `+`.
+Gunakan format sel **Teks biasa / Plain text** untuk nomor telepon.
+Sedikitnya satu kontak harus terisi. Gunakan kontak milik pengguna tersebut;
+aplikasi belum memverifikasi kepemilikan kontak secara otomatis.
+
+Kolom `permissionsJson` akun lama boleh dibiarkan kosong: hak sebelumnya tetap
+berlaku sampai Admin mengedit centang melalui Setup User. Jangan mengubah kolom
+hash password secara manual.
+
+## 3. Atur Pengiriman WhatsApp
+
+Integrasi mengikuti contoh proyek Berat Idealku, yaitu **Fonnte**.
+Jika API WhatsApp Anda bukan Fonnte, integrasi harus disesuaikan sebelum dipakai.
+Pemulihan melalui email tidak memerlukan Fonnte.
+
+Di **Project Settings > Script Properties**, tambahkan:
+
+| Property | Isi |
+| --- | --- |
+| `FONNTE_TOKEN` | Token dari akun Fonnte Anda. |
+| `PUBLIC_APP_URL` | Opsional: `https://amihaji.github.io/healthyvibes/` |
+
+Nomor pengirim Fonnte harus sudah tersambung dan layanan tersedia.
+Jangan memasukkan token ke file frontend, Google Sheets, GitHub, atau percakapan.
+Tidak perlu mengganti `SECURITY_KEY`, `DATABASE_ID`, atau `ROOT_FOLDER_ID`.
+
+## 4. Aktifkan Versi Baru
+
+1. Di Apps Script, pilih **Deploy > Manage deployments**.
+2. Edit deployment API yang sekarang, pilih **New version**, lalu **Deploy**.
+3. Di GitHub Desktop, lakukan **Commit** perubahan Healthy Vibes lalu **Push**.
+4. Setelah GitHub Pages selesai diperbarui, muat ulang website.
+
+URL API tetap sama. Jangan membuat deployment baru atau mengganti `js/config.js`
+hanya untuk pembaruan ini.
+
+## 5. Menggunakan Setup User
+
+- Header sekarang bertuliskan **Login**; di HP tampil ikon Login.
+- Menu **Setup User** menyediakan **Buat**, **Edit**, **Hapus**, **View**, dan **Reset**.
+- Geser tabel ke kanan untuk melihat seluruh 15 kolom hak menu.
+- **Buat**: isi nama, username, level, email/WhatsApp, password sementara, dan centang menu.
+- **Edit**: ubah data akun dan centang akses. Password lama tidak ditampilkan.
+- **View**: melihat data dan hak menu tanpa mengubahnya.
+- **Hapus**: memakai konfirmasi singkat. Akun sendiri dan Admin aktif terakhir dilindungi.
+- **Reset**: mengirim tautan ke email/WhatsApp yang sudah tercatat pada akun.
+
+Username dan password minimal **6 karakter**. Akun baru wajib mengganti password
+sementara saat login pertama.
+
+| Level | Penggunaan |
+| --- | --- |
+| Admin | Membaca/mengubah menu yang dicentang, termasuk Setup User bila diizinkan. |
+| Operator | Membaca/mengubah menu operasional yang dicentang; tidak mengubah Setup User. |
+| Viewer | Hanya membaca menu yang dicentang, tanpa simpan/hapus/tindakan pesanan. |
+| Konsumen | Katalog dan Status Pesanan; tidak membuka Panel Pengelola. |
+
+Contoh awal Operator mencentang semua menu kecuali **Setup User** dan
+**Pengaturan**. Admin dapat menyesuaikannya.
+
+Centang diperiksa di backend juga. Viewer tidak mendapat dokumen privat atau
+identitas pelanggan pada detail pesanan. Akses Backup untuk Operator mengizinkan
+pembuatan salinan database privat, jadi berikan hanya kepada staf terpercaya.
+Pemulihan backup ke staging tetap khusus Admin.
+
+## 6. Blokir dan Reset Password
+
+Akun diblokir setelah **3 kali salah password berturut-turut** saat Login.
+Login berhasil sebelum kesalahan ketiga mengembalikan hitungan ke nol.
+Sesi yang sudah terbuka juga dicabut ketika akun diblokir.
+
+Pengguna yang lupa password atau diblokir:
+
+1. Klik **Login > Lupa Password**.
+2. Isi username dan pilih **Email** atau **WhatsApp**.
+3. Buka tautan dari kontak terdaftar.
+4. Isi password baru dua kali, simpan, lalu login kembali.
+
+Tautan berlaku **15 menit** dan **sekali pakai**. Reset berhasil membuka blokir
+dan mencabut seluruh sesi lama. Akun nonaktif tidak dapat diaktifkan melalui reset.
+Pesan permintaan reset dibuat sama untuk akun ada/tidak ada demi menjaga privasi.
+Pesan tersebut bukan jaminan pengiriman berhasil.
+
+Jika pesan tidak masuk, periksa kontak terdaftar, folder spam email, dan
+konfigurasi Fonnte. Tab `AuditLog` mencatat `PASSWORD_RESET_SENT` atau
+`PASSWORD_RESET_DELIVERY_FAILED`, tanpa menyimpan token atau password.
+
+## 7. Jika Admin Terakhir Terblokir
+
+Pemilik project masih dapat membuka blokir melalui editor:
+
+1. Di Script Properties, isi `INITIAL_ADMIN_USERNAME` dengan username Admin Anda.
+2. Pilih fungsi **unlockHealthyVibesAdmin** dari `Accounts.gs`.
+3. Klik **Run / Jalankan** menggunakan akun pemilik.
+
+Fungsi hanya membuka blokir, tidak mengganti password. Jika password lupa,
+lengkapi email pada baris akun Admin di tab `Users`, kemudian gunakan
+**Lupa Password**. Property sementara tersebut dihapus otomatis setelah berhasil.
+
+## Pemeriksaan
+
+116 pengujian otomatis lulus menggunakan layanan tiruan, tanpa transaksi Google
+atau pengiriman email/WhatsApp nyata. Alur Setup User dan reset juga lulus
+pemeriksaan browser pada layar 320, 390, 768, dan 1280 px.
+Pengiriman produksi tetap perlu dicoba
+setelah konfigurasi dan deployment siap, sebaiknya menggunakan akun uji.
+Jangan sengaja memblokir Admin utama untuk mencoba fitur.

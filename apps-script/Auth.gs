@@ -163,14 +163,29 @@ function login_(data) {
   // Hash dummy mengurangi perbedaan waktu akun ada dan tidak ada.
   const dummy = '$2a$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW';
   const supplied = String(data.password || '');
-  if (Utilities.newBlob(supplied).getBytes().length > 72) {
-    throw new Error('Username atau password salah.');
-  }
-  const valid = bcrypt_().compareSync(supplied, user ? user.passwordHash : dummy);
+  if (user && user.blockedAt) { throw new Error('Akun diblokir. Gunakan Lupa Password.'); }
+  const valid = Utilities.newBlob(supplied).getBytes().length <= 72 &&
+    bcrypt_().compareSync(supplied, user ? user.passwordHash : dummy);
   if (!user || !valid) {
+    if (user) {
+      const failures = Number(user.failedAttempts || 0) + 1;
+      const changes = { failedAttempts: failures, updatedAt: now_() };
+      if (failures >= 3) {
+        changes.blockedAt = now_();
+        changes.version = Number(user.version) + 1;
+      }
+      patch_('Users', user, changes);
+      if (failures >= 3) {
+        audit_({ id: 'SYSTEM' }, 'LOGIN_BLOCKED', user.id, 'Tiga kesalahan password.');
+        throw new Error('Akun diblokir. Gunakan Lupa Password.');
+      }
+    }
     throw new Error('Username atau password salah.');
   }
 
+  const loginChanges = { failedAttempts: 0, lastLoginAt: now_() };
+  patch_('Users', user, loginChanges);
+  Object.assign(user, loginChanges);
   const settings = settings_();
   const token = token_();
   append_('Sessions', {
@@ -191,6 +206,12 @@ function login_(data) {
 function userView_(user) {
   const result = publicRecord_(user, ['id', 'username', 'name', 'role']);
   result.mustChangePassword = active_(user.mustChangePassword);
+  result.permissions = userMenus_(user);
+  result.email = user.email || '';
+  result.phone = user.phone || '';
+  result.failedAttempts = Number(user.failedAttempts || 0);
+  result.blocked = !!user.blockedAt;
+  result.lastLoginAt = user.lastLoginAt || '';
   return result;
 }
 
@@ -206,7 +227,7 @@ function authorize_(token, roles, allowPasswordChange) {
   });
   const idle = Number(settings_().sessionIdleMinutes) * 60000;
   if (
-    !session || !user || active_(session.revoked) || !active_(user.active) ||
+    !session || !user || active_(session.revoked) || !active_(user.active) || user.blockedAt ||
     Number(session.version) !== Number(user.version) ||
     Date.parse(session.expiresAt) <= Date.now() ||
     Date.parse(session.lastSeenAt) + idle <= Date.now()

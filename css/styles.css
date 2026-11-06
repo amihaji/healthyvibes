@@ -469,6 +469,15 @@
     display: none;
   }
 
+  /* Hak akun berbentuk daftar dua kolom dengan checkbox yang proporsional. */
+  .user-permission-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px; border-bottom: 1px solid var(--line); }
+  .user-permissions .form-check-input { float: none; margin: 0; width: 18px; height: 18px; min-height: 18px; flex: 0 0 18px; }
+  .users-table-wrap { max-height: 480px; }
+  .users-table th { position: sticky; top: 0; background: #edf1f5; z-index: 1; font-size: 12px; white-space: nowrap; }
+  .users-table td { white-space: nowrap; }
+  .users-table .record-action-cell { position: sticky; right: 0; background: white; }
+  .users-table th.record-action-cell { z-index: 2; background: #edf1f5; }
+
   /* Memisahkan navigasi pengelola di kiri dan isi halaman di kanan. */
   .admin-layout {
     display: grid;
@@ -476,6 +485,9 @@
     gap: 24px;
     align-items: start;
   }
+
+  /* Tabel lebar tetap bergulir di dalam isi panel pada semua ukuran layar. */
+  #admin-body { min-width: 0; }
 
   /* Judul, identitas akun, dan tindakan akun tersusun jelas dalam toolbar. */
   .admin-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
@@ -848,14 +860,12 @@
     .admin-nav { padding: 8px; }
     .admin-nav .btn { padding: 10px 8px; font-size: 12px; gap: 8px; }
     .admin-layout { gap: 16px; }
-    /* Isi pengelola tidak boleh memperlebar halaman; tabel bergulir di pembungkusnya. */
-    #admin-body { min-width: 0; }
     /* Tombol dan label pada header tetap muat di layar HP kecil. */
     .icon-button { padding-inline: 8px; font-size: 12px; gap: 6px; }
-    /* Di HP, tombol pembuka navigasi dan Admin cukup ikon dengan area sentuh 44px. */
+    /* Di HP, tombol pembuka navigasi dan Login cukup ikon dengan area sentuh 44px. */
     .nav-toggle,
     .settings-button { width: 44px; padding: 0; gap: 0; }
-    /* Label Admin tetap tampil di desktop; pada HP namanya tersedia lewat aria-label. */
+    /* Label Login tetap tampil di desktop; pada HP namanya tersedia lewat aria-label. */
     .settings-button .header-action-text { display: none; }
 
     /* Mengurangi ruang dalam panel pembuka pada HP. */

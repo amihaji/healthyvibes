@@ -213,10 +213,11 @@ function productPhoto_(data) {
   };
 }
 
-// Logo dan QRIS merupakan aset toko; hanya Admin boleh memasangnya.
+// Logo dan QRIS dipasang staf yang memiliki hak mengubah Pengaturan.
 function uploadStoreAsset_(user, data) {
-  if (user.role !== 'Admin' || !['logoFileId', 'qrisFileId'].includes(data.asset)) {
-    throw new Error('Aset toko hanya dikelola Admin.');
+  requireMenu_(user, 'Pengaturan', true);
+  if (!['Admin', 'Operator'].includes(user.role) || !['logoFileId', 'qrisFileId'].includes(data.asset)) {
+    throw new Error('Aset toko atau hak pengelola tidak valid.');
   }
   const blob = imageBlob_(data);
   const file = folder_('PRODUK').createFile(blob);

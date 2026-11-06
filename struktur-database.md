@@ -10,14 +10,15 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | Settings | Identitas dan aturan toko | `key` unik; rahasia tidak disimpan di sini. |
 | Categories | Kategori produk | `id` dirujuk Products. Nonaktif, bukan hapus transaksi. |
 | Products | Nama, kategori, harga, deskripsi, foto | `photoFileId` menunjuk PRODUK. |
-| Discounts | Diskon per produk dan periode | Hanya Admin; periode aktif tidak bertumpuk. |
+| Discounts | Diskon per produk dan periode | Admin/Operator dengan hak menu; periode aktif tidak bertumpuk. |
 | Vouchers | Kode, nilai, minimum, maksimum, masa berlaku | Kode unik; tidak ada kuota penggunaan. |
 | ReadyStock | Kapasitas total stok siap jual | Satu baris per produk; tidak dicampur preorder. |
 | PreorderCapacity | Kuota produksi per tanggal | Unik produk + tanggal penerimaan. |
 | ServiceHours | Hari dan rentang layanan WITA | Satu rentang per hari; `weekday` 0 Minggu sampai 6 Sabtu. |
 | ServiceAreas | Wilayah Makassar dan sekitarnya | Pelanggan hanya memilih yang aktif. |
 | ShippingRates | Daftar layanan dan biaya pengiriman | Admin mengatur nama, nominal dan status aktif; konsumen memilih saat Checkout. |
-| Users | Akun internal dan level | Hash bcrypt; tidak pernah dikirim ke browser. |
+| Users | Akun, kontak pemulihan, level dan hak menu | `permissionsJson`, hitungan salah, blokir dan login terakhir; hash bcrypt tidak dikirim ke browser. |
+| PasswordResets | Tautan reset email/WhatsApp | Hanya hash token; berlaku 15 menit, sekali pakai, terikat versi akun. |
 | Sessions | Hash token sesi dan kedaluwarsa | Versi harus cocok akun; revokasi pada perubahan akun. |
 | Orders | Pesanan dan snapshot kebijakan/harga | `requestId` unik; `accessHash` untuk status privat. |
 | OrderItems | Item dan harga saat pemesanan | Anak Orders; ID deterministik untuk rekonsiliasi. |
@@ -37,7 +38,7 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | INVOICE | PDF tagihan berbasis snapshot | Pemilik pesanan dengan kunci akses, atau Admin/Operator. |
 | STRUK | Foto bukti transfer pelanggan | Pelanggan mengunggah untuk pesanannya; Admin/Operator memeriksa. |
 | TANDATERIMA | Foto penerimaan pesanan | Diunggah konsumen melalui Status Pesanan saat siap diambil/sudah dikirim. |
-| BACKUP | Salinan Sheet, berkas, manifest | Admin; pemulihan selalu ke staging. |
+| BACKUP | Salinan Sheet, berkas, manifest | Admin/Operator dengan hak Backup; pemulihan khusus Admin, selalu ke staging. |
 
 ## Tipe Data
 
@@ -63,3 +64,10 @@ Jalankan `removeShippingConfirmation` dari `Schema.gs` di editor Google Apps Scr
 Fungsi ini menghapus dua kolom konfirmasi lama pada `Shipping` dan pengaturan
 verifikasi pengiriman lama pada `Settings`. `ShippingRates`, tarif, data kurir,
 pelacakan dan transaksi tetap disimpan. Fungsi boleh dijalankan ulang.
+
+## Pembaruan Akun
+
+Jalankan `installHealthyVibes` setelah menambahkan `Accounts.gs` dan memperbarui
+backend. Kolom akun baru ditambahkan di kanan tanpa menimpa data lama.
+Lengkapi email/WhatsApp Admin sebelum mengaktifkan pemblokiran tiga kesalahan.
+Panduan lengkap tersedia di `panduan-setup-user.md`.

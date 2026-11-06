@@ -44,9 +44,10 @@
 
   // Hak edit/hapus mengikuti pembatasan tabel master di backend.
   function canManageMaster(table) {
-    return state.user && (state.user.role === 'Admin' ||
-      state.user.role === 'Operator' &&
-      ['Categories', 'Products', 'ReadyStock', 'PreorderCapacity'].includes(table));
+    const user = state.user;
+    if (!user || !['Admin', 'Operator'].includes(user.role) || table === 'Users' && user.role !== 'Admin') { return false; }
+    return Array.isArray(user.permissions) ? user.permissions.includes(table) :
+      user.role === 'Admin' || ['Categories', 'Products', 'ReadyStock', 'PreorderCapacity'].includes(table);
   }
 
   // Menu pengelola terbuka di desktop dan ringkas saat berpindah ke layar kecil.
@@ -264,7 +265,14 @@
     if (page === 'shop') {
       await loadCatalog();
     } else if (page === 'admin') {
-      if (state.token) {
+      if (state.token && state.user?.role === 'Konsumen') {
+        state.page = 'shop';
+        await loadCatalog();
+        showEditor('Akun Konsumen', '<p>' + safe(state.user.name) + '</p>' +
+          '<div class="d-flex gap-2"><button class="btn btn-outline-dark btn-sm" id="change-password" type="button">' +
+          buttonLabel('key', 'Password') + '</button><button class="btn btn-outline-dark btn-sm" id="logout" type="button">' +
+          buttonLabel('logout', 'Keluar') + '</button></div>');
+      } else if (state.token) {
         await loadAdmin();
       } else {
         renderLogin();
@@ -850,12 +858,14 @@
   function renderLogin() {
     app.innerHTML = '<div class="row g-4 align-items-center mx-auto" style="max-width:960px">' +
       '<div class="col-md-6"><section class="hero"><h1>Kelola toko,<br>dengan lebih teratur.</h1>' +
-      '<p>Akses sesuai level Admin, Operator, atau Viewer.</p></section></div>' +
-      '<div class="col-md-6"><section class="panel"><h2>Login Pengelola</h2>' +
+      '<p>Login Admin, Operator, Viewer, atau Konsumen.</p></section></div>' +
+      '<div class="col-md-6"><section class="panel"><h2>Login</h2>' +
       '<form id="login-form">' + field('Username (minimal 6 karakter)', 'username', '') +
       field('Password', 'password', '', 'password') +
       '<button class="btn btn-primary" type="submit">' + buttonLabel('login', 'Masuk') + '</button></form>' +
-      '<p class="small mt-3">Lupa password? Hubungi Admin untuk reset password sementara.</p>' +
+      '<button class="btn btn-link btn-sm mt-3" type="button" id="forgot-password">' +
+      buttonLabel('key', 'Lupa Password') + '</button>' +
+      '<p class="small mt-2">Akun diblokir setelah 3 kali salah password.</p>' +
       '</section></div></div>';
   }
 
@@ -897,6 +907,10 @@
   // Menentukan menu yang ditampilkan untuk Admin, Operator, atau Viewer.
   function adminMenu() {
     const role = state.user.role;
+    if (role === 'Konsumen') { return []; }
+    if (Array.isArray(state.user.permissions)) {
+      return Object.keys(adminIcons).filter(function (page) { return state.user.permissions.includes(page); });
+    }
     const list = role === 'Viewer' ? ['Dashboard', 'Laporan'] : [
       'Dashboard', 'Pesanan', 'Categories', 'Products', 'ReadyStock', 'PreorderCapacity'
     ];
@@ -929,6 +943,94 @@
     Discounts: 'tag', Vouchers: 'voucher', Users: 'users', ServiceHours: 'clock',
     ServiceAreas: 'location', ShippingRates: 'shipping', Pengaturan: 'settings', Backup: 'backup', Laporan: 'report'
   };
+
+  // Contoh awal Operator mengikuti menu operasional; Admin dapat mengubah centangnya.
+  function defaultUserPermissions(role) {
+    const menus = Object.keys(adminIcons);
+    return role === 'Admin' ? menus : role === 'Operator'
+      ? menus.filter(function (page) { return !['Users', 'Pengaturan'].includes(page); })
+      : role === 'Viewer' ? ['Dashboard', 'Laporan'] : [];
+  }
+
+  // Hak menu dalam form; Konsumen memakai katalog/status, bukan Panel Pengelola.
+  function userPermissionFields(user, readonly) {
+    const role = user.role || 'Admin';
+    const selected = user.permissions || defaultUserPermissions(role);
+    return '<fieldset class="user-permissions mb-3"><legend class="h6">Hak Akses Menu</legend>' +
+      '<p class="small">Centang menu yang boleh dibuka. Viewer hanya melihat; Konsumen memakai Katalog dan Status Pesanan.</p>' +
+      Object.keys(adminIcons).map(function (page, index) {
+        return '<label class="user-permission-row"><span>' + (index + 1) + '. ' +
+          safe(tableLabels[page] || page) + '</span><input class="form-check-input" type="checkbox" name="permission" value="' +
+          safe(page) + '"' + (selected.includes(page) ? ' checked' : '') +
+          (readonly || role === 'Konsumen' ? ' disabled' : '') + '></label>';
+      }).join('') + '</fieldset>';
+  }
+
+  // Daftar akun menyerupai contoh Berat Idealku; password/hash tidak pernah ditampilkan.
+  function renderUsers() {
+    const users = state.admin.tables.Users || [];
+    const editable = canManageMaster('Users');
+    document.getElementById('admin-body').innerHTML = '<section class="panel">' +
+      '<div class="d-flex justify-content-between align-items-center gap-2 mb-3"><h2 class="h4 mb-0">Setup User</h2>' +
+      (editable ? '<button class="btn btn-primary btn-sm" type="button" data-new="Users">' +
+        buttonLabel('plus', 'Buat') + '</button>' : '') + '</div>' +
+      '<input class="form-control mb-3" id="master-search" placeholder="Cari user..." aria-label="Cari user">' +
+      '<p class="small text-muted">Geser tabel ke kanan untuk melihat seluruh hak akses menu.</p>' +
+      '<div class="table-wrap users-table-wrap"><table class="table table-hover table-striped table-bordered align-middle text-center users-table">' +
+      '<thead><tr><th>Username</th><th>Nama</th><th>Email</th><th>WhatsApp</th><th>Level</th><th>Salah</th><th>Status</th><th>Login Terakhir WITA</th>' +
+      Object.keys(adminIcons).map(function (page) { return '<th>' + safe(tableLabels[page] || page) + '</th>'; }).join('') +
+      '<th class="record-action-cell">Aksi</th></tr></thead><tbody id="master-rows">' +
+      users.map(function (user) {
+        return '<tr><td>' + safe(user.username) + '</td><td>' + safe(user.name) + '</td><td>' +
+          safe(user.email) + '</td><td>' + safe(user.phone) + '</td><td>' + safe(user.role) +
+          '</td><td>' + safe(user.failedAttempts || 0) + '</td><td>' +
+          (user.blocked ? 'Diblokir' : user.active ? 'Aktif' : 'Nonaktif') + '</td><td>' +
+          safe(dateTimeText(user.lastLoginAt)) + '</td>' +
+          Object.keys(adminIcons).map(function (page) {
+            const allowed = (user.permissions || []).includes(page);
+            return '<td><span aria-label="' + (allowed ? 'Diizinkan' : 'Tidak diizinkan') + '">' +
+              window.HV_UI.icon(allowed ? 'check' : 'close') + '</span></td>';
+          }).join('') + '<td class="record-action-cell"><div class="record-actions">' +
+          (editable ? iconButton('edit', 'Edit user ' + user.username, 'data-edit="' + safe(user.id) + '" data-table="Users"', 'Edit') +
+            iconButton('trash', 'Hapus user ' + user.username, 'data-delete="' + safe(user.id) + '" data-table="Users"', 'Hapus') : '') +
+          iconButton('eye', 'Lihat user ' + user.username, 'data-user-view="' + safe(user.id) + '"', 'View') +
+          (editable ? iconButton('key', 'Reset password ' + user.username, 'data-user-reset="' + safe(user.id) + '"', 'Reset') : '') +
+          '</div></td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      (!users.length ? '<p>Belum ada user.</p>' : '') + '</section>';
+  }
+
+  // Detail akun hanya-baca; nilai password tidak diambil dari server.
+  function viewUser(id) {
+    const user = state.admin.tables.Users.find(function (row) { return row.id === id; });
+    if (!user) { throw new Error('User tidak ditemukan.'); }
+    showEditor('View User', field('Username', 'username', user.username, 'text', false, true) +
+      field('Nama', 'name', user.name, 'text', false, true) +
+      field('Email', 'email', user.email, 'text', false, true) +
+      field('WhatsApp', 'phone', user.phone, 'text', false, true) +
+      field('Level', 'role', user.role, 'text', false, true) + userPermissionFields(user, true));
+  }
+
+  // Admin mengirim tautan, bukan melihat atau menyimpan password pengguna.
+  function resetUserDialog(id) {
+    if (!canManageMaster('Users')) { throw new Error('Reset hanya untuk Admin dengan akses Setup User.'); }
+    showEditor('Reset Password', '<form id="admin-reset-form" data-id="' + safe(id) + '">' +
+      '<p>Kirim tautan ke kontak terdaftar?</p>' +
+      selectField('Kirim melalui', 'channel', [['email', 'Email'], ['whatsapp', 'WhatsApp']], 'email') +
+      '<div role="status"></div><button class="btn btn-primary btn-sm" type="submit">' +
+      buttonLabel('key', 'Kirim Tautan') + '</button></form>');
+  }
+
+  // Token dari fragmen segera dihapus dari alamat dan hanya dikirim dalam badan POST.
+  function renderResetPassword(token) {
+    app.innerHTML = '<section class="panel mx-auto" style="max-width:440px"><h1 class="h4">Reset Password</h1>' +
+      '<form id="complete-reset-form" data-token="' + safe(token) + '">' +
+      field('Password baru', 'newPassword', '', 'password') +
+      field('Ulangi password', 'repeatPassword', '', 'password') +
+      '<div role="status" aria-live="polite"></div>' +
+      '<button class="btn btn-primary btn-sm" type="submit">' + buttonLabel('save', 'Simpan') +
+      '</button></form></section>';
+  }
 
   // Menampilkan panel pengelola dan isi menu yang sedang dipilih.
   function renderAdmin() {
@@ -983,12 +1085,12 @@
       body.innerHTML = '<section class="panel"><h2>Backup Privat</h2>' +
         '<p>Menyalin database dan berkas ke BACKUP. Tidak menimpa atau menghapus produksi.</p>' +
         '<p>Untuk data besar, runtime Google dapat habis; periksa BackupLog sebelum menyatakan berhasil.</p>' +
-        '<button class="btn btn-primary" id="backup" type="button">' + buttonLabel('backup', 'Buat Backup') + '</button>' +
-        '<hr><h3 class="h5">Pulihkan ke Staging</h3><form id="restore-form">' +
+        (canManageMaster('Backup') ? '<button class="btn btn-primary" id="backup" type="button">' + buttonLabel('backup', 'Buat Backup') + '</button>' : '') +
+        (state.user.role === 'Admin' && canManageMaster('Backup') ? '<hr><h3 class="h5">Pulihkan ke Staging</h3><form id="restore-form">' +
         field('ID folder backup selesai', 'folderId', '') +
         field('Ketik RESTORE KE STAGING', 'confirmation', '') +
         '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('restore', 'Buat Salinan Pemulihan') + '</button>' +
-        '</form></section>';
+        '</form>' : '') + '</section>';
     } else {
       renderMaster(page);
     }
@@ -1058,17 +1160,18 @@
         seen.add(key);
         return true;
       });
-    showEditor('Detail Pesanan', '<p class="text-break">' + safe(id) + '</p><p>' +
-      safe(order.name + ' | ' + order.phone) + '</p><p>' + safe(order.address) + '</p>' +
+    showEditor('Detail Pesanan', '<p class="text-break">' + safe(id) + '</p>' +
+      (state.user.role !== 'Viewer' ? '<p>' + safe(order.name + ' | ' + order.phone) +
+        '</p><p>' + safe(order.address) + '</p>' : '') +
       orderCharges(order) + orderStatusPanel(order) +
-      '<div class="d-flex gap-2 flex-wrap mb-3">' +
+      (state.user.role !== 'Viewer' ? '<div class="d-flex gap-2 flex-wrap mb-3">' +
       files.map(function (file) {
         return '<button class="btn btn-outline-dark" data-file="' + safe(file.driveFileId) +
           '" type="button">' + buttonLabel('eye', file.kind === 'STRUK'
             ? 'Lihat Struk' : file.kind === 'TANDATERIMA' ? 'Lihat Tanda Terima' : 'Lihat ' + file.kind) + '</button>';
       }).join('') + '<button class="btn btn-green" data-invoice="' + safe(id) +
-      '" type="button">' + buttonLabel('download', 'Invoice PDF') + '</button></div><hr>' +
-      '<form id="order-action-form" data-id="' + safe(id) + '">' +
+      '" type="button">' + buttonLabel('download', 'Invoice PDF') + '</button></div><hr>' : '') +
+      (canManageMaster('Pesanan') ? '<form id="order-action-form" data-id="' + safe(id) + '">' +
       '<h2 class="h5">Tindakan Admin</h2>' +
       selectField('Tindakan', 'action', [
         ['', 'Pilih tindakan terlebih dahulu'],
@@ -1090,8 +1193,8 @@
       field('Nomor/link pelacakan', 'tracking', '', 'text', false, true) + '</div>' +
       '<div id="order-action-result" role="status" aria-live="polite"></div>' +
       '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit" disabled>' +
-      buttonLabel('check', 'Jalankan Tindakan') + '</button></div></form><hr>' +
-      (state.user.role === 'Admin' ? orderAccessForm(order) : ''));
+      buttonLabel('check', 'Jalankan Tindakan') + '</button></div></form><hr>' : '') +
+      (state.user.role === 'Admin' && canManageMaster('Pesanan') ? orderAccessForm(order) : ''));
   }
 
   // Setiap tindakan menentukan isian aktif, kewajiban isian, dan petunjuk penggunaan.
@@ -1232,9 +1335,14 @@
     if (table === 'Users') {
       html += field('Username (minimal 6 karakter)', 'username', row.username);
       html += selectField('Level', 'role', [
-        ['Admin', 'Admin'], ['Operator', 'Operator'], ['Viewer', 'Viewer']
+        ['Admin', 'Admin'], ['Operator', 'Operator'], ['Viewer', 'Viewer'], ['Konsumen', 'Konsumen']
       ], row.role);
-      html += field('Password sementara (minimal 6 karakter; isi untuk reset)', 'password', '', 'password', !row.id);
+      html += field('Email', 'email', row.email, 'email', false);
+      html += field('Nomor WhatsApp', 'phone', row.phone, 'tel', false);
+      html += userPermissionFields(row, false);
+      if (!row.id) {
+        html += field('Password sementara (minimal 6 karakter)', 'password', '', 'password');
+      }
     }
     if (!['ReadyStock', 'PreorderCapacity'].includes(table)) {
       html += selectField('Aktif', 'active', [['true', 'Ya'], ['false', 'Tidak']],
@@ -1262,6 +1370,7 @@
 
   // Menampilkan tabel master dengan kelompok ikon aksi yang ringkas.
   function renderMaster(table) {
+    if (table === 'Users') { renderUsers(); return; }
     const rows = state.admin.tables[table] || [];
     const editable = canManageMaster(table);
     const keys = rows.length ? Object.keys(rows[0]).filter(function (key) {
@@ -1349,6 +1458,11 @@
       ], '') + '<input class="form-control mb-3" type="file" name="photo" ' +
       'accept="image/jpeg,image/png,image/webp" required>' +
       '<button class="btn btn-outline-dark" type="submit">' + buttonLabel('upload', 'Unggah Aset Toko') + '</button></form></section>';
+    if (!canManageMaster('Pengaturan')) {
+      document.getElementById('admin-body').querySelectorAll('input, select, button').forEach(function (element) {
+        element.disabled = true;
+      });
+    }
   }
 
   // Menampilkan filter laporan berdasarkan tanggal, jenis, kategori, dan status pesanan.
@@ -1552,6 +1666,8 @@
       deleteMasterDialog(button.dataset.table, button.dataset.delete);
       return;
     }
+    if (button.dataset.userView) { viewUser(button.dataset.userView); return; }
+    if (button.dataset.userReset) { resetUserDialog(button.dataset.userReset); return; }
     if (button.dataset.order) {
       orderEditor(button.dataset.order);
       return;
@@ -1602,6 +1718,12 @@
       ], { type: 'text/plain' }), 'Akses-Pesanan-Healthy-Vibes.txt');
     } else if (id === 'change-password') {
       passwordDialog();
+    } else if (id === 'forgot-password') {
+      showEditor('Lupa Password', '<form id="request-reset-form">' +
+        field('Username', 'username', document.querySelector('#login-form [name="username"]')?.value) +
+        selectField('Kirim tautan melalui', 'channel', [['email', 'Email'], ['whatsapp', 'WhatsApp']], 'email') +
+        '<div id="request-reset-result" role="status"></div><button class="btn btn-primary btn-sm" type="submit">' +
+        buttonLabel('key', 'Kirim Tautan') + '</button></form>');
     } else if (id === 'logout') {
       await rpc('logout');
       state.token = '';
@@ -1660,6 +1782,14 @@
     if (event.target.name === 'action' && event.target.form?.id === 'order-action-form') {
       updateOrderAction(event.target.form);
     }
+    if (event.target.name === 'role' && event.target.form?.dataset.table === 'Users') {
+      const role = event.target.value;
+      const defaults = defaultUserPermissions(role);
+      event.target.form.querySelectorAll('[name="permission"]').forEach(function (checkbox) {
+        checkbox.checked = defaults.includes(checkbox.value);
+        checkbox.disabled = role === 'Konsumen';
+      });
+    }
   });
 
   // Tombol submit dikunci selama request agar klik ganda tidak membuat dua operasi.
@@ -1674,10 +1804,13 @@
     try {
       await submitAction(form);
     } catch (error) {
-      if (['reset-access-form', 'order-action-form', 'handover-form', 'delete-master-form'].includes(form.id)) {
+      if (['reset-access-form', 'order-action-form', 'handover-form', 'delete-master-form',
+        'request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)) {
         const selector = form.id === 'reset-access-form' ? '#reset-access-result'
           : form.id === 'handover-form' ? '#handover-result'
-            : form.id === 'delete-master-form' ? '#delete-master-result' : '#order-action-result';
+            : form.id === 'delete-master-form' ? '#delete-master-result'
+              : ['request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)
+                ? '[role="status"]' : '#order-action-result';
         const result = form.querySelector(selector);
         if (result) {
           result.innerHTML = '<p class="alert alert-danger">' + safe(error.message) + '</p>';
@@ -1706,10 +1839,12 @@
       state.user = result.user;
       state.admin = null;
       state.report = null;
-      state.adminPage = 'Dashboard';
+      state.adminPage = result.user.permissions?.[0] || 'Dashboard';
       form.reset();
       if (result.user.mustChangePassword) {
         passwordDialog();
+      } else if (result.user.role === 'Konsumen') {
+        await navigate('shop');
       } else {
         await loadAdmin();
       }
@@ -1718,7 +1853,7 @@
       state.token = '';
       state.user = null;
       dialog.close();
-      renderLogin();
+      await navigate('admin');
       notify('Password diganti. Silakan login kembali.');
     } else if (['proof-form', 'handover-form', 'product-photo-form'].includes(form.id)) {
       if (form.id === 'handover-form' && data.received !== 'on') {
@@ -1753,6 +1888,10 @@
       notify('Record berhasil dihapus.');
     } else if (form.id === 'master-form') {
       data.id = form.dataset.id;
+      if (form.dataset.table === 'Users') {
+        data.permissions = Array.from(form.querySelectorAll('[name="permission"]:checked:not(:disabled)'))
+          .map(function (checkbox) { return checkbox.value; });
+      }
       data.active = data.active !== 'false';
       ['startsAt', 'endsAt'].forEach(function (key) {
         if (data[key]) {
@@ -1761,8 +1900,33 @@
       });
       await rpc('saveMaster', { table: form.dataset.table, record: data });
       dialog.close();
-      await loadAdmin();
-      notify('Berhasil tersimpan.');
+      if (form.dataset.table === 'Users' && data.id === state.user.id) {
+        state.token = '';
+        state.user = null;
+        await navigate('admin');
+        notify('Akun diperbarui. Silakan login.');
+      } else {
+        await loadAdmin();
+        notify('Berhasil tersimpan.');
+      }
+    } else if (form.id === 'request-reset-form' || form.id === 'admin-reset-form') {
+      if (form.id === 'admin-reset-form') {
+        await rpc('sendPasswordReset', { userId: form.dataset.id, channel: data.channel });
+      } else {
+        await rpc('requestPasswordReset', data);
+      }
+      form.querySelector('[role="status"]').innerHTML =
+        '<p class="alert alert-success">Jika akun dan kontak terdaftar, tautan reset akan dikirim.</p>';
+      const message = form.querySelector('[role="status"] .alert-success');
+      setTimeout(function () { message.remove(); }, 4000);
+    } else if (form.id === 'complete-reset-form') {
+      if (data.newPassword !== data.repeatPassword) { throw new Error('Password ulang tidak sama.'); }
+      await rpc('completePasswordReset', { resetToken: form.dataset.token, newPassword: data.newPassword });
+      state.token = '';
+      state.user = null;
+      state.page = 'admin';
+      renderLogin();
+      notify('Password diperbarui. Silakan login.');
     } else if (form.id === 'settings-form') {
       await rpc('saveSettings', { values: data });
       await loadAdmin();
@@ -1818,7 +1982,12 @@
   }
 
   // Menangani halaman sebelum instalasi dengan pesan nyata, bukan data contoh.
-  navigate('shop').catch(function (error) {
+  const resetFromLink = new URLSearchParams(window.location.hash.slice(1)).get('reset');
+  if (resetFromLink) {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    renderResetPassword(resetFromLink);
+  }
+  (resetFromLink ? Promise.resolve() : navigate('shop')).catch(function (error) {
     app.innerHTML = '<section class="panel"><h1>Healthy Vibes</h1>' +
       '<p>Aplikasi belum terhubung ke database yang terpasang.</p>' +
       '<p>Isi URL API pada js/config.js dan pasang backend sesuai panduan.</p>' +

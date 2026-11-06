@@ -126,6 +126,8 @@ function dispatch_(request) {
     productPhoto: function () { return productPhoto_(data); },
     storeAsset: function () { return storeAsset_(data); },
     login: function () { return login_(data); },
+    requestPasswordReset: function () { return requestPasswordReset_(data); },
+    completePasswordReset: function () { return completePasswordReset_(data); },
     logout: function () { return logout_(request.token || ''); }
   };
   if (Object.prototype.hasOwnProperty.call(anonymous, action)) {
@@ -133,11 +135,12 @@ function dispatch_(request) {
   }
   const roles = {
     adminData: ['Admin', 'Operator', 'Viewer'],
-    changePassword: ['Admin', 'Operator', 'Viewer'],
+    changePassword: ['Admin', 'Operator', 'Viewer', 'Konsumen'],
+    sendPasswordReset: ['Admin'],
     saveMaster: ['Admin', 'Operator'],
     deleteMaster: ['Admin', 'Operator'],
-    saveSettings: ['Admin'],
-    uploadStoreAsset: ['Admin'],
+    saveSettings: ['Admin', 'Operator'],
+    uploadStoreAsset: ['Admin', 'Operator'],
     verifyPayment: ['Admin', 'Operator'],
     resetOrderAccess: ['Admin'],
     fulfillment: ['Admin', 'Operator'],
@@ -145,16 +148,30 @@ function dispatch_(request) {
     download: ['Admin', 'Operator'],
     shipping: ['Admin', 'Operator'],
     report: ['Admin', 'Operator', 'Viewer'],
-    backup: ['Admin'],
+    backup: ['Admin', 'Operator'],
     restoreStaging: ['Admin']
   };
   if (!roles[action]) {
     throw new Error('Operasi tidak dikenal.');
   }
   const user = authorize_(request.token, roles[action], action === 'changePassword');
+  const pages = {
+    saveMaster: data.table, deleteMaster: data.table, sendPasswordReset: 'Users',
+    saveSettings: 'Pengaturan', uploadStoreAsset: 'Pengaturan',
+    verifyPayment: 'Pesanan', resetOrderAccess: 'Pesanan', fulfillment: 'Pesanan',
+    upload: data.kind === 'PRODUK' ? 'Products' : 'Pesanan', download: 'Pesanan',
+    shipping: 'Pesanan', report: 'Laporan', backup: 'Backup', restoreStaging: 'Backup'
+  };
+  if (pages[action]) { requireMenu_(user, pages[action], !['download', 'report'].includes(action)); }
   const operations = {
     adminData: function () { return adminData_(user, data); },
     changePassword: function () { return changePassword_(user, data); },
+    sendPasswordReset: function () {
+      const target = rows_('Users').find(function (row) { return row.id === data.userId; });
+      if (!target) { throw new Error('Akun tidak ditemukan.'); }
+      if (!['email', 'whatsapp'].includes(data.channel)) { throw new Error('Pilih Email atau WhatsApp.'); }
+      return sendPasswordReset_(target, data.channel);
+    },
     saveMaster: function () { return saveMaster_(user, data); },
     deleteMaster: function () { return deleteMaster_(user, data); },
     saveSettings: function () { return saveSettings_(user, data); },

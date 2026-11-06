@@ -23,8 +23,10 @@ const HV_SCHEMA = {
   ShippingRates: ['id', 'name', 'price', 'active', 'updatedAt'],
   Users: [
     'id', 'username', 'name', 'passwordHash', 'role', 'active',
-    'mustChangePassword', 'version', 'updatedAt'
+    'mustChangePassword', 'version', 'updatedAt', 'email', 'phone',
+    'permissionsJson', 'failedAttempts', 'blockedAt', 'lastLoginAt'
   ],
+  PasswordResets: ['id', 'userId', 'tokenHash', 'channel', 'createdAt', 'expiresAt', 'usedAt', 'version'],
   Sessions: [
     'id', 'tokenHash', 'userId', 'version', 'createdAt',
     'lastSeenAt', 'expiresAt', 'revoked'
@@ -176,6 +178,7 @@ function installHealthyVibes_() {
     db.setSpreadsheetTimeZone('Asia/Makassar');
     db.setSpreadsheetLocale('id_ID');
     removeShippingConfirmation_(db);
+    extendAccountSchema_(db);
 
     Object.keys(HV_SCHEMA).forEach(function (name) {
       const headers = HV_SCHEMA[name];

@@ -43,6 +43,7 @@ function backend(configuredOrigins) {
     }
   });
   vm.runInContext(source('apps-script/Store.gs'), context);
+  vm.runInContext(source('apps-script/Accounts.gs'), context);
   vm.runInContext(source('apps-script/Api.gs'), context);
   context.withLock_ = function (operation) { return operation(); };
   return context;
@@ -199,7 +200,7 @@ test('Operasi staf tetap memeriksa sesi dan level backend', function () {
   context.authorize_ = function (token, roles) {
     calls += 1;
     assert.equal(token, 'invalid-session');
-    assert.deepEqual(Array.from(roles), ['Admin']);
+    assert.deepEqual(Array.from(roles), ['Admin', 'Operator']);
     throw new Error('Sesi ditolak');
   };
   const result = readReply(post(context, {
@@ -423,13 +424,13 @@ test('Semua source dapat diparse dan frontend tidak memakai template Google', fu
   }));
 });
 
-test('Branding memakai aset pemilik, ikon pengaturan dan gambar ikut publikasi', function () {
+test('Branding memakai aset pemilik, tombol Login dan gambar ikut publikasi', function () {
   const html = source('index.html');
   const client = source('js/client.js');
   const workflow = source('.github/workflows/jekyll-docker.yml');
   assert.ok(html.includes('image/Logo_HealthyVibes_Trans.png'));
   assert.ok(client.includes('image/Header_HealthyVibes.jpg'));
-  assert.ok(html.includes('aria-label="Admin"'));
+  assert.ok(html.includes('aria-label="Login"'));
   assert.ok(html.includes('id="nav-toggle"'));
   assert.ok(html.includes('aria-controls="site-nav"'));
   assert.ok(!html.includes('>Pengelola</button>'));
@@ -441,14 +442,14 @@ test('Branding memakai aset pemilik, ikon pengaturan dan gambar ikut publikasi',
   }
 });
 
-test('Label awal memakai Katalog dan Admin dengan navigasi HP berikon', function () {
+test('Label awal memakai Katalog dan Login dengan navigasi HP berikon', function () {
   const html = source('index.html');
   assert.match(html, /data-nav="shop"[^>]*>[\s\S]*?<span>Katalog<\/span>/);
   const toggle = html.match(/<button[^>]*id="nav-toggle"[\s\S]*?<\/button>/)[0];
   assert.ok(toggle.includes('<svg'));
   assert.ok(!toggle.includes('<span'));
   assert.ok(toggle.includes('aria-label="Buka menu navigasi"'));
-  assert.match(html, /class="header-action-text">Admin<\/span>/);
+  assert.match(html, /class="header-action-text">Login<\/span>/);
   assert.ok(source('js/client.js').includes("buttonLabel('menu', 'Lihat Katalog')"));
   assert.ok(!source('js/client.js').includes("buttonLabel('menu', 'Lihat Menu')"));
   assert.match(source('css/styles.css'), /\.settings-button \.header-action-text \{ display: none; \}/);
@@ -1154,7 +1155,7 @@ function setupContext(activeEmail, effectiveEmail) {
     },
     console: { info: function () {} }
   });
-  for (const file of ['Store.gs', 'Schema.gs', 'Auth.gs', 'Tests.gs']) {
+  for (const file of ['Store.gs', 'Schema.gs', 'Auth.gs', 'Accounts.gs', 'Tests.gs']) {
     vm.runInContext(source('apps-script/' + file), context);
   }
   return context;
@@ -1174,7 +1175,7 @@ function orderNumberContext(saved, locked) {
       };
     } }
   });
-  for (const file of ['Store.gs', 'Rules.gs', 'Orders.gs']) {
+  for (const file of ['Store.gs', 'Rules.gs', 'Orders.gs', 'Accounts.gs']) {
     vm.runInContext(source('apps-script/' + file), context);
   }
   return { context: context, properties: properties };
@@ -1377,7 +1378,7 @@ test('Form pemulihan meminta HP kosong dan konfirmasi; hasil hanya di dialog', f
   assert.ok(html.includes('name="confirmed" required'));
   assert.ok(!html.includes('08123'));
   assert.equal(context.orderAccessForm({ transactionState: 'PREPARING' }), '');
-  assert.ok(client.includes("state.user.role === 'Admin' ? orderAccessForm(order) : ''"));
+  assert.ok(client.includes("state.user.role === 'Admin' && canManageMaster('Pesanan') ? orderAccessForm(order) : ''"));
   assert.ok(client.includes("dialog.addEventListener('close'"));
   const handler = client.slice(client.indexOf("} else if (form.id === 'reset-access-form')"),
     client.indexOf("} else if (form.id === 'order-action-form')"));
@@ -1686,6 +1687,7 @@ test('Detail Admin menampilkan satu struk terbaru dan pemulihan kunci di bawah t
         { orderId: 'order2', kind: 'STRUK', driveFileId: 'other', createdAt: '2026-11-06' }
       ]
     } } }, safe: String, rupiah: String, orderStatusPanel: () => '', orderCharges: () => '',
+    canManageMaster: () => true,
     buttonLabel: (icon, label) => label, field: () => '', selectField: () => '',
     showEditor: (title, content) => { html = content; }
   });

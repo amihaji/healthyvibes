@@ -33,6 +33,15 @@ function restoreStaging_(user, data) {
   const db = SpreadsheetApp.openById(restored.getId());
   // Backup lama dibersihkan pada salinan staging, tanpa menyentuh produksi.
   removeShippingConfirmation_(db);
+  extendAccountSchema_(db);
+  const resets = db.getSheetByName('PasswordResets') || db.insertSheet('PasswordResets');
+  if (!resets.getLastRow()) {
+    resets.getRange(1, 1, 1, HV_SCHEMA.PasswordResets.length).setValues([HV_SCHEMA.PasswordResets]);
+  } else if (resets.getLastRow() > 1) {
+    // Tautan reset produksi tidak boleh tetap aktif dalam salinan staging.
+    resets.getRange(2, HV_SCHEMA.PasswordResets.indexOf('usedAt') + 1, resets.getLastRow() - 1, 1)
+      .setValues(Array.from({ length: resets.getLastRow() - 1 }, function () { return [now_()]; }));
+  }
   // Relasi berkas diperbarui agar staging tidak menunjuk berkas produksi.
   [
     ['Products', 'photoFileId'],
