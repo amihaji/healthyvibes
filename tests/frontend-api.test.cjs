@@ -2085,6 +2085,25 @@ test('Installer menambah ShippingRates tanpa mengganti database, folder, atau is
   assert.equal(props.get('DATABASE_ID'), 'db');
 });
 
+test('Simpan/edit ongkir memberi petunjuk installer jika tab ShippingRates belum ada', function () {
+  const context = backend();
+  context.database_ = () => ({ getSheetByName: () => null });
+  let writes = 0;
+  context.writeSheetRow_ = () => { writes += 1; };
+  for (const run of [
+    () => context.append_('ShippingRates', { name: 'Gojek', price: 10000 }),
+    () => context.patch_('ShippingRates', { _row: 2 }, { price: 11000 })
+  ]) {
+    assert.throws(run, error => {
+      assert.ok(error.message.includes('Tab ShippingRates belum ada'));
+      assert.ok(error.message.includes('installHealthyVibes'));
+      assert.ok(!error.message.includes('getLastRow'));
+      return true;
+    });
+  }
+  assert.equal(writes, 0);
+});
+
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
   let callbackCalled = false;

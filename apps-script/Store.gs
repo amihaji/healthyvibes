@@ -164,6 +164,9 @@ function cell_(value) {
 // Menambah satu baris mengikuti urutan kolom skema.
 function append_(name, record) {
   const sheet = database_().getSheetByName(name);
+  if (!sheet) {
+    throw new Error('Tab ' + name + ' belum ada. Jalankan installHealthyVibes dari editor Google Apps Script untuk melengkapi database.');
+  }
   const row = sheet.getLastRow() + 1;
   writeSheetRow_(sheet, row, HV_SCHEMA[name], record);
   return Object.assign({}, record, { _row: row });
@@ -172,7 +175,11 @@ function append_(name, record) {
 // Mengubah kolom yang dikenal saja, tanpa menulis objek tak dikenal ke database.
 function patch_(name, record, changes) {
   const merged = Object.assign({}, record, changes);
-  writeSheetRow_(database_().getSheetByName(name), record._row, HV_SCHEMA[name], merged);
+  const sheet = database_().getSheetByName(name);
+  if (!sheet) {
+    throw new Error('Tab ' + name + ' belum ada. Jalankan installHealthyVibes dari editor Google Apps Script untuk melengkapi database.');
+  }
+  writeSheetRow_(sheet, record._row, HV_SCHEMA[name], merged);
   return merged;
 }
 
