@@ -2362,6 +2362,59 @@ test('Tindakan pesanan dan backup hanya dikirim setelah modal disetujui', async 
   }
 });
 
+test('Konfirmasi hapus hanya satu pertanyaan dan tombol Hapus mengirim persetujuan', async function () {
+  let html;
+  let request;
+  const context = vm.createContext({
+    state: { admin: { tables: { ShippingRates: [{ id: 'rate1' }] } } },
+    canManageMaster: () => true, safe: String, tableLabels: { ShippingRates: 'Biaya Pengiriman' },
+    showEditor: (title, content) => { html = content; }, buttonLabel: (icon, label) => label,
+    formData: () => ({}), dialog: { close: () => {} }, loadAdmin: async () => {}, notify: () => {},
+    rpc: async (action, data) => { request = { action, data }; }
+  });
+  const client = source('js/client.js');
+  vm.runInContext(client.slice(client.indexOf('  function deleteMasterDialog('),
+    client.indexOf('  // Menampilkan formulir pengaturan')), context);
+  context.deleteMasterDialog('ShippingRates', 'rate1');
+  assert.ok(html.includes('<p>Apa yakin record ini akan dihapus?</p>'));
+  assert.ok(!html.includes('checkbox'));
+  assert.ok(!html.includes('alert-warning'));
+  vm.runInContext(client.slice(client.indexOf('  async function submitAction('),
+    client.indexOf('  // Menangani halaman sebelum instalasi')), context);
+  await context.submitAction({ id: 'delete-master-form', dataset: { table: 'ShippingRates', id: 'rate1' } });
+  assert.equal(request.action, 'deleteMaster');
+  assert.equal(request.data.confirmed, true);
+  assert.equal(request.data.id, 'rate1');
+});
+
+test('Notifikasi atas hilang setelah 4 detik dan pesan baru tidak memakai timer lama', function () {
+  const timers = new Map();
+  let next = 0;
+  const element = { innerHTML: '', scrollIntoView: () => {} };
+  const context = vm.createContext({
+    document: { getElementById: () => element }, safe: String,
+    setTimeout: (callback, delay) => { const id = ++next; timers.set(id, { callback, delay }); return id; },
+    clearTimeout: id => timers.delete(id)
+  });
+  const client = source('js/client.js');
+  vm.runInContext(client.slice(client.indexOf('  let notificationTimer = null;'),
+    client.indexOf('  function field(')), context);
+  context.notify('Berhasil tersimpan.');
+  assert.ok(element.innerHTML.includes('alert-success'));
+  assert.equal(timers.get(1).delay, 4000);
+  context.notify('Pesan baru', true);
+  assert.equal(timers.has(1), false);
+  assert.equal(timers.size, 1);
+  assert.ok(element.innerHTML.includes('alert-danger'));
+  assert.ok(element.innerHTML.includes('Pesan baru'));
+  timers.get(2).callback();
+  assert.equal(element.innerHTML, '');
+  assert.ok(client.includes("confirmAction('Apa yakin membuat backup?', 'Konfirmasi')"));
+  assert.ok(client.includes("confirmAction('Apa yakin menjalankan tindakan ini?', 'Konfirmasi')"));
+  assert.match(source('css/styles.css'),
+    /#notification \.alert\s*\{[^}]*padding: 8px 12px;[^}]*margin-bottom: 0;[^}]*font-size: 13px;[^}]*line-height: 1\.4;/);
+});
+
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
   let callbackCalled = false;

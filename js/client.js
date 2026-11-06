@@ -141,12 +141,19 @@
     });
   }
 
-  // Menampilkan pesan sukses atau kesalahan di area notifikasi halaman.
+  let notificationTimer = null;
+
+  // Notifikasi atas hilang setelah 4 detik; pesan baru menggantikan timer pesan lama.
   function notify(message, error) {
     const element = document.getElementById('notification');
+    clearTimeout(notificationTimer);
     element.innerHTML = '<div class="alert ' +
       (error ? 'alert-danger' : 'alert-success') + '">' + safe(message) + '</div>';
     element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    notificationTimer = setTimeout(function () {
+      element.innerHTML = '';
+      notificationTimer = null;
+    }, 4000);
   }
 
   // Membuat input beserta label, nilai awal, dan aturan pengisian.
@@ -1153,13 +1160,12 @@
     if (order.transactionState !== 'COMMITTED') { return ''; }
     return '<section aria-labelledby="reset-access-title"><h2 class="h5" id="reset-access-title">' +
       buttonLabel('key', 'Pemulihan Kunci Akses') + '</h2>' +
-      '<p class="small">Pastikan identitas pelanggan sesuai dengan pesanan. ' +
-      'Kunci lama akan tidak berlaku. Kunci baru hanya tampil sampai detail ini ditutup.</p>' +
+      '<p class="small">Kunci lama dinonaktifkan. Kunci baru hanya tampil sekali.</p>' +
       '<form id="reset-access-form" data-id="' + safe(order.id) + '">' +
       field('Nomor HP pelanggan (sesuai pesanan)', 'phone', '', 'tel') +
       '<label class="d-flex align-items-center gap-2 mb-3">' +
       '<input class="form-check-input m-0" type="checkbox" name="confirmed" required>' +
-      '<span>Saya sudah memverifikasi pelanggan dan setuju mengganti kunci lama.</span></label>' +
+      '<span>Identitas pelanggan sudah diperiksa.</span></label>' +
       '<div id="reset-access-result" role="status" aria-live="polite"></div>' +
       '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit">' +
       buttonLabel('key', 'Buat Kunci Baru') + '</button></div></form></section><hr>';
@@ -1306,15 +1312,10 @@
     }
     showEditor('Hapus ' + tableLabels[table],
       '<form id="delete-master-form" data-table="' + safe(table) + '" data-id="' + safe(id) + '">' +
-      '<p>Hapus record <strong>' + safe(row.name || row.code || row.id) + '</strong>?</p>' +
-      '<p class="alert alert-warning">Baris akan dihapus, bukan disembunyikan. Data yang masih ' +
-      'dirujuk pesanan atau master lain tidak dapat dihapus. Untuk data tersebut, gunakan Edit untuk menonaktifkannya.</p>' +
-      '<label class="d-flex align-items-center gap-2 mb-3">' +
-      '<input class="form-check-input m-0" type="checkbox" name="confirmed" required>' +
-      '<span>Saya yakin ingin menghapus record ini.</span></label>' +
+      '<p>Apa yakin record ini akan dihapus?</p>' +
       '<div id="delete-master-result" role="status" aria-live="polite"></div>' +
       '<div class="d-flex justify-content-center"><button class="btn btn-danger btn-sm" type="submit">' +
-      buttonLabel('trash', 'Hapus Record') + '</button></div></form>');
+      buttonLabel('trash', 'Hapus') + '</button></div></form>');
   }
 
   // Menampilkan formulir pengaturan toko, jam operasional terkait, logo, dan QRIS.
@@ -1609,7 +1610,7 @@
     } else if (id === 'backup') {
       button.disabled = true;
       try {
-        if (await confirmAction('Buat salinan privat database dan seluruh berkas?', 'Konfirmasi Backup')) {
+        if (await confirmAction('Apa yakin membuat backup?', 'Konfirmasi')) {
           const result = await rpc('backup');
           notify('Backup selesai: ' + result.folderUrl);
         }
@@ -1739,7 +1740,6 @@
         await loadAdmin();
       }
     } else if (form.id === 'delete-master-form') {
-      if (data.confirmed !== 'on') { throw new Error('Centang konfirmasi penghapusan dahulu.'); }
       await rpc('deleteMaster', { table: form.dataset.table, id: form.dataset.id, confirmed: true });
       dialog.close();
       await loadAdmin();
@@ -1756,16 +1756,16 @@
       await rpc('saveMaster', { table: form.dataset.table, record: data });
       dialog.close();
       await loadAdmin();
-      notify('Data disimpan.');
+      notify('Berhasil tersimpan.');
     } else if (form.id === 'settings-form') {
       await rpc('saveSettings', { values: data });
       await loadAdmin();
-      notify('Pengaturan disimpan.');
+      notify('Berhasil tersimpan.');
     } else if (form.id === 'store-asset-form') {
       const photo = await photoData(form.elements.photo.files[0]);
       await rpc('uploadStoreAsset', Object.assign({}, photo, { asset: data.asset }));
       await loadAdmin();
-      notify('Aset toko tersimpan di PRODUK.');
+      notify('Berhasil tersimpan.');
     } else if (form.id === 'reset-access-form') {
       const result = await rpc('resetOrderAccess', {
         orderId: form.dataset.id, phone: data.phone, confirmed: data.confirmed === 'on'
@@ -1783,7 +1783,7 @@
       if (!orderActionRules(data.action)) {
         throw new Error('Pilih tindakan terlebih dahulu.');
       }
-      if (!await confirmAction('Jalankan tindakan ini pada pesanan?', 'Konfirmasi Tindakan')) {
+      if (!await confirmAction('Apa yakin menjalankan tindakan ini?', 'Konfirmasi')) {
         return;
       }
       data.orderId = form.dataset.id;

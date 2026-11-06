@@ -691,6 +691,15 @@
   .confirmation-dialog { width: min(440px, calc(100% - 24px)); }
   #confirmation-message { overflow-wrap: anywhere; }
 
+  /* Notifikasi atas ringkas; tinggi mengikuti teks agar pesan panjang tidak terpotong. */
+  #notification .alert {
+    padding: 8px 12px;
+    margin-bottom: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
   /* Indikator Memproses mengambang tanpa menghalangi klik pada halaman. */
   .busy {
     pointer-events: none;
