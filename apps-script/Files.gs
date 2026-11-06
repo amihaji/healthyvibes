@@ -158,7 +158,7 @@ function invoice_(order) {
       '</p><p>Total produk: Rp ' + amounts.productTotal + '</p>' +
       (amounts.shippingIncluded ? '<p>Pengiriman ' + escapeHtml_(amounts.shippingProvider) +
         ': Rp ' + amounts.shippingFee + '</p>'
-        : order.receipt === 'DELIVERY' ? '<p>Pesanan lama: ongkir mengikuti kesepakatan saat pemesanan.</p>' : '') +
+        : order.receipt === 'DELIVERY' ? '<p>Pesanan lama: tagihan tersimpan belum termasuk biaya pengiriman.</p>' : '') +
       '<h3>Total pembayaran: Rp ' + order.total + '</h3>' +
       '<p>Invoice bukan bukti pembayaran. Verifikasi manual dari transaksi masuk.</p>' +
       '</body></html>';

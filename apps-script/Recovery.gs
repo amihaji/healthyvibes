@@ -31,6 +31,8 @@ function restoreStaging_(user, data) {
     mappings[entry.originalId] = copy.getId();
   });
   const db = SpreadsheetApp.openById(restored.getId());
+  // Backup lama dibersihkan pada salinan staging, tanpa menyentuh produksi.
+  removeShippingConfirmation_(db);
   // Relasi berkas diperbarui agar staging tidak menunjuk berkas produksi.
   [
     ['Products', 'photoFileId'],
@@ -50,7 +52,7 @@ function restoreStaging_(user, data) {
   const settings = db.getSheetByName('Settings');
   const values = settings.getRange(2, 1, settings.getLastRow() - 1, 2).getValues();
   values.forEach(function (row) {
-    if (row[0] === 'ordersEnabled' || row[0] === 'deliveryVerified') {
+    if (row[0] === 'ordersEnabled') {
       row[1] = 'false';
     }
     if (row[0] === 'logoFileId' || row[0] === 'qrisFileId') {

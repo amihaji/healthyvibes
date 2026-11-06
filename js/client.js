@@ -283,7 +283,7 @@
           safe(item.product.id) + '" type="button">' + buttonLabel('plus', 'Tambah') + '</button></div></div></div>';
       }).join('') : '<p class="text-secondary">Belum ada produk.</p>') +
       '<p class="mt-3"><strong>Total produk: ' + rupiah(summary.total) + '</strong></p>' +
-      '<p class="small text-secondary">Ongkir dikonfirmasi terpisah. ' +
+      '<p class="small text-secondary">Pilih layanan pengiriman saat Checkout; ongkir masuk total pembayaran. ' +
       'Keranjang belum menahan stok.</p>' +
       '<button class="btn btn-primary w-100" id="checkout-button" type="button"' +
       (!summary.lines.length ? ' disabled' : '') + '>' + buttonLabel('cart', 'Lanjut Checkout') + '</button>';
@@ -714,7 +714,7 @@
   function orderCharges(order) {
     return '<p>Total produk: ' + rupiah(order.productTotal == null ? order.total : order.productTotal) + '</p>' +
       (order.shippingIncluded ? '<p>Pengiriman ' + safe(order.shippingProvider) + ': ' + rupiah(order.shippingFee) + '</p>'
-        : order.receipt === 'DELIVERY' ? '<p class="small">Pesanan lama: ongkir mengikuti kesepakatan saat pemesanan.</p>' : '') +
+        : order.receipt === 'DELIVERY' ? '<p class="small">Pesanan lama: tagihan tersimpan belum termasuk biaya pengiriman.</p>' : '') +
       '<h3 class="h5">Total pembayaran: ' + rupiah(order.total) + '</h3>';
   }
 
@@ -1044,7 +1044,7 @@
       },
       fulfillment: {
         fields: ['status'], required: ['status'],
-        help: 'Gunakan ketika pesanan maju ke tahap berikutnya. Pengiriman memerlukan pembayaran lunas; tidak ada konfirmasi ongkir tambahan. Untuk Selesai, konsumen harus mengunggah tanda terima melalui Status Pesanan terlebih dahulu.'
+        help: 'Gunakan ketika pesanan maju ke tahap berikutnya. Pengiriman memerlukan pembayaran lunas termasuk ongkir pilihan pelanggan. Untuk Selesai, konsumen harus mengunggah tanda terima melalui Status Pesanan terlebih dahulu.'
       },
       shipping: {
         fields: ['courier', 'tracking'], required: [],

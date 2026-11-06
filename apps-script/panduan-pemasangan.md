@@ -116,20 +116,21 @@ daftar kolom lengkap ada di `apps-script/Schema.gs`.
 | PreorderCapacity | Kuota preorder per produk dan tanggal. | Isi melalui menu kuota preorder. |
 | ServiceHours | Hari serta jam buka/tutup layanan WITA. | Isi melalui Jam Layanan dengan format 24 jam `HH:mm`, misalnya `08:00` dan `17:00`. |
 | ServiceAreas | Daftar wilayah pengantaran aktif. | Isi melalui Wilayah. |
+| ShippingRates | Daftar layanan dan tarif pengiriman. | Admin mengisi nama layanan, nominal dan status aktif melalui Biaya Pengiriman. |
 | Users | Akun pengelola dan hash password. | Admin pertama dibuat lewat fungsi khusus tahap 3. |
 | Sessions | Hash sesi login dan kedaluwarsa. | Otomatis saat login. |
 | Orders | Pesanan pelanggan. | Otomatis saat pesanan berhasil dibuat. |
 | OrderItems | Rincian produk dan snapshot harga pesanan. | Otomatis bersama pesanan. |
 | StockLedger | Jejak reservasi/pemakaian kapasitas. | Otomatis dari transaksi. |
-| Payments | Pembayaran produk yang diverifikasi pengelola. | Otomatis dari tindakan verifikasi. |
+| Payments | Pembayaran tagihan termasuk ongkir yang diverifikasi Admin. | Otomatis dari tindakan verifikasi. |
 | Refunds | Pengembalian yang benar-benar telah diselesaikan. | Otomatis dari tindakan penyelesaian refund. |
-| Shipping | Tarif/kurir dan catatan pembayaran ongkir. | Dicatat melalui aplikasi. |
+| Shipping | Layanan, tarif tersimpan, kurir dan pelacakan. | Tarif dari Checkout; Admin hanya memperbarui kurir/pelacakan. |
 | Files | Metadata file di Drive, bukan gambar dalam sel. | Otomatis dari upload/operasi berkas. |
 | AuditLog | Riwayat tindakan aplikasi. | Otomatis. |
 | BackupLog | Status dan lokasi backup. | Otomatis saat backup. |
 
 Google mungkin menyisakan tab bawaan kosong seperti `Sheet1`.
-Tab itu bukan bagian dari 20 tab aplikasi; jangan gunakan untuk transaksi.
+Tab itu bukan bagian dari 21 tab aplikasi; jangan gunakan untuk transaksi.
 Jangan menghapus tab yang sudah berisi data.
 
 Struktur folder otomatis:
@@ -337,8 +338,14 @@ Isi data melalui aplikasi, bukan mengubah tabel transaksi langsung:
 
 Default toko tertutup dan pengantaran tidak aktif. Tidak ada harga, produk, jadwal usaha atau KPI contoh di database.
 Satu voucher per pesanan diterapkan pada build ini; batas ini dapat dievaluasi sebelum go live.
-Pengantaran baru dibuka setelah dukungan ongkir langsung ke kurir di Makassar benar-benar diverifikasi.
-Metode alternatif ongkir tidak dipilih otomatis.
+Admin mengisi daftar Biaya Pengiriman sebelum menawarkan pengantaran.
+Pelanggan memilih layanan saat Checkout; ongkir otomatis masuk total transfer.
+Tidak ada konfirmasi ongkir terpisah atau checkbox persetujuan tambahan.
+
+Untuk membersihkan database lama, jalankan `removeShippingConfirmation` dari
+`Schema.gs` di editor Apps Script. Kolom konfirmasi ongkir dan pengaturan
+verifikasi lama dihapus, tetapi tarif, kurir, pelacakan dan pesanan tetap ada.
+Perbarui deployment sesudah pembersihan dan jangan melakukan transaksi selama pembaruan.
 
 ## Operasional
 
@@ -350,7 +357,7 @@ Metode alternatif ongkir tidak dipilih otomatis.
 - Verifikasi pembayaran membutuhkan jumlah tepat dan referensi transaksi masuk unik.
 - Preorder belum terverifikasi setelah 18.00 diperiksa manual. Tidak ada pembatalan otomatis.
 - Foto struk tidak mengubah status pembayaran.
-- Unggah tanda terima sebelum menyelesaikan pesanan. Ongkir sudah dibayar dicatat terpisah.
+- Konsumen mengunggah tanda terima melalui Status Pesanan sebelum Admin menyelesaikan pesanan.
 - Pelanggan wajib menyimpan kunci akses privat; nomor pesanan/nomor HP saja tidak membuka data.
 - Laporan berdasarkan tanggal pesanan WITA; pembayaran/refund terkait sampai waktu laporan ditarik. Sisa kas bukan laba.
 - Ekspor `.xlsx` asli dan PDF memakai data laporan yang sama. Pustaka ekspor dimuat dari CDN saat diperlukan.

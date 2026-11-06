@@ -2031,6 +2031,7 @@ test('Installer menambah ShippingRates tanpa mengganti database, folder, atau is
   const makeSheet = rows => ({
     rows,
     getLastRow: () => rows.length,
+    getLastColumn: () => rows[0] ? rows[0].length : 0,
     getMaxColumns: () => 100,
     setFrozenRows: () => {},
     autoResizeColumns: () => {},
@@ -2083,6 +2084,65 @@ test('Installer menambah ShippingRates tanpa mengganti database, folder, atau is
   assert.equal(JSON.stringify(Array.from(sheets, ([name, sheet]) => [name, sheet.rows])
     .filter(([name]) => name !== 'ShippingRates')), before);
   assert.equal(props.get('DATABASE_ID'), 'db');
+});
+
+test('Pembersihan hanya menghapus konfirmasi ongkir dan aman dijalankan berulang', function () {
+  const context = setupContext('owner@example.com', 'owner@example.com');
+  const sheets = new Map();
+  const sheet = rows => ({
+    rows,
+    getLastRow: () => rows.length,
+    getLastColumn: () => rows[0].length,
+    getRange: (row, column, count, width) => ({
+      getValues: () => rows.slice(row - 1, row - 1 + count)
+        .map(values => values.slice(column - 1, column - 1 + width))
+    }),
+    deleteColumn: column => rows.forEach(values => values.splice(column - 1, 1)),
+    deleteRow: row => rows.splice(row - 1, 1)
+  });
+  sheets.set('Shipping', sheet([
+    ['id', 'orderId', 'provider', 'fee', 'customerAgreedAt', 'courier', 'tracking', 'feePaidToCourier', 'updatedAt'],
+    ['ship1', 'order1', 'Gojek', 10000, '2026-11-05', 'Kurir Uji', 'TRACK1', true, '2026-11-06']
+  ]));
+  sheets.set('Settings', sheet([
+    ['key', 'value'], ['ordersEnabled', true], ['deliveryVerified', true],
+    ['address', 'Makassar'], ['deliveryVerified', false]
+  ]));
+  sheets.set('ShippingRates', sheet([['id', 'name', 'price'], ['gojek', 'Gojek', 10000]]));
+  sheets.set('Orders', sheet([['id', 'total'], ['order1', 55000]]));
+  const ratesBefore = JSON.stringify(sheets.get('ShippingRates').rows);
+  const ordersBefore = JSON.stringify(sheets.get('Orders').rows);
+  const db = { getSheetByName: name => sheets.get(name) };
+  context.database_ = () => db;
+  context.withLock_ = operation => operation();
+  context.SpreadsheetApp = { flush: () => {} };
+  context.console = { info: () => {} };
+  const result = context.removeShippingConfirmation();
+  assert.equal(result.columns, 2);
+  assert.equal(result.settings, 2);
+  assert.deepEqual(sheets.get('Shipping').rows, [
+    ['id', 'orderId', 'provider', 'fee', 'courier', 'tracking', 'updatedAt'],
+    ['ship1', 'order1', 'Gojek', 10000, 'Kurir Uji', 'TRACK1', '2026-11-06']
+  ]);
+  assert.deepEqual(sheets.get('Settings').rows, [
+    ['key', 'value'], ['ordersEnabled', true], ['address', 'Makassar']
+  ]);
+  assert.equal(JSON.stringify(sheets.get('ShippingRates').rows), ratesBefore);
+  assert.equal(JSON.stringify(sheets.get('Orders').rows), ordersBefore);
+  const again = context.removeShippingConfirmation();
+  assert.equal(again.columns, 0);
+  assert.equal(again.settings, 0);
+  context.Session.getActiveUser = () => ({ getEmail: () => 'other@example.com' });
+  assert.throws(() => context.removeShippingConfirmation(), /pemilik project/);
+});
+
+test('Skema dan tampilan baru tidak memakai persetujuan ongkir lama', function () {
+  const context = setupContext('owner@example.com', 'owner@example.com');
+  const schema = vm.runInContext('HV_SCHEMA', context);
+  assert.deepEqual(Array.from(schema.Shipping),
+    ['id', 'orderId', 'provider', 'fee', 'courier', 'tracking', 'updatedAt']);
+  assert.ok(!source('js/client.js').includes('Ongkir dikonfirmasi terpisah'));
+  assert.ok(!source('apps-script/Recovery.gs').includes('deliveryVerified'));
 });
 
 test('Simpan/edit ongkir memberi petunjuk installer jika tab ShippingRates belum ada', function () {

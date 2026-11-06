@@ -16,14 +16,15 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | PreorderCapacity | Kuota produksi per tanggal | Unik produk + tanggal penerimaan. |
 | ServiceHours | Hari dan rentang layanan WITA | Satu rentang per hari; `weekday` 0 Minggu sampai 6 Sabtu. |
 | ServiceAreas | Wilayah Makassar dan sekitarnya | Pelanggan hanya memilih yang aktif. |
+| ShippingRates | Daftar layanan dan biaya pengiriman | Admin mengatur nama, nominal dan status aktif; konsumen memilih saat Checkout. |
 | Users | Akun internal dan level | Hash bcrypt; tidak pernah dikirim ke browser. |
 | Sessions | Hash token sesi dan kedaluwarsa | Versi harus cocok akun; revokasi pada perubahan akun. |
 | Orders | Pesanan dan snapshot kebijakan/harga | `requestId` unik; `accessHash` untuk status privat. |
 | OrderItems | Item dan harga saat pemesanan | Anak Orders; ID deterministik untuk rekonsiliasi. |
 | StockLedger | Jejak reservasi dan pelepasan | Kuota dihitung dari snapshot Orders agar crash anak tidak melonggarkan stok. |
-| Payments | Pembayaran produk terverifikasi | Referensi transaksi unik; bukan ongkir dan bukan foto. |
+| Payments | Pembayaran tagihan terverifikasi | Total pesanan baru mencakup produk dan ongkir; referensi transaksi unik, bukan foto. |
 | Refunds | Refund yang sudah benar-benar ditransfer | Nominal dari aturan pesanan; status batal terpisah. |
-| Shipping | GoSend, tarif disepakati dan pembayaran ke kurir | Tidak dimasukkan omzet/penerimaan produk. |
+| Shipping | Layanan, tarif tersimpan, kurir dan pelacakan | Tanpa persetujuan ongkir terpisah; tarif transaksi tidak mengikuti perubahan ShippingRates. |
 | Files | Metadata berkas upload | `driveFileId`; folder berdasarkan `kind`. |
 | AuditLog | Jejak tindakan pengelola | Tidak berisi password/token. |
 | BackupLog | Status backup dan ID salinan | STARTED bukan bukti backup selesai. |
@@ -35,7 +36,7 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | PRODUK | Foto produk aktual | Drive privat; backend melepas foto produk aktif untuk katalog. |
 | INVOICE | PDF tagihan berbasis snapshot | Pemilik pesanan dengan kunci akses, atau Admin/Operator. |
 | STRUK | Foto bukti transfer pelanggan | Pelanggan mengunggah untuk pesanannya; Admin/Operator memeriksa. |
-| TANDATERIMA | Foto penyerahan pesanan | Diunggah Admin/Operator untuk pesanan siap/dikirim. |
+| TANDATERIMA | Foto penerimaan pesanan | Diunggah konsumen melalui Status Pesanan saat siap diambil/sudah dikirim. |
 | BACKUP | Salinan Sheet, berkas, manifest | Admin; pemulihan selalu ke staging. |
 
 ## Tipe Data
@@ -55,3 +56,10 @@ Reservasi PREPARING tetap menahan kapasitas, lalu rekonsiliasi menyelesaikan ana
 Pembayaran dan refund mempunyai referensi/idempotensi terpisah.
 Jangan mengubah data transaksi langsung dari Sheets: tindakan tersebut dapat melewati validasi/audit aplikasi.
 Batasi editor database pada pemilik yang bertanggung jawab.
+
+## Pembersihan Konfirmasi Ongkir Lama
+
+Jalankan `removeShippingConfirmation` dari `Schema.gs` di editor Google Apps Script.
+Fungsi ini menghapus dua kolom konfirmasi lama pada `Shipping` dan pengaturan
+verifikasi pengiriman lama pada `Settings`. `ShippingRates`, tarif, data kurir,
+pelacakan dan transaksi tetap disimpan. Fungsi boleh dijalankan ulang.
