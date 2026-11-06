@@ -2413,6 +2413,8 @@ test('Notifikasi atas hilang setelah 4 detik dan pesan baru tidak memakai timer 
   assert.ok(client.includes("confirmAction('Apa yakin menjalankan tindakan ini?', 'Konfirmasi')"));
   assert.match(source('css/styles.css'),
     /#notification \.alert\s*\{[^}]*padding: 8px 12px;[^}]*margin-bottom: 0;[^}]*font-size: 13px;[^}]*line-height: 1\.4;/);
+  assert.match(source('css/styles.css'),
+    /\.confirmation-dialog,\s*#editor:has\(#delete-master-form\)\s*\{[^}]*width: max-content;[^}]*max-width: min\(400px, calc\(100% - 24px\)\);[^}]*padding: 16px;/);
 });
 
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {

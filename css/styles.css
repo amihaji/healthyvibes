@@ -687,8 +687,22 @@
     background: #00000060;
   }
 
-  /* Modal konfirmasi lebih ringkas daripada editor dan tetap muat pada layar HP. */
-  .confirmation-dialog { width: min(440px, calc(100% - 24px)); }
+  /* Konfirmasi mengikuti isi pesan; editor form biasa tetap berukuran semula. */
+  .confirmation-dialog,
+  #editor:has(#delete-master-form) {
+    width: max-content;
+    max-width: min(400px, calc(100% - 24px));
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .confirmation-dialog h2,
+  #editor:has(#delete-master-form) #editor-title { font-size: 18px; line-height: 1.3; }
+  #editor:has(#delete-master-form) > .d-flex { align-items: center; margin-bottom: 8px !important; }
+  .confirmation-dialog p,
+  #delete-master-form > p { margin-bottom: 12px; }
+  .confirmation-dialog .btn-sm,
+  #delete-master-form .btn-sm { min-height: 36px; padding: 6px 10px; }
   #confirmation-message { overflow-wrap: anywhere; }
 
   /* Notifikasi atas ringkas; tinggi mengikuti teks agar pesan panjang tidak terpotong. */
