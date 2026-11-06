@@ -197,6 +197,7 @@ function deleteMaster_(user, data) {
       });
   }
   if (table === 'ServiceAreas') { inUse = referenced('Orders', 'areaId'); }
+  if (table === 'Users') { inUse = referenced('Orders', 'customerId'); }
   if (['ReadyStock', 'PreorderCapacity'].includes(table)) {
     inUse = referenced('StockLedger', 'poolId') || rows_('Orders').some(function (order) {
       return JSON.parse(order.snapshotJson).items.some(function (item) { return item.poolId === record.id; });
@@ -325,6 +326,9 @@ function resetOrderAccess_(user, data) {
   const order = rows_('Orders').find(function (row) { return row.id === orderId; });
   if (!order || String(order.phone) !== phone) {
     throw new Error('Nomor pesanan atau nomor HP pelanggan tidak sesuai.');
+  }
+  if (order.customerId) {
+    throw new Error('Pesanan memakai akun Konsumen. Gunakan Reset Password di Setup User.');
   }
   if (order.transactionState !== 'COMMITTED') {
     throw new Error('Pesanan belum selesai diproses. Kunci belum dapat diganti.');

@@ -117,7 +117,7 @@ function dispatch_(request) {
   const anonymous = {
     catalog: function () { return catalog_(data); },
     quote: function () { return quote_(data); },
-    createOrder: function () { return createOrder_(data); },
+    registerCustomer: function () { return registerCustomer_(data); },
     orderStatus: function () { return customerOrder_(customerAccess_(data)); },
     customerUpload: function () { return upload_(null, data); },
     customerInvoice: function () {
@@ -134,6 +134,11 @@ function dispatch_(request) {
     return anonymous[action]();
   }
   const roles = {
+    createOrder: ['Konsumen'],
+    myOrders: ['Konsumen'],
+    myOrderStatus: ['Konsumen'],
+    myOrderUpload: ['Konsumen'],
+    myInvoice: ['Konsumen'],
     adminData: ['Admin', 'Operator', 'Viewer'],
     changePassword: ['Admin', 'Operator', 'Viewer', 'Konsumen'],
     sendPasswordReset: ['Admin'],
@@ -164,6 +169,13 @@ function dispatch_(request) {
   };
   if (pages[action]) { requireMenu_(user, pages[action], !['download', 'report'].includes(action)); }
   const operations = {
+    createOrder: function () { return createOrder_(data, user); },
+    myOrders: function () { return myOrders_(user, data); },
+    myOrderStatus: function () { return customerOrder_(accountOrderAccess_(user, data)); },
+    myOrderUpload: function () { return upload_(null, data, user); },
+    myInvoice: function () {
+      return download_(null, Object.assign({}, data, { kind: 'INVOICE' }), user);
+    },
     adminData: function () { return adminData_(user, data); },
     changePassword: function () { return changePassword_(user, data); },
     sendPasswordReset: function () {

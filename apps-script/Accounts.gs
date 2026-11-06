@@ -154,15 +154,90 @@ function completePasswordReset_(data) {
 
 // Kolom akun ditambahkan di kanan tanpa memindah atau menimpa data lama.
 function extendAccountSchema_(db) {
-  const sheet = db.getSheetByName('Users');
+  extendSchemaColumns_(db, 'Users');
+}
+
+function extendOrderAccountSchema_(db) {
+  extendSchemaColumns_(db, 'Orders');
+}
+
+function extendSchemaColumns_(db, name) {
+  const sheet = db.getSheetByName(name);
   if (!sheet || !sheet.getLastRow()) { return; }
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const expected = HV_SCHEMA.Users;
+  const expected = HV_SCHEMA[name];
   if (headers.length > expected.length || headers.some(function (key, index) { return key !== expected[index]; })) {
-    throw new Error('Kolom Users berbeda. Migrasi dihentikan tanpa menimpa data.');
+    throw new Error('Kolom ' + name + ' berbeda. Migrasi dihentikan tanpa menimpa data.');
   }
   if (sheet.getMaxColumns() < expected.length) {
     sheet.insertColumnsAfter(sheet.getMaxColumns(), expected.length - sheet.getMaxColumns());
   }
   sheet.getRange(1, 1, 1, expected.length).setValues([expected]);
+}
+
+// Akun checkout langsung aktif; level dan hak akses tidak dipercaya dari browser.
+function registerCustomer_(data) {
+  requireAuthRuntime_();
+  const username = username_(data.username);
+  const password = password_(data.password);
+  const registrationId = text_(data.requestId, 'ID pendaftaran', 100);
+  const contact = accountContact_({ role: 'Konsumen', permissions: [],
+    email: data.email, phone: data.phone });
+  const name = text_(data.name, 'Nama', 100);
+  const cache = CacheService.getScriptCache();
+  const keys = ['register-global', 'register-' + digest_(username)];
+  keys.forEach(function (key, index) {
+    const attempts = Number(cache.get(key) || 0);
+    if (attempts >= (index ? 3 : 10)) { throw new Error('Terlalu banyak pendaftaran. Tunggu satu menit.'); }
+    cache.put(key, String(attempts + 1), 60);
+  });
+  const users = rows_('Users');
+  const existing = users.find(function (row) { return row.username === username; });
+  if (existing) {
+    // Respons pendaftaran yang terputus dapat diulang hanya dengan password yang benar.
+    if (existing.role === 'Konsumen' && existing.registrationId === registrationId &&
+      existing.email === contact.email && existing.phone === contact.phone &&
+      active_(existing.active) && !existing.blockedAt &&
+      bcrypt_().compareSync(password, existing.passwordHash)) {
+      return login_({ username: username, password: password });
+    }
+    throw new Error('Username atau kontak sudah terdaftar. Gunakan Login atau Lupa Password.');
+  }
+  if (users.some(function (row) {
+    const phone = String(row.phone || '').replace(/[ +()-]/g, '').replace(/^0/, '62');
+    return contact.email && String(row.email || '').trim().toLowerCase() === contact.email ||
+      contact.phone && phone === contact.phone;
+  })) {
+    throw new Error('Username atau kontak sudah terdaftar. Gunakan Login atau Lupa Password.');
+  }
+  const user = append_('Users', Object.assign({}, contact, {
+    id: id_(), username: username, name: name, role: 'Konsumen', active: true,
+    mustChangePassword: false, version: 1, updatedAt: now_(),
+    registrationId: registrationId, passwordHash: bcrypt_().hashSync(password, 12)
+  }));
+  SpreadsheetApp.flush();
+  audit_({ id: user.id }, 'REGISTER_CUSTOMER', user.id, 'Akun konsumen aktif dari checkout.');
+  return login_({ username: username, password: password });
+}
+
+// Kontak pemulihan akun tetap terpisah dari alamat/telepon penerima pesanan.
+function customerDelivery_(user) {
+  let saved = {};
+  try { saved = JSON.parse(user.deliveryJson || '{}') || {}; } catch (error) { saved = {}; }
+  return {
+    name: typeof saved.name === 'string' ? saved.name : user.name || '',
+    phone: typeof saved.phone === 'string' ? saved.phone : String(user.phone || '').replace(/^62/, '0'),
+    areaId: typeof saved.areaId === 'string' ? saved.areaId : '',
+    address: typeof saved.address === 'string' ? saved.address : '',
+    receipt: saved.receipt === 'DELIVERY' ? 'DELIVERY' : 'PICKUP',
+    shippingRateId: typeof saved.shippingRateId === 'string' ? saved.shippingRateId : ''
+  };
+}
+
+function saveCustomerDelivery_(user, order) {
+  const shipping = JSON.parse(order.snapshotJson).shipping;
+  patch_('Users', user, { deliveryJson: JSON.stringify({
+    name: order.name, phone: order.phone, areaId: order.areaId || '', address: order.address || '',
+    receipt: order.receipt, shippingRateId: shipping ? shipping.id : ''
+  }) });
 }

@@ -100,6 +100,10 @@ test('Foto publik tidak mengantre lock, transaksi lainnya tetap memakai lock', f
   context.productPhoto_ = function (data) { return { mimeType: 'image/jpeg', base64: data.productId }; };
   context.quote_ = function () { return {}; };
   context.createOrder_ = function () { return {}; };
+  context.authorize_ = function (token, roles) {
+    assert.deepEqual(Array.from(roles), ['Konsumen']);
+    return { id: 'customer-test', role: 'Konsumen' };
+  };
   const photo = readReply(post(context, { action: 'productPhoto', data: { productId: 'foto-uji' } }));
   assert.equal(photo.message.response.data.base64, 'foto-uji');
   assert.equal(locks, 0);
@@ -1222,20 +1226,18 @@ test('Nomor pesanan menolak tanpa lock, counter rusak, dan nomor lebih dari 9999
   assert.equal(context.nextOrderId_('2026-11-02T16:00:00Z', []), 'HV-031126-0001');
 });
 
-test('Kunci akses baru berisi 10 karakter acak Web Crypto tanpa Math.random', function () {
+test('Checkout akun tidak membuat kunci privat, akses kunci tetap tersedia untuk pesanan lama', function () {
   const client = source('js/client.js');
-  const code = client.slice(client.indexOf('  function randomToken('),
-    client.indexOf('  async function navigate('));
-  const context = vm.createContext({ crypto: crypto });
+  const code = client.slice(client.indexOf('  function checkoutPayload('),
+    client.indexOf('  // Menampilkan langkah penerima'));
+  const context = vm.createContext({
+    state: { recipient: {}, type: 'DIRECT', requestId: 'request1', accessToken: 'legacy-only',
+      catalog: { schedule: { date: '2026-11-06' } } },
+    cartLines: () => [{ product: { id: 'p1' }, quantity: 1 }]
+  });
   vm.runInContext(code, context);
-  const keys = new Set();
-  for (let i = 0; i < 128; i += 1) {
-    const key = context.randomToken();
-    assert.match(key, /^[A-Za-z0-9_-]{10}$/);
-    keys.add(key);
-  }
-  assert.equal(keys.size, 128);
-  assert.ok(!code.includes('Math.random'));
+  assert.ok(!('accessToken' in context.checkoutPayload()));
+  assert.ok(!client.includes('function randomToken('));
   assert.ok(client.includes('Simpan melalui tombol "Unduh Kunci Akses"'));
 });
 
@@ -1809,7 +1811,7 @@ test('Form tanda terima mengirim akses pelanggan, bukan sesi Admin', async funct
   const client = source('js/client.js');
   let request;
   const context = vm.createContext({
-    state: { order: { id: 'order1' }, accessToken: 'customer-key' }, crypto,
+    state: { page: 'status', order: { id: 'order1' }, accessToken: 'customer-key' }, crypto,
     formData: () => ({ received: 'on' }),
     photoData: async () => ({ mimeType: 'image/jpeg', base64: 'photo' }),
     rpc: async (action, data) => { request = { action, data }; },
@@ -2316,7 +2318,7 @@ test('Modal HTML menerima, membatalkan, Escape dan klik ganda tanpa confirm brow
   const context = vm.createContext({ confirmation, document: { getElementById: id => elements[id] } });
   const client = source('js/client.js');
   vm.runInContext(client.slice(client.indexOf('  let resolveConfirmation = null;'),
-    client.indexOf('  // Kunci pelanggan 10 karakter')), context);
+    client.indexOf('  async function navigate(')), context);
   const first = context.confirmAction('<img src=x onerror=alert(1)>', 'Konfirmasi Uji');
   assert.equal(elements['confirmation-message'].textContent, '<img src=x onerror=alert(1)>');
   assert.equal(await context.confirmAction('Klik ganda'), false);

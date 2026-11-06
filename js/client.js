@@ -21,6 +21,9 @@
     adminError: '',
     checkoutStep: 1,
     recipient: {},
+    checkoutResume: false,
+    customerOrders: null,
+    customerPage: 0,
     quote: null,
     requestId: '',
     accessToken: '',
@@ -116,6 +119,7 @@
   let pending = 0;
   // Mengirim tindakan ke backend dan memeriksa hasil sambil menampilkan Memproses.
   function rpc(action, data, background) {
+    const requestToken = state.token;
     if (!background) {
       pending += 1;
       document.getElementById('busy').classList.remove('d-none');
@@ -124,13 +128,24 @@
       return HealthyVibesApi.request({
         action: action,
         data: data || {},
-        token: state.token
+        token: requestToken
       });
     }).then(function (response) {
       if (!response || typeof response.ok !== 'boolean') {
         throw new Error('Respons server tidak valid. Keberhasilan belum dapat dipastikan.');
       }
       if (!response.ok) {
+        if (requestToken === state.token && state.user?.role === 'Konsumen' &&
+          /^Sesi berakhir/.test(response.message || '')) {
+          state.checkoutResume = state.page === 'checkout';
+          state.token = '';
+          state.user = null;
+          state.customerOrders = null;
+          state.order = null;
+          state.accessToken = '';
+          state.page = 'admin';
+          renderLogin();
+        }
         throw new Error(response.message || 'Operasi ditolak server.');
       }
       return response.data;
@@ -245,13 +260,6 @@
     if (resolve) { resolve(confirmation.returnValue === 'accepted'); }
   });
 
-  // Kunci pelanggan 10 karakter memakai Web Crypto; 64 karakter memberi pilihan acak merata.
-  function randomToken() {
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
-    const bytes = crypto.getRandomValues(new Uint8Array(10));
-    return Array.from(bytes, function (byte) { return alphabet[byte & 63]; }).join('');
-  }
-
   // Berpindah halaman internal, menutup menu HP, dan menandai navigasi aktif.
   async function navigate(page) {
     state.page = page;
@@ -269,7 +277,8 @@
         state.page = 'shop';
         await loadCatalog();
         showEditor('Akun Konsumen', '<p>' + safe(state.user.name) + '</p>' +
-          '<div class="d-flex gap-2"><button class="btn btn-outline-dark btn-sm" id="change-password" type="button">' +
+          '<div class="d-flex gap-2 flex-wrap"><button class="btn btn-primary btn-sm" data-nav="status" type="button">' +
+          buttonLabel('orders', 'Pesanan Saya') + '</button><button class="btn btn-outline-dark btn-sm" id="change-password" type="button">' +
           buttonLabel('key', 'Password') + '</button><button class="btn btn-outline-dark btn-sm" id="logout" type="button">' +
           buttonLabel('logout', 'Keluar') + '</button></div>');
       } else if (state.token) {
@@ -278,8 +287,59 @@
         renderLogin();
       }
     } else {
-      renderStatusForm();
+      if (state.user?.role === 'Konsumen' && state.token) { await loadMyOrders(); }
+      else { renderStatusForm(); }
     }
+  }
+
+  let customerRequest = 0;
+
+  // Respons riwayat akun lama tidak dipakai setelah logout atau pergantian halaman.
+  async function loadMyOrders() {
+    state.page = 'status';
+    const request = ++customerRequest;
+    const token = state.token;
+    app.innerHTML = '<section class="panel" role="status">Mengambil Pesanan Saya...</section>';
+    try {
+      const result = await rpc('myOrders', { page: state.customerPage }, true);
+      if (request !== customerRequest || token !== state.token || state.page !== 'status') { return; }
+      state.customerOrders = result;
+      state.customerPage = result.page;
+      renderMyOrders();
+    } catch (error) {
+      if (request !== customerRequest || token !== state.token || state.page !== 'status') { return; }
+      app.innerHTML = '<section class="panel"><h1 class="h3">Pesanan Saya</h1><p>' + safe(error.message) +
+        '</p><button class="btn btn-outline-dark btn-sm" data-nav="status" type="button">' +
+        buttonLabel('refresh', 'Coba Lagi') + '</button><button class="btn btn-link btn-sm" id="logout" type="button">' +
+        buttonLabel('logout', 'Keluar') + '</button></section>';
+    }
+  }
+
+  function renderMyOrders() {
+    const result = state.customerOrders;
+    app.innerHTML = '<section class="panel"><div class="d-flex justify-content-between gap-2 flex-wrap mb-3">' +
+      '<div><h1 class="h3">Pesanan Saya</h1><p class="mb-0">' + safe(state.user.name) +
+      ' · ' + result.total + ' pesanan</p></div><div class="d-flex gap-2 flex-wrap">' +
+      '<button class="btn btn-outline-dark btn-sm" data-nav="status" type="button">' +
+      buttonLabel('refresh', 'Perbarui') + '</button><button class="btn btn-primary btn-sm" data-nav="shop" type="button">' +
+      buttonLabel('menu', 'Belanja') + '</button></div></div>' +
+      result.orders.map(function (order) {
+        return '<article class="order-section"><div class="d-flex justify-content-between align-items-center gap-2">' +
+          '<div><strong class="text-break">' + safe(order.id) + '</strong><p class="small mb-1">' +
+          safe(dateTimeText(order.createdAt)) + ' WITA</p><p class="mb-0">' + rupiah(order.total) +
+          ' · ' + (order.paymentStatus === 'PAID' ? 'Lunas' : 'Belum lunas') + '</p><p class="small mb-0">' +
+          safe(fulfillmentLabel(order.fulfillment)) + '</p></div>' +
+          iconButton('eye', 'Detail pesanan ' + order.id, 'data-my-order="' + safe(order.id) + '"', 'Detail') +
+          '</div></article>';
+      }).join('') + (!result.orders.length ? '<p>Belum ada pesanan. Mulai belanja dari Katalog.</p>' : '') +
+      '<div class="d-flex justify-content-center align-items-center gap-2 flex-wrap mt-3">' +
+      '<button class="btn btn-outline-dark btn-sm" id="previous-my-orders" type="button"' +
+      (result.page === 0 ? ' disabled' : '') + '>' + buttonLabel('back', 'Sebelumnya') + '</button>' +
+      '<span>' + (result.page + 1) + ' / ' + result.pageCount + '</span>' +
+      '<button class="btn btn-outline-dark btn-sm" id="next-my-orders" type="button"' +
+      (result.page + 1 >= result.pageCount ? ' disabled' : '') + '>' + buttonLabel('next', 'Berikutnya') +
+      '</button></div><button class="btn btn-link btn-sm mt-3" id="legacy-orders" type="button">' +
+      buttonLabel('key', 'Buka Pesanan Lama') + '</button></section>';
   }
 
   let catalogRequest = 0;
@@ -557,7 +617,7 @@
     });
   }
 
-  // Memulai checkout dan menyiapkan ID permintaan serta kunci akses privat pesanan.
+  // Memulai checkout dengan ID permintaan untuk mencegah pesanan ganda saat retry.
   async function startCheckout() {
     if (state.catalogLoading || state.catalogError) {
       throw new Error('Tunggu harga dan stok terbaru sebelum checkout.');
@@ -565,17 +625,24 @@
     if (!cartLines().length) {
       throw new Error('Tambahkan produk terlebih dahulu.');
     }
+    if (state.user && state.user.role !== 'Konsumen') {
+      throw new Error('Belanja menggunakan akun Konsumen. Keluar dari akun staf terlebih dahulu.');
+    }
     if (!state.requestId) {
       state.requestId = crypto.randomUUID();
-      state.accessToken = randomToken();
+      state.accessToken = '';
     }
     state.checkoutStep = 1;
     state.quote = null;
+    state.checkoutResume = false;
+    if (state.user?.role === 'Konsumen') {
+      state.recipient = Object.assign({}, state.user.delivery || {}, state.recipient);
+    }
     dialog.close();
     renderCheckout();
   }
 
-  // Menggabungkan data penerima, jadwal, produk, dan kunci akses untuk dikirim ke server.
+  // Data pesanan tidak memuat password atau kunci privat; sesi dikirim terpisah.
   function checkoutPayload() {
     return Object.assign({}, state.recipient, {
       type: state.type,
@@ -583,13 +650,13 @@
       items: cartLines().map(function (item) {
         return { productId: item.product.id, quantity: item.quantity };
       }),
-      requestId: state.requestId,
-      accessToken: state.accessToken
+      requestId: state.requestId
     });
   }
 
   // Menampilkan langkah penerima, pembayaran, atau tinjauan beserta ringkasan belanja.
   function renderCheckout() {
+    state.page = 'checkout';
     const step = state.checkoutStep;
     const recipient = state.recipient;
     const schedule = state.catalog.schedule;
@@ -618,6 +685,19 @@
         selectField('Waktu penerimaan/pengambilan', 'time', schedule.times.map(function (time) {
           return [time, time + ' WITA'];
         }), recipient.time);
+      if (!state.token) {
+        content += '<hr><h2 class="h5">Akun untuk Pesanan Saya</h2>' +
+          '<p class="small">Akun langsung aktif. Riwayat dan status pesanan dibuka melalui Login, tanpa kunci privat.</p>' +
+          '<button class="btn btn-outline-dark btn-sm mb-3" id="checkout-login" type="button">' +
+          buttonLabel('login', 'Sudah punya akun? Login') + '</button>' +
+          field('Username (minimal 6 karakter)', 'username', '') +
+          field('Email pemulihan (opsional)', 'email', '', 'email', false) +
+          field('Buat password (minimal 6 karakter)', 'password', '', 'password') +
+          field('Ulangi password', 'repeatPassword', '', 'password') +
+          '<p class="small">Nomor WhatsApp di atas digunakan untuk pemulihan password. Pastikan kontak benar.</p>';
+      } else {
+        content += '<p class="small">Login sebagai <strong>' + safe(state.user.username) + '</strong>.</p>';
+      }
       if (!schedule.times.length) {
         content += '<p class="alert alert-warning">Tidak ada waktu valid. ' +
           'Kembali ke menu untuk memilih jenis pesanan lain.</p>';
@@ -667,8 +747,8 @@
         return '<p>' + safe(item.product.name) + ' x ' + item.quantity + '</p>';
       }).join('') + '<p>Voucher: ' + rupiah(priced.voucherDiscount || 0) + '</p>' +
       '<p>Total produk: ' + rupiah(priced.productTotal) + '</p>' +
-      '<p>Biaya pengiriman: ' + rupiah(priced.shippingFee) + '</p>' +
-      '<strong>Total pembayaran: ' + rupiah(priced.total) + '</strong>' +
+      '<p>Biaya pengiriman: <span id="checkout-shipping-fee">' + rupiah(priced.shippingFee) + '</span></p>' +
+      '<strong>Total pembayaran: <span id="checkout-total">' + rupiah(priced.total) + '</span></strong>' +
       '<p class="small mt-3">' + (state.quote ? 'Harga sudah diperiksa oleh toko.' : 'Perkiraan, harga akan diperiksa sebelum pesanan dibuat.') +
       '</p></aside></div>';
     if (step === 1) { updateCheckoutDelivery(document.getElementById('checkout-form')); }
@@ -703,7 +783,24 @@
   async function submitCheckout(form) {
     const data = formData(form);
     if (state.checkoutStep < 3) {
-      Object.assign(state.recipient, data);
+      if (state.checkoutStep === 1) {
+        if (!/^0[0-9]{8,14}$/.test(data.phone)) { throw new Error('Nomor HP diawali 0 dan terdiri dari 9-15 angka.'); }
+        if (!state.token) {
+          if (data.password !== data.repeatPassword) { throw new Error('Password ulang tidak sama.'); }
+          const result = await rpc('registerCustomer', {
+            requestId: state.requestId, name: data.name, phone: data.phone,
+            email: data.email, username: data.username, password: data.password
+          });
+          state.token = result.token;
+          state.user = result.user;
+        }
+        ['name', 'phone', 'receipt', 'shippingRateId', 'areaId', 'address', 'time'].forEach(function (key) {
+          state.recipient[key] = data[key] || '';
+        });
+      } else {
+        state.recipient.paymentMethod = data.paymentMethod;
+        state.recipient.voucherCode = data.voucherCode || '';
+      }
       if (state.checkoutStep === 2) {
         state.quote = await rpc('quote', checkoutPayload());
       }
@@ -716,20 +813,30 @@
     state.order = order;
     state.cart = {};
     state.requestId = '';
+    state.page = 'status';
+    state.user.delivery = {
+      name: order.name, phone: order.phone, address: order.address || '', areaId: state.recipient.areaId || '',
+      receipt: order.receipt, shippingRateId: state.recipient.shippingRateId || ''
+    };
+    state.recipient = {};
     renderOrder();
-    notify('Pesanan berhasil dibuat. Simpan nomor pesanan dan kunci akses privat Anda.');
+    notify('Pesanan berhasil dibuat. Lihat perkembangannya di Pesanan Saya.');
   }
 
   // Menampilkan formulir pengecekan pesanan dengan nomor dan kunci akses privat.
   function renderStatusForm() {
     app.innerHTML = '<section class="panel mx-auto" style="max-width:650px">' +
-      '<h1 class="h2">Status Pesanan</h1><p>Nomor pesanan saja tidak cukup. ' +
+      '<h1 class="h2">Pesanan Saya</h1><p>Login untuk melihat riwayat dan status seluruh pesanan akun Anda.</p>' +
+      '<div class="d-flex gap-2 flex-wrap mb-3"><button class="btn btn-primary btn-sm" data-nav="admin" type="button">' +
+      buttonLabel('login', 'Login') + '</button><button class="btn btn-outline-dark btn-sm" data-nav="shop" type="button">' +
+      buttonLabel('menu', 'Mulai Belanja') + '</button></div>' +
+      '<details><summary>Buka pesanan lama dengan kunci akses</summary><p class="mt-3">Nomor pesanan saja tidak cukup. ' +
       'Kunci akses dibuat otomatis dan ditampilkan pada halaman "Pesanan Anda" setelah pesanan berhasil. ' +
       'Simpan melalui tombol "Unduh Kunci Akses", lalu masukkan kunci tersebut di sini. ' +
       'Huruf besar dan kecil harus sesuai.</p>' +
       '<form id="status-form">' + field('Nomor pesanan', 'orderId', state.order?.id) +
       field('Kunci akses privat', 'accessToken', state.accessToken) +
-      '<button class="btn btn-primary" type="submit">' + buttonLabel('eye', 'Lihat Pesanan') + '</button></form></section>';
+      '<button class="btn btn-primary" type="submit">' + buttonLabel('eye', 'Lihat Pesanan') + '</button></form></details></section>';
   }
 
   // Mengubah kode internal menjadi status yang mudah dipahami pelanggan.
@@ -836,13 +943,16 @@
         ? safe(dateTimeText(order.paymentDeadline)) + ' WITA'
         : 'Sebelum dikirim; pesanan langsung ambil dapat dibayar saat diambil.') +
       '</p></section>' +
-      '<section class="order-section"><h2 class="h5">Dokumen dan Kunci Akses</h2>' +
-      '<div class="alert alert-warning">Simpan kunci akses berikut secara privat. ' +
+      '<section class="order-section"><h2 class="h5">' + (order.accountOwned ? 'Dokumen Pesanan' : 'Dokumen dan Kunci Akses') + '</h2>' +
+      (!order.accountOwned ? '<div class="alert alert-warning">Simpan kunci akses berikut secara privat. ' +
       'Kunci ini memberikan akses pesanan.<br><code class="text-break">' +
-      safe(state.accessToken) + '</code></div>' +
+      safe(state.accessToken) + '</code></div>' : '<p class="small">Pesanan ini tersimpan di akun Anda. Tidak perlu kunci akses privat.</p>') +
       '<div class="d-flex gap-2 flex-wrap justify-content-center">' +
       '<button class="btn btn-green btn-sm" id="download-invoice" type="button">' + buttonLabel('download', 'Unduh Invoice PDF') + '</button>' +
-      '<button class="btn btn-outline-dark btn-sm" id="save-access" type="button">' + buttonLabel('key', 'Unduh Kunci Akses') + '</button>' +
+      (!order.accountOwned ? '<button class="btn btn-outline-dark btn-sm" id="save-access" type="button">' +
+        buttonLabel('key', 'Unduh Kunci Akses') + '</button>' :
+        '<button class="btn btn-outline-dark btn-sm" data-nav="status" type="button">' +
+        buttonLabel('orders', 'Pesanan Saya') + '</button>') +
       '</div></section>' +
       (order.paymentStatus !== 'PAID' && !['CANCELLED', 'COMPLETED'].includes(order.fulfillment)
         ? '<form id="proof-form" class="order-section">' +
@@ -1262,7 +1372,7 @@
 
   // Nomor HP harus diketik dari informasi pelanggan, bukan diisi otomatis.
   function orderAccessForm(order) {
-    if (order.transactionState !== 'COMMITTED') { return ''; }
+    if (order.transactionState !== 'COMMITTED' || order.customerId) { return ''; }
     return '<section aria-labelledby="reset-access-title"><h2 class="h5" id="reset-access-title">' +
       buttonLabel('key', 'Pemulihan Kunci Akses') + '</h2>' +
       '<p class="small">Kunci lama dinonaktifkan. Kunci baru hanya tampil sekali.</p>' +
@@ -1668,6 +1778,15 @@
     }
     if (button.dataset.userView) { viewUser(button.dataset.userView); return; }
     if (button.dataset.userReset) { resetUserDialog(button.dataset.userReset); return; }
+    if (button.dataset.myOrder) {
+      const token = state.token;
+      const order = await rpc('myOrderStatus', { orderId: button.dataset.myOrder });
+      if (token !== state.token || state.page !== 'status') { return; }
+      state.order = order;
+      state.accessToken = '';
+      renderOrder();
+      return;
+    }
     if (button.dataset.order) {
       orderEditor(button.dataset.order);
       return;
@@ -1692,6 +1811,14 @@
       dialog.close();
     } else if (id === 'checkout-button') {
       await startCheckout();
+    } else if (id === 'checkout-login') {
+      const form = document.getElementById('checkout-form');
+      const data = formData(form);
+      ['name', 'phone', 'receipt', 'shippingRateId', 'areaId', 'address', 'time'].forEach(function (key) {
+        state.recipient[key] = data[key] || '';
+      });
+      state.checkoutResume = true;
+      await navigate('admin');
     } else if (id === 'mobile-cart-button') {
       showEditor('Keranjang', renderCart());
     } else if (id === 'checkout-back') {
@@ -1702,14 +1829,19 @@
         renderShop();
       }
     } else if (id === 'refresh-order') {
-      state.order = await rpc('orderStatus', {
+      const token = state.token;
+      const order = await rpc(state.order.accountOwned ? 'myOrderStatus' : 'orderStatus', {
         orderId: state.order.id, accessToken: state.accessToken
       });
+      if (token !== state.token || state.page !== 'status') { return; }
+      state.order = order;
       renderOrder();
     } else if (id === 'download-invoice') {
-      saveDownload(await rpc('customerInvoice', {
+      const token = state.token;
+      const file = await rpc(state.order.accountOwned ? 'myInvoice' : 'customerInvoice', {
         orderId: state.order.id, accessToken: state.accessToken
-      }));
+      });
+      if (token === state.token && state.page === 'status') { saveDownload(file); }
     } else if (id === 'save-access') {
       saveBlob(new Blob([
         'Healthy Vibes\nNomor pesanan: ' + state.order.id +
@@ -1729,7 +1861,19 @@
       state.token = '';
       state.user = null;
       state.admin = null;
-      renderLogin();
+      state.customerOrders = null;
+      state.customerPage = 0;
+      state.order = null;
+      state.accessToken = '';
+      state.recipient = {};
+      state.checkoutResume = false;
+      await navigate('admin');
+    } else if (id === 'legacy-orders') {
+      renderStatusForm();
+      app.querySelector('details').open = true;
+    } else if (id === 'previous-my-orders' || id === 'next-my-orders') {
+      state.customerPage += id === 'next-my-orders' ? 1 : -1;
+      await loadMyOrders();
     } else if (id === 'refresh-admin') {
       await loadAdmin();
     } else if (id === 'previous-orders' || id === 'next-orders') {
@@ -1775,9 +1919,14 @@
   document.addEventListener('change', function (event) {
     if (event.target.form?.id === 'checkout-form' && state.checkoutStep === 1 &&
       ['receipt', 'shippingRateId'].includes(event.target.name)) {
-      Object.assign(state.recipient, formData(event.target.form));
+      const form = event.target.form;
+      updateCheckoutDelivery(form);
       state.quote = null;
-      renderCheckout();
+      const rate = form.elements.receipt.value === 'DELIVERY'
+        ? state.catalog.shippingRates.find(function (row) { return row.id === form.elements.shippingRateId.value; }) : null;
+      const fee = rate ? Number(rate.price) : 0;
+      document.getElementById('checkout-shipping-fee').textContent = rupiah(fee);
+      document.getElementById('checkout-total').textContent = rupiah(cartSummary().total + fee);
     }
     if (event.target.name === 'action' && event.target.form?.id === 'order-action-form') {
       updateOrderAction(event.target.form);
@@ -1844,8 +1993,26 @@
       if (result.user.mustChangePassword) {
         passwordDialog();
       } else if (result.user.role === 'Konsumen') {
-        await navigate('shop');
+        state.customerOrders = null;
+        state.customerPage = 0;
+        if (state.checkoutResume && cartLines().length) {
+          state.checkoutResume = false;
+          const entered = {};
+          const hasRecipient = ['name', 'phone', 'address', 'areaId', 'shippingRateId'].some(function (key) {
+            return Boolean(state.recipient[key]);
+          });
+          Object.keys(state.recipient).forEach(function (key) {
+            if (state.recipient[key] && (hasRecipient || !['receipt', 'time'].includes(key))) {
+              entered[key] = state.recipient[key];
+            }
+          });
+          state.recipient = Object.assign({}, result.user.delivery || {}, entered);
+          renderCheckout();
+        } else {
+          await navigate('status');
+        }
       } else {
+        state.checkoutResume = false;
         await loadAdmin();
       }
     } else if (form.id === 'password-form') {
@@ -1859,9 +2026,12 @@
       if (form.id === 'handover-form' && data.received !== 'on') {
         throw new Error('Konfirmasi bahwa produk sudah diterima terlebih dahulu.');
       }
-      const photo = await photoData(form.elements.photo.files[0], form.id === 'product-photo-form');
       const customer = form.id !== 'product-photo-form';
-      await rpc(customer ? 'customerUpload' : 'upload', Object.assign({}, photo, {
+      const token = state.token;
+      const order = customer ? state.order : null;
+      const photo = await photoData(form.elements.photo.files[0], form.id === 'product-photo-form');
+      if (customer && (token !== state.token || order !== state.order || state.page !== 'status')) { return; }
+      await rpc(customer ? state.order.accountOwned ? 'myOrderUpload' : 'customerUpload' : 'upload', Object.assign({}, photo, {
         requestId: crypto.randomUUID(),
         kind: form.id === 'handover-form' ? 'TANDATERIMA' : customer ? 'STRUK' : 'PRODUK',
         orderId: customer ? state.order.id : '',
@@ -1869,6 +2039,7 @@
         received: form.id === 'handover-form' && data.received === 'on',
         accessToken: customer ? state.accessToken : ''
       }));
+      if (customer && (token !== state.token || state.page !== 'status')) { return; }
       if (form.id === 'handover-form') {
         state.order.handoverUploaded = true;
         renderOrder();

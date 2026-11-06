@@ -160,14 +160,15 @@ function nextOrderId_(stamp, orders) {
   return prefix + String(sequence).padStart(4, '0');
 }
 
-// Request ID + token pelanggan + hash payload mencegah duplikasi retry.
-function createOrder_(data) {
+// Request ID, pemilik akun dan hash payload mencegah duplikasi retry.
+function createOrder_(data, user) {
+  if (user && user.role !== 'Konsumen') { throw new Error('Checkout menggunakan akun Konsumen.'); }
   recoverOrders_();
   const config = settings_();
   const requestId = text_(data.requestId, 'ID permintaan', 100);
-  const accessToken = text_(data.accessToken, 'Kunci akses', 100);
+  const accessToken = user ? '' : text_(data.accessToken, 'Kunci akses', 100);
   // Terima kunci baru 10 karakter serta kunci lama 43 karakter untuk pesanan/retry lama.
-  if (!/^(?:[A-Za-z0-9_-]{10}|[A-Za-z0-9_-]{43})$/.test(accessToken)) {
+  if (!user && !/^(?:[A-Za-z0-9_-]{10}|[A-Za-z0-9_-]{43})$/.test(accessToken)) {
     throw new Error('Kunci akses pelanggan tidak valid.');
   }
   const payload = {
@@ -187,6 +188,7 @@ function createOrder_(data) {
   if (data.shippingRateId) {
     payload.shippingRateId = text_(data.shippingRateId, 'Pilihan pengiriman', 100);
   }
+  if (user) { payload.customerId = user.id; }
   if (!/^0[0-9]{8,14}$/.test(payload.phone)) {
     throw new Error('Nomor HP diawali 0 dan terdiri dari 9-15 angka.');
   }
@@ -201,10 +203,12 @@ function createOrder_(data) {
   if (prior) {
     if (
       !equal_(prior.requestHash, requestHash) ||
-      !equal_(prior.accessHash, digest_(accessToken))
+      (user ? prior.customerId !== user.id : prior.customerId ||
+        !equal_(prior.accessHash, digest_(accessToken)))
     ) {
       throw new Error('ID permintaan sudah digunakan untuk data berbeda.');
     }
+    if (user) { saveCustomerDelivery_(user, prior); }
     return customerOrder_(prior);
   }
   if (config.ordersEnabled !== 'true') {
@@ -231,7 +235,7 @@ function createOrder_(data) {
     id: nextOrderId_(stamp, orders),
     requestId: requestId,
     requestHash: requestHash,
-    accessHash: digest_(accessToken),
+    accessHash: user ? '' : digest_(accessToken),
     createdAt: stamp,
     paymentDeadline: payload.type === 'PREORDER'
       ? new Date(clock_().date + 'T18:00:00+08:00').toISOString()
@@ -248,13 +252,44 @@ function createOrder_(data) {
   SpreadsheetApp.flush();
   const complete = finishOrder_(order);
   audit_(null, 'CREATE_ORDER', complete.id, 'Pesanan dan reservasi tersimpan.');
+  if (user) { saveCustomerDelivery_(user, complete); }
   return customerOrder_(complete);
+}
+
+// ID akun berasal dari sesi terverifikasi; nomor HP tidak membuktikan kepemilikan.
+function accountOrderAccess_(user, data) {
+  if (!user || user.role !== 'Konsumen') { throw new Error('Login sebagai Konsumen.'); }
+  const order = rows_('Orders').find(function (row) {
+    return row.id === data.orderId && row.customerId === user.id;
+  });
+  if (!order) { throw new Error('Pesanan tidak ditemukan pada akun Anda.'); }
+  if (order.transactionState !== 'COMMITTED') {
+    throw new Error('Pesanan menunggu rekonsiliasi. Jangan membuat pesanan baru.');
+  }
+  return order;
+}
+
+// Ringkasan riwayat dipaginasi tanpa mengirim snapshot/kunci atau data akun lain.
+function myOrders_(user, data) {
+  if (!user || user.role !== 'Konsumen') { throw new Error('Login sebagai Konsumen.'); }
+  const page = integer_(data.page === undefined ? 0 : data.page, 'Halaman', 0, 1000000);
+  const orders = rows_('Orders').filter(function (row) {
+    return row.customerId === user.id && row.transactionState === 'COMMITTED';
+  }).sort(function (a, b) {
+    return String(b.createdAt).localeCompare(String(a.createdAt)) || String(b.id).localeCompare(String(a.id));
+  });
+  const pageCount = Math.max(1, Math.ceil(orders.length / 10));
+  const current = Math.min(page, pageCount - 1);
+  return { page: current, pageCount: pageCount, total: orders.length,
+    orders: orders.slice(current * 10, current * 10 + 10).map(function (order) {
+      return publicRecord_(order, ['id', 'createdAt', 'total', 'paymentStatus', 'fulfillment', 'receipt']);
+    }) };
 }
 
 // Status hanya dapat dibuka memakai nomor pesanan dan kunci acak pelanggan.
 function customerAccess_(data) {
   const order = rows_('Orders').find(function (row) { return row.id === data.orderId; });
-  if (!order || !equal_(order.accessHash, digest_(data.accessToken || ''))) {
+  if (!order || order.customerId || !equal_(order.accessHash, digest_(data.accessToken || ''))) {
     throw new Error('Pesanan atau kunci akses tidak valid.');
   }
   if (order.transactionState !== 'COMMITTED') {
@@ -271,6 +306,7 @@ function customerOrder_(order) {
     'fulfillment', 'preparedAt'
   ]);
   Object.assign(result, orderAmounts_(order));
+  result.accountOwned = !!order.customerId;
   result.items = JSON.parse(order.snapshotJson).items.map(function (item) {
     return publicRecord_(item, ['name', 'quantity', 'unitPrice']);
   });

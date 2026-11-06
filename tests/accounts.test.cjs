@@ -21,8 +21,10 @@ function accountFixture() {
   const context = vm.createContext({
     Date, console,
     Utilities: { newBlob: text => ({ getBytes: () => Array.from(Buffer.from(text)) }) },
+    SpreadsheetApp: { flush: () => {} },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: key => properties.get(key) || '',
+      setProperty: (key, value) => properties.set(key, value),
       deleteProperty: key => properties.delete(key)
     }) },
     CacheService: { getScriptCache: () => ({
@@ -398,4 +400,332 @@ test('Frontend menyediakan matriks 15 menu, Konsumen tanpa centang, dan token PO
   const restore = source('apps-script/Recovery.gs');
   assert.ok(restore.includes('extendAccountSchema_(db)'));
   assert.ok(restore.includes("HV_SCHEMA.PasswordResets.indexOf('usedAt')"));
+});
+
+// Quote ditiru karena harga/kuota sudah diuji terpisah; kepemilikan memakai fungsi asli.
+function consumerFixture() {
+  const fixture = accountFixture();
+  const { context, tables } = fixture;
+  for (const file of ['Orders.gs', 'Files.gs']) {
+    vm.runInContext(source('apps-script/' + file), context);
+  }
+  for (const name of ['Orders', 'Files', 'OrderItems', 'StockLedger', 'Shipping', 'ServiceAreas']) {
+    tables[name] = [];
+  }
+  context.LockService = { getScriptLock: () => ({ hasLock: () => true }) };
+  context.clock_ = () => ({ date: '2026-11-06' });
+  context.settings_ = () => ({ ordersEnabled: 'true', sessionMaxHours: 8, sessionIdleMinutes: 30 });
+  context.quote_ = () => ({ total: 50000, subtotal: 50000, voucherDiscount: 0,
+    items: [{ name: 'Menu Uji', productId: 'p1', poolId: 'pool1', quantity: 1, unitPrice: 50000 }] });
+  fixture.signup = { name: 'Konsumen Uji', phone: '081987654321', email: 'pembeli@example.test',
+    username: 'pembeli1', password: 'uji12345', requestId: 'signup-1' };
+  fixture.orderData = { requestId: 'order-1', name: 'Penerima Uji', phone: '081987654321',
+    type: 'DIRECT', receipt: 'PICKUP', date: '2026-11-06', time: '16:00',
+    paymentMethod: 'TRANSFER', items: [{ productId: 'p1', quantity: 1 }], acceptPolicy: true };
+  fixture.login = () => context.registerCustomer_(fixture.signup);
+  return fixture;
+}
+
+test('Pendaftaran checkout langsung aktif, otomatis Login, selalu Konsumen dan hash password', () => {
+  const f = consumerFixture();
+  const result = f.context.registerCustomer_({ ...f.signup, role: 'Admin', permissions: ['Users'] });
+  assert.equal(result.user.role, 'Konsumen');
+  assert.deepEqual(plain(result.user.permissions), []);
+  assert.equal(result.user.mustChangePassword, false);
+  const account = f.tables.Users.find(row => row.id === result.user.id);
+  assert.equal(account.active, true);
+  assert.equal(account.passwordHash, 'test-hash:' + f.signup.password);
+  assert.equal(account.phone, '6281987654321');
+  assert.equal(f.context.authorize_(result.token, ['Konsumen']).id, account.id);
+  for (const field of ['password', 'passwordHash', 'registrationId', 'deliveryJson']) {
+    assert.ok(!(field in result.user));
+  }
+  assert.equal(f.deliveries.length, 0);
+  assert.ok(!JSON.stringify(f.audits).includes(f.signup.password));
+});
+
+test('Pendaftaran menolak username/kontak ganda termasuk akun staf dan nonaktif', () => {
+  for (const changes of [{ username: 'operator1' }, { email: 'OPERATOR@example.test' },
+    { phone: '+62 812 3456 789' }]) {
+    const f = consumerFixture();
+    f.user.active = false;
+    assert.throws(() => f.context.registerCustomer_({ ...f.signup, ...changes }), /terdaftar/);
+    assert.equal(f.tables.Users.length, 1);
+  }
+});
+
+test('Pendaftaran terputus aman diulang, tetapi requestId bukan bukti kepemilikan', () => {
+  const f = consumerFixture();
+  const first = f.login();
+  const repeat = f.login();
+  assert.equal(first.user.id, repeat.user.id);
+  assert.equal(f.tables.Users.length, 2);
+  assert.notEqual(first.token, repeat.token);
+  assert.throws(() => f.context.registerCustomer_({ ...f.signup, password: 'asing123' }), /terdaftar/);
+  assert.equal(f.tables.Users[1].failedAttempts, 0);
+});
+
+test('Validasi dan pembatasan pendaftaran tidak menciptakan akun tidak valid', () => {
+  for (const changes of [{ username: 'abc' }, { password: 'abc' }, { email: 'salah' },
+    { phone: '12', email: '' }, { phone: '', email: '' }, { name: '' }, { requestId: '' }]) {
+    const f = consumerFixture();
+    assert.throws(() => f.context.registerCustomer_({ ...f.signup, ...changes }));
+    assert.equal(f.tables.Users.length, 1);
+  }
+  const f = consumerFixture();
+  f.cache.set('register-global', '10');
+  assert.throws(() => f.login(), /Terlalu banyak/);
+  assert.equal(f.tables.Users.length, 1);
+});
+
+test('Pesanan baru wajib sesi Konsumen dan customerId dari sesi, bukan input browser', () => {
+  const f = consumerFixture();
+  assert.equal(f.context.api_({ action: 'createOrder', data: f.orderData }).ok, false);
+  const staff = f.context.login_({ username: f.user.username, password: 'benar123' });
+  assert.equal(f.context.api_({ action: 'createOrder', token: staff.token, data: f.orderData }).ok, false);
+  const session = f.login();
+  const result = f.context.api_({ action: 'createOrder', token: session.token,
+    data: { ...f.orderData, customerId: f.user.id, email: 'ignored', password: 'ignored' } });
+  assert.equal(result.ok, true);
+  assert.equal(f.tables.Orders[0].customerId, session.user.id);
+  assert.equal(result.data.accountOwned, true);
+  assert.equal(result.data.paymentStatus, 'UNPAID');
+  for (const field of ['accessHash', 'accessToken', 'customerId', 'password']) {
+    assert.ok(!(field in result.data));
+  }
+  assert.ok(!('password' in f.tables.Orders[0]));
+});
+
+test('Retry pesanan akun tidak menggandakan stok/transaksi dan menolak akun lain', () => {
+  const f = consumerFixture();
+  const session = f.login();
+  const user = f.context.authorize_(session.token, ['Konsumen']);
+  const order = f.context.createOrder_(f.orderData, user);
+  const retry = f.context.createOrder_(f.orderData, user);
+  assert.equal(order.id, retry.id);
+  assert.equal(f.tables.Orders.length, 1);
+  assert.equal(f.tables.StockLedger.length, 1);
+  assert.equal(f.tables.OrderItems.length, 1);
+  assert.throws(() => f.context.createOrder_(f.orderData, { ...user, id: 'another-user' }), /digunakan/);
+  assert.throws(() => f.context.createOrder_({ ...f.orderData, name: 'Berbeda' }, user), /digunakan/);
+});
+
+test('Pesanan Saya memaginasi akun sendiri tanpa mengaitkan pesanan lama dari nomor HP', () => {
+  const f = consumerFixture();
+  const session = f.login();
+  for (let i = 0; i < 13; i++) {
+    f.tables.Orders.push({ id: 'own-' + i, customerId: session.user.id,
+      createdAt: new Date(2026, 0, i + 1).toISOString(), total: 1000,
+      paymentStatus: 'UNPAID', fulfillment: 'NEW', transactionState: 'COMMITTED',
+      accessHash: 'SECRET', snapshotJson: 'SECRET' });
+  }
+  f.tables.Orders.push(
+    { id: 'foreign', customerId: f.user.id, transactionState: 'COMMITTED', phone: f.signup.phone },
+    { id: 'legacy', customerId: '', transactionState: 'COMMITTED', phone: f.signup.phone },
+    { id: 'preparing', customerId: session.user.id, transactionState: 'PREPARING' });
+  const result = f.context.api_({ action: 'myOrders', token: session.token, data: { customerId: f.user.id } });
+  assert.equal(result.ok, true);
+  assert.equal(result.data.total, 13);
+  assert.equal(result.data.orders.length, 10);
+  assert.equal(result.data.pageCount, 2);
+  assert.equal(result.data.orders[0].id, 'own-12');
+  assert.ok(!JSON.stringify(result.data).includes('SECRET'));
+  const next = f.context.api_({ action: 'myOrders', token: session.token, data: { page: 1 } });
+  assert.equal(next.data.orders.length, 3);
+  assert.equal(f.context.api_({ action: 'myOrders', token: session.token, data: { page: -1 } }).ok, false);
+});
+
+test('Status akun menolak ID milik orang lain, pesanan lama dan pesanan belum selesai', () => {
+  const f = consumerFixture();
+  const session = f.login();
+  const user = f.context.authorize_(session.token, ['Konsumen']);
+  const order = f.context.createOrder_(f.orderData, user);
+  assert.equal(f.context.api_({ action: 'myOrderStatus', token: session.token, data: { orderId: order.id } }).ok, true);
+  f.tables.Orders[0].customerId = 'foreign';
+  assert.equal(f.context.api_({ action: 'myOrderStatus', token: session.token,
+    data: { orderId: order.id, customerId: 'foreign', phone: f.signup.phone } }).ok, false);
+  f.tables.Orders[0].customerId = '';
+  assert.throws(() => f.context.accountOrderAccess_(user, { orderId: order.id }), /tidak ditemukan/);
+  f.tables.Orders[0].customerId = user.id;
+  f.tables.Orders[0].transactionState = 'PREPARING';
+  assert.throws(() => f.context.accountOrderAccess_(user, { orderId: order.id }), /rekonsiliasi/);
+});
+
+test('Kunci privat tidak membuka pesanan akun; akses pesanan lama tetap berfungsi', () => {
+  const f = consumerFixture();
+  const session = f.login();
+  const user = f.context.authorize_(session.token, ['Konsumen']);
+  const order = f.context.createOrder_(f.orderData, user);
+  f.tables.Orders[0].accessHash = f.context.digest_('Known12345');
+  assert.throws(() => f.context.customerAccess_({ orderId: order.id, accessToken: 'Known12345' }), /tidak valid/);
+  f.tables.Orders[0].customerId = '';
+  assert.equal(f.context.customerAccess_({ orderId: order.id, accessToken: 'Known12345' }).id, order.id);
+});
+
+test('Alamat penerima tersimpan untuk belanja berikutnya tanpa mengganti kontak pemulihan', () => {
+  const f = consumerFixture();
+  const session = f.login();
+  const user = f.context.authorize_(session.token, ['Konsumen']);
+  const contact = user.phone;
+  const order = f.context.createOrder_({ ...f.orderData, name: 'Penerima Lain', phone: '081111111111' }, user);
+  assert.equal(user.phone, contact);
+  const login = f.context.login_({ username: f.signup.username, password: f.signup.password });
+  assert.equal(login.user.delivery.name, 'Penerima Lain');
+  assert.equal(login.user.delivery.phone, order.phone);
+  assert.equal(login.user.phone, contact);
+  assert.equal(f.context.customerDelivery_({ name: 'Nama', phone: '628123456789', deliveryJson: 'rusak' }).phone, '08123456789');
+});
+
+test('Invoice dan unggah konsumen memakai kepemilikan akun sebelum menyentuh Drive', () => {
+  const f = consumerFixture();
+  const session = f.login();
+  const user = f.context.authorize_(session.token, ['Konsumen']);
+  const order = f.context.createOrder_(f.orderData, user);
+  let driveReads = 0;
+  const blob = { getBytes: () => [1, 2], getContentType: () => 'application/pdf',
+    getName: () => 'photo.png', setName() { return this; } };
+  f.context.Utilities.base64Encode = bytes => Buffer.from(bytes).toString('base64');
+  f.context.invoice_ = () => { driveReads++; return { getBlob: () => blob, getName: () => 'invoice.pdf' }; };
+  f.context.imageBlob_ = () => blob;
+  f.context.folder_ = () => ({ getFiles: () => ({ hasNext: () => false }),
+    createFile: () => { driveReads++; return { getId: () => 'file-test' }; } });
+  f.tables.Orders.push({ ...f.tables.Orders[0], id: 'foreign', customerId: 'other' });
+  for (const action of ['myInvoice', 'myOrderUpload']) {
+    const denied = f.context.api_({ action, token: session.token,
+      data: { orderId: 'foreign', kind: 'STRUK', requestId: 'upload-1' } });
+    assert.equal(denied.ok, false);
+    assert.equal(driveReads, 0);
+  }
+  assert.equal(f.context.api_({ action: 'myInvoice', token: session.token,
+    data: { orderId: order.id, kind: 'FILE', fileId: 'foreign-file' } }).ok, true);
+  assert.equal(f.context.api_({ action: 'myOrderUpload', token: session.token,
+    data: { orderId: order.id, kind: 'STRUK', requestId: 'upload-1', mimeType: 'image/jpeg' } }).ok, true);
+  assert.equal(f.context.api_({ action: 'myOrderUpload', token: session.token,
+    data: { orderId: order.id, kind: 'PRODUK', productId: 'p1' } }).ok, false);
+  assert.equal(driveReads, 2);
+  f.tables.Orders[0].fulfillment = 'READY';
+  assert.equal(f.context.api_({ action: 'myOrderUpload', token: session.token,
+    data: { orderId: order.id, kind: 'TANDATERIMA', requestId: 'handover-1', received: true } }).ok, true);
+});
+
+test('Akun dengan pesanan tidak dapat dihapus; pemulihan kunci hanya untuk pesanan lama', () => {
+  const f = consumerFixture();
+  const session = f.login();
+  const user = f.context.authorize_(session.token, ['Konsumen']);
+  const order = f.context.createOrder_(f.orderData, user);
+  const admin = { ...f.user, role: 'Admin', permissionsJson: '["Users","Pesanan"]' };
+  assert.throws(() => f.context.deleteMaster_(admin, { table: 'Users', id: user.id, confirmed: true }), /masih dipakai/);
+  assert.throws(() => f.context.resetOrderAccess_(admin, { orderId: order.id, phone: order.phone, confirmed: true }), /Reset Password/);
+});
+
+test('Migrasi Orders menambah customerId tanpa mengisi pemilik untuk pesanan lama', () => {
+  const f = consumerFixture();
+  const expected = plain(vm.runInContext('HV_SCHEMA.Orders', f.context));
+  const original = expected.slice(0, -1);
+  const order = original.map(key => key === 'id' ? 'legacy' : '');
+  let headers = original.slice();
+  let columns = headers.length;
+  const sheet = {
+    getLastRow: () => 2, getLastColumn: () => headers.length, getMaxColumns: () => columns,
+    insertColumnsAfter: (start, count) => { columns += count; },
+    getRange: (row, col, height, width) => ({
+      getValues: () => [headers.slice()],
+      setValues: values => { assert.equal(row, 1); headers = Array.from(values[0]); }
+    })
+  };
+  f.context.extendOrderAccountSchema_({ getSheetByName: () => sheet });
+  f.context.extendOrderAccountSchema_({ getSheetByName: () => sheet });
+  assert.deepEqual(headers, expected);
+  assert.equal(columns, expected.length);
+  assert.equal(order[0], 'legacy');
+  assert.equal(order.length, original.length);
+  assert.equal(order[expected.indexOf('customerId')], undefined);
+});
+
+test('Checkout tidak menyimpan atau mengirim password dalam data penerima dan pesanan', async () => {
+  const client = source('js/client.js');
+  const calls = [];
+  const state = { checkoutStep: 1, recipient: {}, requestId: 'retry-request', token: '',
+    cart: { p1: 1 }, page: 'checkout' };
+  const data = { name: 'Pembeli', phone: '081234567890', username: 'pembeli1',
+    password: 'contoh123', repeatPassword: 'contoh123', email: 'uji@example.test',
+    receipt: 'PICKUP', time: '16:00' };
+  const context = vm.createContext({
+    state,
+    formData: () => data,
+    renderCheckout: () => {},
+    renderOrder: () => {},
+    notify: () => {},
+    checkoutPayload: () => ({ ...state.recipient, requestId: state.requestId }),
+    rpc: async (action, payload) => {
+      calls.push({ action, payload });
+      if (action === 'registerCustomer') {
+        return { token: 'session-only', user: { id: 'consumer1', role: 'Konsumen' } };
+      }
+      if (action === 'createOrder') {
+        return { id: 'order1', name: data.name, phone: data.phone, receipt: 'PICKUP' };
+      }
+      return {};
+    }
+  });
+  vm.runInContext(client.slice(client.indexOf('  async function submitCheckout('),
+    client.indexOf('  // Menampilkan formulir pengecekan pesanan')), context);
+  await context.submitCheckout({});
+  assert.equal(state.token, 'session-only');
+  assert.equal(state.checkoutStep, 2);
+  for (const key of ['username', 'password', 'repeatPassword', 'email']) {
+    assert.ok(!(key in state.recipient));
+  }
+  data.paymentMethod = 'TRANSFER';
+  await context.submitCheckout({});
+  data.acceptPolicy = 'on';
+  await context.submitCheckout({});
+  const request = calls.find(call => call.action === 'createOrder');
+  assert.equal(request.payload.acceptPolicy, true);
+  assert.ok(!JSON.stringify(request).includes('contoh123'));
+  assert.equal(calls.filter(call => call.action === 'registerCustomer').length, 1);
+  assert.equal(state.page, 'status');
+  assert.equal(state.user.delivery.phone, data.phone);
+});
+
+test('Sesi konsumen kedaluwarsa meminta Login tanpa menghilangkan checkout dan ID retry', async () => {
+  const client = source('js/client.js');
+  const state = { page: 'checkout', checkoutStep: 3, user: { role: 'Konsumen' },
+    token: 'old-token', requestId: 'same-request', recipient: { name: 'Pembeli' } };
+  let shown = 0;
+  const context = vm.createContext({
+    state, pending: 0,
+    document: { getElementById: () => ({ classList: { remove() {}, toggle() {} } }) },
+    renderLogin: () => { shown++; },
+    HealthyVibesApi: { request: async () => ({ ok: false, message: 'Sesi berakhir. Silakan login kembali.' }) }
+  });
+  vm.runInContext(client.slice(client.indexOf('  function rpc('),
+    client.indexOf('  let notificationTimer')), context);
+  await assert.rejects(context.rpc('createOrder', {}), /Sesi berakhir/);
+  assert.equal(state.checkoutResume, true);
+  assert.equal(state.page, 'admin');
+  assert.equal(state.requestId, 'same-request');
+  assert.equal(state.checkoutStep, 3);
+  assert.equal(state.recipient.name, 'Pembeli');
+  assert.equal(state.token, '');
+  assert.equal(shown, 1);
+});
+
+test('Balasan sesi lama tidak mencabut sesi konsumen baru', async () => {
+  const client = source('js/client.js');
+  const state = { page: 'status', user: { role: 'Konsumen' }, token: 'old-token' };
+  const context = vm.createContext({
+    state, pending: 0,
+    document: { getElementById: () => ({ classList: { remove() {}, toggle() {} } }) },
+    renderLogin: () => { throw new Error('Tidak boleh mencabut sesi baru'); },
+    HealthyVibesApi: { request: async request => {
+      assert.equal(request.token, 'old-token');
+      state.token = 'new-token';
+      return { ok: false, message: 'Sesi berakhir.' };
+    } }
+  });
+  vm.runInContext(client.slice(client.indexOf('  function rpc('),
+    client.indexOf('  let notificationTimer')), context);
+  await assert.rejects(context.rpc('myOrders', {}), /Sesi berakhir/);
+  assert.equal(state.token, 'new-token');
 });

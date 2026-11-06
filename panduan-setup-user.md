@@ -1,7 +1,7 @@
-# Panduan Login dan Setup User Healthy Vibes
+# Panduan Login, Akun Konsumen, dan Setup User Healthy Vibes
 
 Perubahan sudah tersedia di kode lokal. Website belum berubah sampai backend
-diperbarui dan frontend di-push. Database dan URL API yang lama tetap digunakan.
+diperbarui dan frontend di-push. Database dan URL API yang sekarang tetap digunakan.
 
 ## 1. Perbarui Backend Google Apps Script
 
@@ -11,11 +11,14 @@ di folder `apps-script`:
 - `Admin.gs`
 - `Api.gs`
 - `Auth.gs`
+- `Accounts.gs`
 - `Files.gs`
+- `Orders.gs`
 - `Recovery.gs`
 - `Schema.gs`
 
-Buat file script baru bernama **Accounts**, lalu masukkan seluruh isi `Accounts.gs`.
+Jika file **Accounts** belum ada, buat file script dengan nama tersebut.
+Jika sudah ada, cukup ganti isinya dengan seluruh isi `Accounts.gs` lokal.
 Jangan menempelkan isinya ke file lain agar fungsi tidak terduplikasi.
 
 Buka **Project Settings / Setelan Project**, aktifkan tampilan file manifest
@@ -29,8 +32,10 @@ Simpan semua perubahan.
 Pilih fungsi **installHealthyVibes** pada editor, lalu klik **Run / Jalankan**.
 Jika Google meminta izin, setujui menggunakan akun pemilik.
 
-Installer menambahkan kolom baru di kanan tab `Users` dan membuat tab
-`PasswordResets`. Akun, password, pesanan, dan ID database lama tidak diganti.
+Installer melengkapi kolom di kanan tab `Users` dan `Orders`, serta tab
+`PasswordResets`. `Orders.customerId` menyimpan pemilik pesanan baru.
+Kolom pemilik pada pesanan lama tetap kosong.
+Akun, password, pesanan, dan ID database lama tidak diganti.
 Jangan menjalankan `createFirstAdmin` lagi.
 
 Sebelum mengaktifkan versi baru, buka tab `Users` di Google Sheets dan isi
@@ -85,15 +90,16 @@ hanya untuk pembaruan ini.
 - **Hapus**: memakai konfirmasi singkat. Akun sendiri dan Admin aktif terakhir dilindungi.
 - **Reset**: mengirim tautan ke email/WhatsApp yang sudah tercatat pada akun.
 
-Username dan password minimal **6 karakter**. Akun baru wajib mengganti password
-sementara saat login pertama.
+Username dan password minimal **6 karakter**. Akun yang dibuat Admin wajib
+mengganti password sementara saat login pertama. Akun checkout memakai password
+yang dipilih konsumen sendiri, sehingga tidak perlu menggantinya saat pertama Login.
 
 | Level | Penggunaan |
 | --- | --- |
 | Admin | Membaca/mengubah menu yang dicentang, termasuk Setup User bila diizinkan. |
 | Operator | Membaca/mengubah menu operasional yang dicentang; tidak mengubah Setup User. |
 | Viewer | Hanya membaca menu yang dicentang, tanpa simpan/hapus/tindakan pesanan. |
-| Konsumen | Katalog dan Status Pesanan; tidak membuka Panel Pengelola. |
+| Konsumen | Katalog dan Pesanan Saya; tidak membuka Panel Pengelola. |
 
 Contoh awal Operator mencentang semua menu kecuali **Setup User** dan
 **Pengaturan**. Admin dapat menyesuaikannya.
@@ -137,11 +143,44 @@ Fungsi hanya membuka blokir, tidak mengganti password. Jika password lupa,
 lengkapi email pada baris akun Admin di tab `Users`, kemudian gunakan
 **Lupa Password**. Property sementara tersebut dihapus otomatis setelah berhasil.
 
+## 8. Belanja Pertama dan Pesanan Saya
+
+1. Konsumen bebas melihat Katalog dan memasukkan produk ke keranjang tanpa Login.
+2. Pada langkah pertama Checkout, isi penerima, WhatsApp, jadwal, dan alamat bila diantar.
+3. Isi username, password dua kali, serta email pemulihan bila tersedia.
+4. Klik **Lanjut**: akun langsung aktif dan otomatis Login, tanpa kode/tautan verifikasi.
+5. Pilih metode pembayaran, tinjau total, lalu klik **Buat Pesanan**.
+6. Bayar sesuai tagihan dan unggah bukti pembayaran pada detail pesanan.
+7. Buka **Pesanan Saya**, lalu klik ikon **Detail** untuk melihat perkembangan.
+
+Pemilik akun tidak perlu memasukkan nomor pesanan atau kunci akses privat.
+Riwayat menampilkan maksimal 10 pesanan per halaman, dengan Sebelumnya/Berikutnya.
+Invoice, bukti pembayaran, dan tanda terima tersedia pada detail pesanan akun.
+Akun aktif tidak berarti pembayaran lunas; pembayaran tetap diperiksa Admin.
+
+Pada pembelian berikutnya, Login menggunakan username/password yang sama.
+Saat Checkout, penerima dan alamat terakhir terisi otomatis dan tetap dapat diubah.
+Nomor penerima yang diubah tidak mengganti kontak pemulihan akun.
+Jika sudah punya akun saat Checkout, klik **Sudah punya akun? Login**.
+Keranjang dan langkah checkout tetap dipertahankan ketika Login.
+
+Kontak tidak diverifikasi, sesuai alur yang dipilih. Pastikan email/WhatsApp benar:
+kontak yang salah dapat menyebabkan tautan pemulihan terkirim kepada orang lain.
+Username atau kontak yang sudah terdaftar tidak dapat digunakan membuat akun kedua;
+gunakan Login atau Lupa Password.
+
+Pesanan hanya ditautkan dari akun yang sedang Login, bukan kecocokan nomor WhatsApp.
+Pesanan lama tetap dibuka melalui **Buka Pesanan Lama** dengan nomor dan kunci lama.
+Pesanan lama tidak otomatis dimasukkan ke akun baru.
+Pemulihan kunci Admin hanya untuk pesanan lama; pesanan akun memakai Reset Password.
+Akun yang dirujuk pesanan tidak bisa dihapus; gunakan Edit untuk menonaktifkan bila perlu.
+
 ## Pemeriksaan
 
-116 pengujian otomatis lulus menggunakan layanan tiruan, tanpa transaksi Google
-atau pengiriman email/WhatsApp nyata. Alur Setup User dan reset juga lulus
-pemeriksaan browser pada layar 320, 390, 768, dan 1280 px.
+132 pengujian otomatis lulus menggunakan layanan tiruan, tanpa transaksi Google
+atau pengiriman email/WhatsApp nyata. Alur pendaftaran, checkout, riwayat, pagination,
+invoice, unggahan, Login ulang dan alamat tersimpan lulus pemeriksaan browser
+pada layar 320, 390, 768, dan 1280 px.
 Pengiriman produksi tetap perlu dicoba
 setelah konfigurasi dan deployment siap, sebaiknya menggunakan akun uji.
 Jangan sengaja memblokir Admin utama untuk mencoba fitur.

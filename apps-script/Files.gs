@@ -32,11 +32,12 @@ function imageBlob_(data) {
   return Utilities.newBlob(bytes, mime, id_() + suffix);
 }
 
-function upload_(user, data) {
+function upload_(user, data, customer) {
   const kind = data.kind;
   let order = null;
   let product = null;
   if (kind === 'PRODUK') {
+    if (customer) { throw new Error('Konsumen tidak boleh mengunggah foto produk.'); }
     if (!user || !['Admin', 'Operator'].includes(user.role)) {
       throw new Error('Upload produk hanya untuk pengelola.');
     }
@@ -45,7 +46,7 @@ function upload_(user, data) {
       throw new Error('Simpan produk sebelum mengunggah foto.');
     }
   } else if (kind === 'STRUK') {
-    order = user
+    order = customer ? accountOrderAccess_(customer, data) : user
       ? rows_('Orders').find(function (row) { return row.id === data.orderId; })
       : customerAccess_(data);
     if (!order || order.fulfillment === 'CANCELLED') {
@@ -55,7 +56,7 @@ function upload_(user, data) {
     if (user) {
       throw new Error('Tanda terima harus diunggah konsumen melalui Status Pesanan.');
     }
-    order = customerAccess_(data);
+    order = customer ? accountOrderAccess_(customer, data) : customerAccess_(data);
     const eligible = order.receipt === 'DELIVERY'
       ? order.fulfillment === 'DISPATCHED'
       : order.receipt === 'PICKUP' && order.fulfillment === 'READY';
@@ -170,10 +171,10 @@ function invoice_(order) {
 }
 
 // Unduhan tidak menggunakan tautan Drive publik.
-function download_(user, data) {
+function download_(user, data, customer) {
   let file;
   if (data.kind === 'INVOICE') {
-    const order = user
+    const order = customer ? accountOrderAccess_(customer, data) : user
       ? rows_('Orders').find(function (row) { return row.id === data.orderId; })
       : customerAccess_(data);
     if (!order || order.transactionState !== 'COMMITTED') {

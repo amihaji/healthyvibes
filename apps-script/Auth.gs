@@ -212,6 +212,7 @@ function userView_(user) {
   result.failedAttempts = Number(user.failedAttempts || 0);
   result.blocked = !!user.blockedAt;
   result.lastLoginAt = user.lastLoginAt || '';
+  if (user.role === 'Konsumen') { result.delivery = customerDelivery_(user); }
   return result;
 }
 

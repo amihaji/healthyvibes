@@ -34,6 +34,7 @@ function restoreStaging_(user, data) {
   // Backup lama dibersihkan pada salinan staging, tanpa menyentuh produksi.
   removeShippingConfirmation_(db);
   extendAccountSchema_(db);
+  extendOrderAccountSchema_(db);
   const resets = db.getSheetByName('PasswordResets') || db.insertSheet('PasswordResets');
   if (!resets.getLastRow()) {
     resets.getRange(1, 1, 1, HV_SCHEMA.PasswordResets.length).setValues([HV_SCHEMA.PasswordResets]);
