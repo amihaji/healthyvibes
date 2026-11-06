@@ -2164,6 +2164,131 @@ test('Simpan/edit ongkir memberi petunjuk installer jika tab ShippingRates belum
   assert.equal(writes, 0);
 });
 
+// Semua penghapusan berikut memakai tabel tiruan, bukan database Google.
+function deleteContext() {
+  const { context, tables } = shippingContext();
+  const audits = [];
+  const deleted = [];
+  context.rows_ = name => (tables[name] || []).map((row, index) => Object.assign(row, { _row: index + 2 }));
+  context.database_ = () => ({ getSheetByName: name => ({
+    deleteRow: row => { deleted.push([name, row]); tables[name].splice(row - 2, 1); }
+  }) });
+  context.audit_ = (...args) => audits.push(args);
+  return { context, tables, audits, deleted };
+}
+
+test('Setiap tabel master mendukung hapus nyata dengan audit dan nomor baris server', function () {
+  const contextSchema = shippingContext().context;
+  const tablesAllowed = vm.runInContext('Object.keys(HV_MASTER_ROLES)', contextSchema);
+  for (const table of tablesAllowed) {
+    const { context, tables, audits, deleted } = deleteContext();
+    tables[table].push({ id: 'target', name: 'Data Uji', role: 'Operator', active: true });
+    const expectedRow = tables[table].length + 1;
+    const result = context.deleteMaster_({ id: 'admin1', role: 'Admin' },
+      { table, id: 'target', confirmed: true, _row: 2 });
+    assert.equal(result.deleted, true, table);
+    assert.ok(!tables[table].some(row => row.id === 'target'), table);
+    assert.deepEqual(deleted, [[table, expectedRow]]);
+    assert.equal(audits[0][1], 'DELETE_' + table);
+    assert.equal(audits[0][2], 'target');
+  }
+});
+
+test('Hapus memeriksa role, konfirmasi, ID, akun sendiri dan Admin aktif terakhir', function () {
+  const { context, tables, deleted } = deleteContext();
+  for (const role of ['Viewer', 'Operator']) {
+    assert.throws(() => context.deleteMaster_({ id: 'admin1', role },
+      { table: 'ShippingRates', id: 'gojek', confirmed: true }), /berwenang/);
+  }
+  const admin = { id: 'admin1', role: 'Admin' };
+  for (const table of ['Orders', 'Payments', 'Sessions', 'AuditLog', 'constructor']) {
+    assert.throws(() => context.deleteMaster_(admin, { table, id: 'target', confirmed: true }), /berwenang/);
+  }
+  assert.throws(() => context.deleteMaster_(admin, { table: 'ShippingRates', id: 'gojek' }), /Konfirmasi/);
+  assert.throws(() => context.deleteMaster_(admin,
+    { table: 'ShippingRates', id: 'missing', confirmed: true }), /tidak ditemukan/);
+  tables.Users.push({ id: 'admin1', role: 'Admin', active: true });
+  assert.throws(() => context.deleteMaster_(admin,
+    { table: 'Users', id: 'admin1', confirmed: true }), /sedang Anda gunakan/);
+  assert.throws(() => context.deleteMaster_({ id: 'different', role: 'Admin' },
+    { table: 'Users', id: 'admin1', confirmed: true }), /terakhir/);
+  tables.Users.push({ id: 'op', role: 'Operator', active: true });
+  tables.Sessions.push({ id: 'session', userId: 'op', revoked: false });
+  context.deleteMaster_(admin, { table: 'Users', id: 'op', confirmed: true });
+  assert.equal(tables.Sessions[0].revoked, true);
+  assert.equal(deleted.length, 1);
+});
+
+test('Relasi kategori/produk/kuota/wilayah ke pesanan dilindungi dari penghapusan', function () {
+  const cases = [
+    ['Categories', 'categoryId'], ['Products', 'productId'],
+    ['ReadyStock', 'poolId'], ['PreorderCapacity', 'poolId'], ['ServiceAreas', 'areaId']
+  ];
+  for (const [table, field] of cases) {
+    const { context, tables, deleted } = deleteContext();
+    tables[table].push({ id: 'target' });
+    if (table === 'Categories') { tables.Products.push({ id: 'child', categoryId: 'target' }); }
+    else {
+      tables.Orders.push({ areaId: field === 'areaId' ? 'target' : '',
+        snapshotJson: JSON.stringify({ items: [{ [field]: 'target' }] }) });
+    }
+    assert.throws(() => context.deleteMaster_({ id: 'admin1', role: 'Admin' },
+      { table, id: 'target', confirmed: true }), /masih dipakai/, table);
+    assert.equal(deleted.length, 0);
+  }
+});
+
+test('Menghapus tarif tidak mengubah snapshot maupun jumlah tagihan pesanan lama', function () {
+  const { context, tables, data } = shippingContext();
+  const order = context.createOrder_(data);
+  const before = JSON.stringify(tables.Orders);
+  context.rows_ = name => tables[name].map((row, index) => Object.assign(row, { _row: index + 2 }));
+  context.database_ = () => ({ getSheetByName: name => ({ deleteRow: row => tables[name].splice(row - 2, 1) }) });
+  context.deleteMaster_({ id: 'admin1', role: 'Admin' },
+    { table: 'ShippingRates', id: 'gojek', confirmed: true });
+  assert.equal(JSON.stringify(tables.Orders), before);
+  assert.equal(context.customerOrder_(tables.Orders[0]).total, order.total);
+  assert.equal(context.customerOrder_(tables.Orders[0]).shippingFee, 10000);
+  assert.equal(context.api_({ action: 'deleteMaster', token: 'Viewer',
+    data: { table: 'ShippingRates', id: 'grab', confirmed: true } }).ok, false);
+  assert.equal(context.api_({ action: 'deleteMaster', token: 'Admin',
+    data: { table: 'ShippingRates', id: 'grab', confirmed: true } }).ok, true);
+});
+
+test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak tampilan', function () {
+  const elements = { 'admin-body': { innerHTML: '' } };
+  const context = vm.createContext({
+    window: {}, document: { getElementById: id => elements[id] }, safe: String,
+    tableLabels: { Products: 'Produk' }, masterText: (key, value) => value,
+    state: { user: { role: 'Admin' }, admin: { tables: { Products: [{ id: 'p1', name: 'Produk Uji' }] } } }
+  });
+  vm.runInContext(source('js/icons.js'), context);
+  context.buttonLabel = context.window.HV_UI.label;
+  const client = source('js/client.js');
+  vm.runInContext(client.slice(client.indexOf('  function iconButton('),
+    client.indexOf('  // Menu pengelola terbuka')), context);
+  vm.runInContext(client.slice(client.indexOf('  function renderMaster('),
+    client.indexOf('  // Membuka formulir tambah')), context);
+  context.renderMaster('Products');
+  const html = elements['admin-body'].innerHTML;
+  assert.ok(html.includes('aria-label="Edit Produk" title="Edit Produk"'));
+  assert.ok(html.includes('aria-label="Hapus Produk" title="Hapus Produk"'));
+  assert.ok(html.includes('title="Unggah foto produk"'));
+  assert.ok(html.indexOf('data-edit=') < html.indexOf('data-delete='));
+  assert.ok(html.indexOf('data-delete=') < html.indexOf('data-product-upload='));
+  assert.ok(!html.includes('>Edit<'));
+  assert.ok(!html.includes('>Foto<'));
+  context.state.user.role = 'Viewer';
+  context.renderMaster('Products');
+  assert.ok(!elements['admin-body'].innerHTML.includes('data-new='));
+  assert.ok(!elements['admin-body'].innerHTML.includes('data-delete='));
+  const close = source('index.html').match(/<button[^>]+id="close-editor"[\s\S]*?<\/button>/)[0];
+  assert.ok(close.includes('aria-label="Tutup dialog"'));
+  assert.ok(!close.includes('<span>'));
+  assert.ok(source('css/styles.css').includes('background: #e9ecef'));
+  assert.ok(source('css/styles.css').includes('flex-wrap: nowrap'));
+});
+
 test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', function () {
   const bcrypt = bcryptWithoutTimers();
   let callbackCalled = false;

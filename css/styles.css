@@ -543,6 +543,34 @@
     font-size: 13px;
   }
 
+  /* Ikon aksi berukuran sama dan tetap mudah disentuh pada layar HP. */
+  .btn.action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    color: var(--green);
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .btn.action-icon:not(:disabled):hover,
+  .btn.action-icon:not(:disabled):focus-visible {
+    color: #000;
+    background: #e9ecef;
+    border-color: #adb5bd;
+  }
+
+  /* Aksi tidak terpecah baris; tabel tetap dapat digulir di layar sempit. */
+  .record-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+  .record-action-cell { width: 1%; white-space: nowrap; vertical-align: middle; }
+
   /* Latar berbeda untuk membedakan kepala tabel dari isinya. */
   .table th {
     background: #f2f3f4;

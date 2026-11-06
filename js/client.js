@@ -34,6 +34,20 @@
   const buttonLabel = window.HV_UI.label;
   const adminViewport = window.matchMedia('(max-width: 1050px)');
 
+  // Tombol ringkas tetap memiliki nama aksesibel dan tooltip fungsi.
+  function iconButton(icon, label, attributes) {
+    return '<button class="btn action-icon" type="button" aria-label="' +
+      safe(label) + '" title="' + safe(label) + '" ' + (attributes || '') + '>' +
+      window.HV_UI.icon(icon) + '</button>';
+  }
+
+  // Hak edit/hapus mengikuti pembatasan tabel master di backend.
+  function canManageMaster(table) {
+    return state.user && (state.user.role === 'Admin' ||
+      state.user.role === 'Operator' &&
+      ['Categories', 'Products', 'ReadyStock', 'PreorderCapacity'].includes(table));
+  }
+
   // Menu pengelola terbuka di desktop dan ringkas saat berpindah ke layar kecil.
   adminViewport.addEventListener('change', function (event) {
     const navigation = document.getElementById('admin-navigation');
@@ -967,16 +981,16 @@
         return '<tr><td>' + safe(order.id) + '</td><td>' + safe(order.name) +
           '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
           '</td><td>' + safe(order.paymentStatus + ' / ' + order.fulfillment) +
-          '</td><td><button class="btn btn-outline-dark" data-order="' + safe(order.id) +
-          '" type="button">' + buttonLabel('eye', 'Detail') + '</button></td></tr>';
+          '</td><td>' + iconButton('eye', 'Lihat detail pesanan ' + order.id,
+            'data-order="' + safe(order.id) + '"') + '</td></tr>';
       }).join('') + '</tbody></table></div><div class="order-mobile">' +
       orders.map(function (order) {
         return '<article class="panel"><strong>' + safe(order.name) + '</strong><p class="text-break">' +
           safe(order.id) + '</p><p>' + safe(dateText(order.date) + ' ' + order.time) +
           ' WITA</p><p>' + rupiah(order.total) + '</p><p>' +
           safe(order.paymentStatus + ' / ' + order.fulfillment) + '</p>' +
-          '<button class="btn btn-outline-dark" data-order="' + safe(order.id) +
-          '" type="button">' + buttonLabel('eye', 'Detail Pesanan') + '</button></article>';
+          iconButton('eye', 'Lihat detail pesanan ' + order.id,
+            'data-order="' + safe(order.id) + '"') + '</article>';
       }).join('') + '</div>' +
       '<div class="d-flex align-items-center gap-2 mt-3">' +
       '<button class="btn btn-outline-dark" id="previous-orders" type="button"' +
@@ -1202,16 +1216,17 @@
     return date.toISOString();
   }
 
-  // Menampilkan tabel data master dengan pencarian serta tombol tambah/edit.
+  // Menampilkan tabel master dengan kelompok ikon aksi yang ringkas.
   function renderMaster(table) {
     const rows = state.admin.tables[table] || [];
+    const editable = canManageMaster(table);
     const keys = rows.length ? Object.keys(rows[0]).filter(function (key) {
       return !['id', 'photoFileId', 'updatedAt', 'mustChangePassword'].includes(key);
     }) : [];
     document.getElementById('admin-body').innerHTML = '<section class="panel">' +
       '<div class="d-flex justify-content-between gap-2 mb-3"><h2 class="h4">' +
-      safe(tableLabels[table]) + '</h2><button class="btn btn-primary" data-new="' +
-      safe(table) + '" type="button">' + buttonLabel('plus', 'Tambah') + '</button></div>' +
+      safe(tableLabels[table]) + '</h2>' + (editable ? '<button class="btn btn-primary btn-sm" data-new="' +
+      safe(table) + '" type="button">' + buttonLabel('plus', 'Tambah') + '</button>' : '') + '</div>' +
       '<input class="form-control mb-3" id="master-search" placeholder="Cari data..." aria-label="Cari data">' +
       '<div class="table-wrap"><table class="table"><thead><tr>' +
       keys.map(function (key) {
@@ -1220,17 +1235,20 @@
           date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA' };
         return '<th>' + safe(label[key] || key) + '</th>';
       }).join('') +
-      '<th>Aksi</th></tr></thead><tbody id="master-rows">' +
+      '<th class="record-action-cell">Aksi</th></tr></thead><tbody id="master-rows">' +
       rows.map(function (row) {
         return '<tr>' + keys.map(function (key) {
           const product = (state.admin.tables.Products || []).find(function (item) {
             return item.id === row[key];
           });
           return '<td>' + safe(masterText(key, product ? product.name : row[key])) + '</td>';
-        }).join('') + '<td><button class="btn btn-outline-dark" data-edit="' +
-          safe(row.id) + '" data-table="' + safe(table) + '" type="button">' + buttonLabel('edit', 'Edit') + '</button>' +
-          (table === 'Products' ? ' <button class="btn btn-outline-dark" data-product-upload="' +
-          safe(row.id) + '" type="button">' + buttonLabel('photo', 'Foto') + '</button>' : '') + '</td></tr>';
+        }).join('') + '<td class="record-action-cell">' + (editable ? '<div class="record-actions">' +
+          iconButton('edit', 'Edit ' + tableLabels[table], 'data-edit="' + safe(row.id) +
+            '" data-table="' + safe(table) + '"') +
+          iconButton('trash', 'Hapus ' + tableLabels[table], 'data-delete="' + safe(row.id) +
+            '" data-table="' + safe(table) + '"') +
+          (table === 'Products' ? iconButton('photo', 'Unggah foto produk',
+            'data-product-upload="' + safe(row.id) + '"') : '') + '</div>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       (!rows.length ? '<p>Belum ada data. Tambahkan data aktual toko.</p>' : '') + '</section>';
   }
@@ -1242,6 +1260,25 @@
       '<form id="master-form" data-table="' + safe(table) + '" data-id="' + safe(id || '') + '">' +
       masterFields(table, row) +
       '<button class="btn btn-primary" type="submit">' + buttonLabel('save', 'Simpan') + '</button></form>');
+  }
+
+  // Konfirmasi kustom sebelum penghapusan; backend menolak data yang masih dipakai.
+  function deleteMasterDialog(table, id) {
+    const row = (state.admin.tables[table] || []).find(function (item) { return item.id === id; });
+    if (!canManageMaster(table) || !row) {
+      throw new Error('Data tidak ditemukan atau Anda tidak berwenang menghapusnya.');
+    }
+    showEditor('Hapus ' + tableLabels[table],
+      '<form id="delete-master-form" data-table="' + safe(table) + '" data-id="' + safe(id) + '">' +
+      '<p>Hapus record <strong>' + safe(row.name || row.code || row.id) + '</strong>?</p>' +
+      '<p class="alert alert-warning">Baris akan dihapus, bukan disembunyikan. Data yang masih ' +
+      'dirujuk pesanan atau master lain tidak dapat dihapus. Untuk data tersebut, gunakan Edit untuk menonaktifkannya.</p>' +
+      '<label class="d-flex align-items-center gap-2 mb-3">' +
+      '<input class="form-check-input m-0" type="checkbox" name="confirmed" required>' +
+      '<span>Saya yakin ingin menghapus record ini.</span></label>' +
+      '<div id="delete-master-result" role="status" aria-live="polite"></div>' +
+      '<div class="d-flex justify-content-center"><button class="btn btn-danger btn-sm" type="submit">' +
+      buttonLabel('trash', 'Hapus Record') + '</button></div></form>');
   }
 
   // Menampilkan formulir pengaturan toko, jam operasional terkait, logo, dan QRIS.
@@ -1468,6 +1505,10 @@
       editMaster(button.dataset.new || button.dataset.table, button.dataset.edit);
       return;
     }
+    if (button.dataset.delete) {
+      deleteMasterDialog(button.dataset.table, button.dataset.delete);
+      return;
+    }
     if (button.dataset.order) {
       orderEditor(button.dataset.order);
       return;
@@ -1585,9 +1626,10 @@
     try {
       await submitAction(form);
     } catch (error) {
-      if (['reset-access-form', 'order-action-form', 'handover-form'].includes(form.id)) {
+      if (['reset-access-form', 'order-action-form', 'handover-form', 'delete-master-form'].includes(form.id)) {
         const selector = form.id === 'reset-access-form' ? '#reset-access-result'
-          : form.id === 'handover-form' ? '#handover-result' : '#order-action-result';
+          : form.id === 'handover-form' ? '#handover-result'
+            : form.id === 'delete-master-form' ? '#delete-master-result' : '#order-action-result';
         const result = form.querySelector(selector);
         if (result) {
           result.innerHTML = '<p class="alert alert-danger">' + safe(error.message) + '</p>';
@@ -1655,6 +1697,13 @@
         dialog.close();
         await loadAdmin();
       }
+    } else if (form.id === 'delete-master-form') {
+      if (data.confirmed !== 'on') { throw new Error('Centang konfirmasi penghapusan dahulu.'); }
+      await rpc('deleteMaster', { table: form.dataset.table, id: form.dataset.id, confirmed: true });
+      dialog.close();
+      await loadAdmin();
+      state.catalog = null;
+      notify('Record berhasil dihapus.');
     } else if (form.id === 'master-form') {
       data.id = form.dataset.id;
       data.active = data.active !== 'false';

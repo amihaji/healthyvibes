@@ -166,6 +166,56 @@ function saveMaster_(user, data) {
   return table === 'Users' ? userView_(record) : publicRecord_(record, HV_SCHEMA[table]);
 }
 
+// Penghapusan nyata hanya untuk master; relasi transaksi tidak boleh menjadi yatim.
+function deleteMaster_(user, data) {
+  const table = data.table;
+  if (!Object.prototype.hasOwnProperty.call(HV_MASTER_ROLES, table) ||
+    !HV_MASTER_ROLES[table].includes(user.role)) {
+    throw new Error('Anda tidak berwenang menghapus tabel ini.');
+  }
+  if (data.confirmed !== true) { throw new Error('Konfirmasi penghapusan diperlukan.'); }
+  const record = rows_(table).find(function (row) { return row.id === data.id; });
+  if (!record) { throw new Error('Record tidak ditemukan. Perbarui data terlebih dahulu.'); }
+  const referenced = function (name, field) {
+    return rows_(name).some(function (row) { return row[field] === record.id; });
+  };
+  let inUse = false;
+  if (table === 'Categories') { inUse = referenced('Products', 'categoryId'); }
+  if (table === 'Products') {
+    inUse = ['ReadyStock', 'PreorderCapacity', 'Discounts', 'OrderItems', 'StockLedger']
+      .some(function (name) { return referenced(name, 'productId'); }) ||
+      rows_('Orders').some(function (order) {
+        return JSON.parse(order.snapshotJson).items.some(function (item) { return item.productId === record.id; });
+      });
+  }
+  if (table === 'ServiceAreas') { inUse = referenced('Orders', 'areaId'); }
+  if (['ReadyStock', 'PreorderCapacity'].includes(table)) {
+    inUse = referenced('StockLedger', 'poolId') || rows_('Orders').some(function (order) {
+      return JSON.parse(order.snapshotJson).items.some(function (item) { return item.poolId === record.id; });
+    });
+  }
+  if (inUse) {
+    throw new Error('Record masih dipakai oleh produk, stok, atau pesanan. Hapus relasi master yang tidak dipakai dahulu, atau gunakan Edit untuk menonaktifkan data.');
+  }
+  if (table === 'Users') {
+    if (record.id === user.id) { throw new Error('Akun yang sedang Anda gunakan tidak boleh dihapus.'); }
+    if (record.role === 'Admin' && active_(record.active) && !rows_('Users').some(function (row) {
+      return row.id !== record.id && row.role === 'Admin' && active_(row.active);
+    })) {
+      throw new Error('Admin aktif terakhir tidak boleh dihapus.');
+    }
+    // Sesi akun yang dihapus tidak boleh tetap dipakai.
+    rows_('Sessions').filter(function (row) { return row.userId === record.id; }).forEach(function (session) {
+      patch_('Sessions', session, { revoked: true });
+    });
+  }
+  // Nomor baris dibaca ulang di bawah lock API, bukan dipercaya dari browser.
+  const sheet = database_().getSheetByName(table);
+  sheet.deleteRow(record._row);
+  audit_(user, 'DELETE_' + table, record.id, 'Baris master dihapus.');
+  return { id: record.id, deleted: true };
+}
+
 // Pengaturan operasional dapat disimpan belum lengkap, tetapi toko tidak dibuka.
 function saveSettings_(user, data) {
   const values = data.values || {};
