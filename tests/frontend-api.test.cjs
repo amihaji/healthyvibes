@@ -2563,13 +2563,16 @@ test('Setup Produk menyediakan pilihan Satuan dan Ukuran untuk tambah serta edit
   assert.ok(empty.includes('name="sizeUnit"'));
   assert.ok(empty.includes('name="sizeValue" type="number"'));
   assert.ok(empty.includes('step="any"'));
-  for (const option of ['Biji', 'Slace', 'Paket', 'ml', 'gr']) {
+  for (const option of ['Biji', 'Slice', 'Paket', 'ml', 'gr']) {
     assert.ok(empty.includes('<option value="' + option + '">' + option + '</option>'));
   }
   assert.ok(empty.includes('<option value="" selected>Pilih satuan</option>'));
   assert.ok(empty.includes('<option value="" selected>Pilih ukuran</option>'));
-  const edited = context.masterFields('Products', { unit: 'Slace', sizeUnit: 'gr', sizeValue: 100 });
-  assert.ok(edited.includes('<option value="Slace" selected>Slace</option>'));
+  const edited = context.masterFields('Products', { unit: 'Slice', sizeUnit: 'gr', sizeValue: 100 });
+  assert.ok(edited.includes('<option value="Slice" selected>Slice</option>'));
+  assert.ok(!empty.includes('Slace'));
+  assert.ok(context.masterFields('Products', { unit: 'Slace' })
+    .includes('<option value="Slice" selected>Slice</option>'));
   assert.ok(edited.includes('<option value="gr" selected>gr</option>'));
   assert.ok(edited.includes('value="100"'));
   assert.ok(empty.includes('col-sm-4'));
@@ -2581,7 +2584,7 @@ test('Satuan dan Ukuran tersimpan serta dikembalikan saat tambah atau edit produ
   tables.Categories.push({ id: 'cat', name: 'Makanan', active: true });
   const user = { id: 'admin1', role: 'Admin' };
   const base = { name: 'Produk Uji', categoryId: 'cat', price: 10000, active: true };
-  for (const unit of ['Biji', 'Slace', 'Paket']) {
+  for (const unit of ['Biji', 'Slice', 'Paket']) {
     for (const sizeUnit of ['ml', 'gr']) {
       const result = context.saveMaster_(user, { table: 'Products', record: { ...base, unit, sizeUnit } });
       assert.equal(result.unit, unit);
@@ -2608,7 +2611,7 @@ test('Backend menolak pilihan produk di luar daftar tanpa mengubah data', functi
   tables.Categories.push({ id: 'cat', active: true });
   const before = JSON.stringify(tables.Products);
   for (const invalid of [
-    { unit: 'Kg' }, { unit: 'Slice' }, { unit: 'biji' }, { unit: ['Biji', 'Paket'] },
+    { unit: 'Kg' }, { unit: 'slice' }, { unit: 'biji' }, { unit: ['Biji', 'Paket'] },
     { sizeUnit: 'kg' }, { sizeUnit: 'ML' }, { sizeUnit: 100 }, { sizeUnit: null }
   ]) {
     assert.throws(() => context.saveMaster_({ id: 'admin1', role: 'Admin' }, {
@@ -2699,4 +2702,49 @@ test('Migrasi nilai ukuran mempertahankan pilihan Satuan dan Ukuran yang sudah t
   assert.deepEqual(headers, expected);
   assert.equal(JSON.stringify(product), before);
   assert.equal(product[expected.indexOf('sizeValue')], undefined);
+});
+
+test('Ejaan Slace dari data atau client lama disimpan kembali sebagai Slice', function () {
+  const { context, tables } = shippingContext();
+  tables.Categories.push({ id: 'cat', active: true });
+  tables.Products[0].unit = 'Slace';
+  const base = { id: 'p1', name: 'Produk', categoryId: 'cat', price: 10000 };
+  const user = { id: 'admin1', role: 'Admin' };
+  assert.equal(context.saveMaster_(user, { table: 'Products', record: base }).unit, 'Slice');
+  assert.equal(tables.Products[0].unit, 'Slice');
+  assert.equal(context.saveMaster_(user, { table: 'Products',
+    record: { ...base, unit: 'Slace' } }).unit, 'Slice');
+});
+
+test('Migrasi ejaan hanya mengoreksi sel Slace dan aman dijalankan ulang', function () {
+  const context = setupContext('owner@test', 'owner@test');
+  const headers = Array.from(vm.runInContext('HV_SCHEMA.Products', context));
+  const column = headers.indexOf('unit') + 1;
+  const data = [
+    headers, ['p1', 'cat', 'Produk 1', '', 10000, '', true, '', 'Slace', 'gr', 100],
+    ['p2', 'cat', 'Produk 2', '', 20000, '', true, '', 'Paket', 'ml', 250],
+    ['p3', 'cat', 'Produk 3', '', 30000, '', true, '', 'Slice', 'gr', 50]
+  ];
+  const expected = structuredClone(data);
+  expected[1][column - 1] = 'Slice';
+  let writes = 0;
+  const sheet = {
+    getLastRow: () => data.length, getLastColumn: () => headers.length,
+    getRange: (row, col, height = 1, width = 1) => ({
+      getValues: () => data.slice(row - 1, row - 1 + height).map(line => line.slice(col - 1, col - 1 + width)),
+      setValue: value => {
+        assert.equal(col, column);
+        data[row - 1][col - 1] = value;
+        writes += 1;
+      }
+    })
+  };
+  const db = { getSheetByName: () => sheet };
+  assert.equal(context.normalizeProductUnits_(db), 1);
+  assert.equal(context.normalizeProductUnits_(db), 0);
+  assert.equal(writes, 1);
+  assert.deepEqual(data, expected);
+  assert.equal(context.normalizeProductUnits_({ getSheetByName: () => null }), 0);
+  assert.ok(source('apps-script/Schema.gs').includes('normalizeProductUnits_(db);'));
+  assert.ok(source('apps-script/Recovery.gs').includes('normalizeProductUnits_(db);'));
 });

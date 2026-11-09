@@ -9,7 +9,7 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | --- | --- | --- |
 | Settings | Identitas dan aturan toko | `key` unik; rahasia tidak disimpan di sini. |
 | Categories | Kategori produk | `id` dirujuk Products. Nonaktif, bukan hapus transaksi. |
-| Products | Nama, kategori, harga, deskripsi, foto, satuan, ukuran | `photoFileId` menunjuk PRODUK; `unit`: Biji/Slace/Paket; `sizeUnit`: ml/gr; `sizeValue`: nilai ukuran. |
+| Products | Nama, kategori, harga, deskripsi, foto, satuan, ukuran | `photoFileId` menunjuk PRODUK; `unit`: Biji/Slice/Paket; `sizeUnit`: ml/gr; `sizeValue`: nilai ukuran. |
 | Discounts | Diskon per produk dan periode | Admin/Operator dengan hak menu; periode aktif tidak bertumpuk. |
 | Vouchers | Kode, nilai, minimum, maksimum, masa berlaku | Kode unik; tidak ada kuota penggunaan. |
 | ReadyStock | Kapasitas total stok siap jual | Satu baris per produk; tidak dicampur preorder. |
@@ -103,7 +103,10 @@ Panduan lengkap tersedia di `panduan-setup-user.md`.
 
 ## Pembaruan Setup Produk
 
-Setup Produk memiliki pilihan Satuan (Biji, Slace, Paket) dan Ukuran (ml, gr).
+Setup Produk memiliki pilihan Satuan (Biji, Slice, Paket) dan Ukuran (ml, gr).
+Slice berarti irisan/potongan. Installer juga mengoreksi satuan lama `Slace`
+menjadi `Slice` tanpa mengubah kolom lain; koreksi yang sama diterapkan pada
+salinan restore backup dan saat produk lama disimpan kembali.
 Nilai ukuran dapat diisi bersama unitnya, misalnya 100 gr atau 250 ml.
 Angka harus positif (boleh desimal), maksimal 1000000000; nilai yang terisi
 wajib disertai pilihan ml/gr. Kolom teknis `unit`, `sizeUnit`, dan `sizeValue`

@@ -1390,8 +1390,8 @@
       html += field('Harga rupiah', 'price', row.price, 'number');
       html += '<div class="row"><div class="col-sm-4">' +
         selectField('Satuan', 'unit', [
-          ['', 'Pilih satuan'], ['Biji', 'Biji'], ['Slace', 'Slace'], ['Paket', 'Paket']
-        ], row.unit || '') + '</div><div class="col-sm-4">' +
+          ['', 'Pilih satuan'], ['Biji', 'Biji'], ['Slice', 'Slice'], ['Paket', 'Paket']
+        ], row.unit === 'Slace' ? 'Slice' : row.unit || '') + '</div><div class="col-sm-4">' +
         '<div class="mb-3"><label class="form-label" for="f-sizeValue">Nilai ukuran</label>' +
         '<input class="form-control" id="f-sizeValue" name="sizeValue" type="number" ' +
         'inputmode="decimal" min="0" max="1000000000" step="any" placeholder="Contoh: 100" ' +
@@ -1503,7 +1503,8 @@
           const value = table === 'Products' && key === 'sizeUnit'
             ? [row.sizeValue, row.sizeUnit].filter(function (part) {
               return part !== '' && part !== undefined && part !== null;
-            }).join(' ') : product ? product.name : row[key];
+            }).join(' ') : table === 'Products' && key === 'unit' && row.unit === 'Slace'
+              ? 'Slice' : product ? product.name : row[key];
           return '<td>' + safe(masterText(key, value)) + '</td>';
         }).join('') + '<td class="record-action-cell">' + (editable ? '<div class="record-actions">' +
           iconButton('edit', 'Edit ' + tableLabels[table], 'data-edit="' + safe(row.id) +

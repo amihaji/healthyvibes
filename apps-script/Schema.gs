@@ -183,6 +183,7 @@ function installHealthyVibes_() {
     extendAccountSchema_(db);
     extendOrderAccountSchema_(db);
     extendSchemaColumns_(db, 'Products');
+    normalizeProductUnits_(db);
 
     Object.keys(HV_SCHEMA).forEach(function (name) {
       const headers = HV_SCHEMA[name];
@@ -325,4 +326,21 @@ function removeLegacyOrders_(db) {
   });
   result.columns = removeLegacyOrderAccessColumn_(db);
   return result;
+}
+
+// Koreksi ejaan hanya pada sel Satuan, tanpa menulis ulang data produk lain.
+function normalizeProductUnits_(db) {
+  const sheet = db.getSheetByName('Products');
+  if (!sheet || sheet.getLastRow() < 2) { return 0; }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const column = headers.indexOf('unit') + 1;
+  if (!column) { return 0; }
+  let changed = 0;
+  sheet.getRange(2, column, sheet.getLastRow() - 1, 1).getValues().forEach(function (row, index) {
+    if (row[0] === 'Slace') {
+      sheet.getRange(index + 2, column).setValue('Slice');
+      changed += 1;
+    }
+  });
+  return changed;
 }
