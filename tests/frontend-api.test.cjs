@@ -2563,13 +2563,15 @@ test('Setup Produk menyediakan pilihan Satuan dan Ukuran untuk tambah serta edit
   assert.ok(empty.includes('name="sizeUnit"'));
   assert.ok(empty.includes('name="sizeValue" type="number"'));
   assert.ok(empty.includes('step="any"'));
-  for (const option of ['Biji', 'Slice', 'Paket', 'ml', 'gr']) {
+  for (const option of ['Biji', 'Slice', 'Paket', 'Loyang', 'ml', 'gr']) {
     assert.ok(empty.includes('<option value="' + option + '">' + option + '</option>'));
   }
   assert.ok(empty.includes('<option value="" selected>Pilih satuan</option>'));
   assert.ok(empty.includes('<option value="" selected>Pilih ukuran</option>'));
   const edited = context.masterFields('Products', { unit: 'Slice', sizeUnit: 'gr', sizeValue: 100 });
   assert.ok(edited.includes('<option value="Slice" selected>Slice</option>'));
+  assert.ok(context.masterFields('Products', { unit: 'Loyang' })
+    .includes('<option value="Loyang" selected>Loyang</option>'));
   assert.ok(!empty.includes('Slace'));
   assert.ok(context.masterFields('Products', { unit: 'Slace' })
     .includes('<option value="Slice" selected>Slice</option>'));
@@ -2584,7 +2586,7 @@ test('Satuan dan Ukuran tersimpan serta dikembalikan saat tambah atau edit produ
   tables.Categories.push({ id: 'cat', name: 'Makanan', active: true });
   const user = { id: 'admin1', role: 'Admin' };
   const base = { name: 'Produk Uji', categoryId: 'cat', price: 10000, active: true };
-  for (const unit of ['Biji', 'Slice', 'Paket']) {
+  for (const unit of ['Biji', 'Slice', 'Paket', 'Loyang']) {
     for (const sizeUnit of ['ml', 'gr']) {
       const result = context.saveMaster_(user, { table: 'Products', record: { ...base, unit, sizeUnit } });
       assert.equal(result.unit, unit);
@@ -2593,11 +2595,11 @@ test('Satuan dan Ukuran tersimpan serta dikembalikan saat tambah atau edit produ
     }
   }
   const edited = context.saveMaster_(user, { table: 'Products',
-    record: { ...base, id: 'p1', unit: 'Paket', sizeUnit: 'gr' } });
-  assert.equal(edited.unit, 'Paket');
-  assert.equal(tables.Products[0].unit, 'Paket');
+    record: { ...base, id: 'p1', unit: 'Loyang', sizeUnit: 'gr' } });
+  assert.equal(edited.unit, 'Loyang');
+  assert.equal(tables.Products[0].unit, 'Loyang');
   const retryOldClient = context.saveMaster_(user, { table: 'Products', record: { ...base, id: 'p1' } });
-  assert.equal(retryOldClient.unit, 'Paket');
+  assert.equal(retryOldClient.unit, 'Loyang');
   assert.equal(retryOldClient.sizeUnit, 'gr');
   const cleared = context.saveMaster_(user, { table: 'Products',
     record: { ...base, id: 'p1', unit: '', sizeUnit: '' } });

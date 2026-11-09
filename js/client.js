@@ -1390,7 +1390,7 @@
       html += field('Harga rupiah', 'price', row.price, 'number');
       html += '<div class="row"><div class="col-sm-4">' +
         selectField('Satuan', 'unit', [
-          ['', 'Pilih satuan'], ['Biji', 'Biji'], ['Slice', 'Slice'], ['Paket', 'Paket']
+          ['', 'Pilih satuan'], ['Biji', 'Biji'], ['Slice', 'Slice'], ['Paket', 'Paket'], ['Loyang', 'Loyang']
         ], row.unit === 'Slace' ? 'Slice' : row.unit || '') + '</div><div class="col-sm-4">' +
         '<div class="mb-3"><label class="form-label" for="f-sizeValue">Nilai ukuran</label>' +
         '<input class="form-control" id="f-sizeValue" name="sizeValue" type="number" ' +
