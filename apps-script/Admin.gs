@@ -45,8 +45,8 @@ function saveMaster_(user, data) {
     record.unit = text_(input.unit === undefined ? record.unit || '' : input.unit, 'Satuan', 20, true);
     record.sizeUnit = text_(input.sizeUnit === undefined ? record.sizeUnit || '' : input.sizeUnit, 'Ukuran', 20, true);
     if (record.unit === 'Slace') { record.unit = 'Slice'; }
-    if (record.unit && !['Biji', 'Slice', 'Paket', 'Loyang'].includes(record.unit)) {
-      throw new Error('Satuan harus Biji, Slice, Paket, atau Loyang.');
+    if (record.unit && !['Biji', 'Slice', 'Paket', 'Loyang', 'Cup', 'Botol'].includes(record.unit)) {
+      throw new Error('Satuan harus Biji, Slice, Paket, Loyang, Cup, atau Botol.');
     }
     if (record.sizeUnit && !['ml', 'gr'].includes(record.sizeUnit)) {
       throw new Error('Ukuran harus ml atau gr.');

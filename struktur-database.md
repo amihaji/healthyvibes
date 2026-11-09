@@ -9,7 +9,7 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | --- | --- | --- |
 | Settings | Identitas dan aturan toko | `key` unik; rahasia tidak disimpan di sini. |
 | Categories | Kategori produk | `id` dirujuk Products. Nonaktif, bukan hapus transaksi. |
-| Products | Nama, kategori, harga, deskripsi, foto, satuan, ukuran | `photoFileId` menunjuk PRODUK; `unit`: Biji/Slice/Paket/Loyang; `sizeUnit`: ml/gr; `sizeValue`: nilai ukuran. |
+| Products | Nama, kategori, harga, deskripsi, foto, satuan, ukuran | `photoFileId` menunjuk PRODUK; `unit`: Biji/Slice/Paket/Loyang/Cup/Botol; `sizeUnit`: ml/gr; `sizeValue`: nilai ukuran. |
 | Discounts | Diskon per produk dan periode | Admin/Operator dengan hak menu; periode aktif tidak bertumpuk. |
 | Vouchers | Kode, nilai, minimum, maksimum, masa berlaku | Kode unik; tidak ada kuota penggunaan. |
 | ReadyStock | Kapasitas total stok siap jual | Satu baris per produk; tidak dicampur preorder. |
@@ -103,7 +103,7 @@ Panduan lengkap tersedia di `panduan-setup-user.md`.
 
 ## Pembaruan Setup Produk
 
-Setup Produk memiliki pilihan Satuan (Biji, Slice, Paket, Loyang) dan Ukuran (ml, gr).
+Setup Produk memiliki pilihan Satuan (Biji, Slice, Paket, Loyang, Cup, Botol) dan Ukuran (ml, gr).
 Slice berarti irisan/potongan. Installer juga mengoreksi satuan lama `Slace`
 menjadi `Slice` tanpa mengubah kolom lain; koreksi yang sama diterapkan pada
 salinan restore backup dan saat produk lama disimpan kembali.

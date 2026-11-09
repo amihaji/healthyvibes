@@ -2563,7 +2563,7 @@ test('Setup Produk menyediakan pilihan Satuan dan Ukuran untuk tambah serta edit
   assert.ok(empty.includes('name="sizeUnit"'));
   assert.ok(empty.includes('name="sizeValue" type="number"'));
   assert.ok(empty.includes('step="any"'));
-  for (const option of ['Biji', 'Slice', 'Paket', 'Loyang', 'ml', 'gr']) {
+  for (const option of ['Biji', 'Slice', 'Paket', 'Loyang', 'Cup', 'Botol', 'ml', 'gr']) {
     assert.ok(empty.includes('<option value="' + option + '">' + option + '</option>'));
   }
   assert.ok(empty.includes('<option value="" selected>Pilih satuan</option>'));
@@ -2572,6 +2572,10 @@ test('Setup Produk menyediakan pilihan Satuan dan Ukuran untuk tambah serta edit
   assert.ok(edited.includes('<option value="Slice" selected>Slice</option>'));
   assert.ok(context.masterFields('Products', { unit: 'Loyang' })
     .includes('<option value="Loyang" selected>Loyang</option>'));
+  for (const unit of ['Cup', 'Botol']) {
+    assert.ok(context.masterFields('Products', { unit })
+      .includes('<option value="' + unit + '" selected>' + unit + '</option>'));
+  }
   assert.ok(!empty.includes('Slace'));
   assert.ok(context.masterFields('Products', { unit: 'Slace' })
     .includes('<option value="Slice" selected>Slice</option>'));
@@ -2586,7 +2590,7 @@ test('Satuan dan Ukuran tersimpan serta dikembalikan saat tambah atau edit produ
   tables.Categories.push({ id: 'cat', name: 'Makanan', active: true });
   const user = { id: 'admin1', role: 'Admin' };
   const base = { name: 'Produk Uji', categoryId: 'cat', price: 10000, active: true };
-  for (const unit of ['Biji', 'Slice', 'Paket', 'Loyang']) {
+  for (const unit of ['Biji', 'Slice', 'Paket', 'Loyang', 'Cup', 'Botol']) {
     for (const sizeUnit of ['ml', 'gr']) {
       const result = context.saveMaster_(user, { table: 'Products', record: { ...base, unit, sizeUnit } });
       assert.equal(result.unit, unit);
@@ -2594,8 +2598,19 @@ test('Satuan dan Ukuran tersimpan serta dikembalikan saat tambah atau edit produ
       assert.equal(tables.Products.find(row => row.id === result.id).sizeUnit, sizeUnit);
     }
   }
+  for (const unit of ['Cup', 'Botol']) {
+    const updated = context.saveMaster_(user, { table: 'Products',
+      record: { ...base, id: 'p1', unit, sizeUnit: 'ml', sizeValue: 250 } });
+    assert.equal(updated.unit, unit);
+    assert.equal(tables.Products[0].unit, unit);
+    assert.equal(updated.sizeValue, 250);
+    const retained = context.saveMaster_(user, { table: 'Products', record: { ...base, id: 'p1' } });
+    assert.equal(retained.unit, unit);
+    assert.equal(retained.sizeUnit, 'ml');
+    assert.equal(retained.sizeValue, 250);
+  }
   const edited = context.saveMaster_(user, { table: 'Products',
-    record: { ...base, id: 'p1', unit: 'Loyang', sizeUnit: 'gr' } });
+    record: { ...base, id: 'p1', unit: 'Loyang', sizeUnit: 'gr', sizeValue: '' } });
   assert.equal(edited.unit, 'Loyang');
   assert.equal(tables.Products[0].unit, 'Loyang');
   const retryOldClient = context.saveMaster_(user, { table: 'Products', record: { ...base, id: 'p1' } });
