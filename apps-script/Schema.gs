@@ -4,10 +4,10 @@
  */
 const HV_SCHEMA = {
   Settings: ['key', 'value'],
-  Categories: ['id', 'name', 'active', 'updatedAt'],
+  Categories: ['id', 'name', 'active', 'updatedAt', 'code', 'productPrefix'],
   Products: [
     'id', 'categoryId', 'name', 'description', 'price',
-    'photoFileId', 'active', 'updatedAt', 'unit', 'sizeUnit', 'sizeValue'
+    'photoFileId', 'active', 'updatedAt', 'unit', 'sizeUnit', 'sizeValue', 'code'
   ],
   Discounts: [
     'id', 'productId', 'type', 'value', 'startsAt', 'endsAt', 'active'
@@ -182,6 +182,7 @@ function installHealthyVibes_() {
     removeLegacyOrderAccessColumn_(db);
     extendAccountSchema_(db);
     extendOrderAccountSchema_(db);
+    extendSchemaColumns_(db, 'Categories');
     extendSchemaColumns_(db, 'Products');
     normalizeProductUnits_(db);
 
@@ -217,6 +218,7 @@ function installHealthyVibes_() {
       sheet.autoResizeColumns(1, headers.length);
     });
 
+    assignMasterCodes_(db);
     const existing = rows_('Settings');
     Object.keys(HV_DEFAULTS).forEach(function (key) {
       if (!existing.some(function (row) { return row.key === key; })) {
@@ -343,4 +345,92 @@ function normalizeProductUnits_(db) {
     }
   });
   return changed;
+}
+
+// Counter disimpan per database dan awalan; ID internal dan relasi tidak berubah.
+function nextMasterCode_(prefix, width, records, scope) {
+  if (!LockService.getScriptLock().hasLock()) { throw new Error('Kode harus dibuat dalam lock transaksi.'); }
+  const props = PropertiesService.getScriptProperties();
+  const key = 'MASTER_CODE_' + scope + '_' + prefix;
+  const stored = props.getProperty(key);
+  if (stored && !/^\d+$/.test(stored)) { throw new Error('Counter kode tidak valid.'); }
+  let maximum = Number(stored || 0);
+  const pattern = new RegExp('^' + prefix + '(\\d{' + width + ',})$');
+  records.forEach(function (row) {
+    const match = String(row.code || '').match(pattern);
+    if (match) { maximum = Math.max(maximum, Number(match[1])); }
+  });
+  const next = maximum + 1;
+  if (!Number.isSafeInteger(next) || next <= 0) { throw new Error('Counter kode tidak valid.'); }
+  props.setProperty(key, String(next));
+  return prefix + String(next).padStart(width, '0');
+}
+
+function productPrefix_(name, categories) {
+  const letters = String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z]/g, '');
+  const preferred = (letters + 'PR').slice(0, 2);
+  const used = categories.map(function (row) { return row.productPrefix; });
+  if (!used.includes(preferred)) { return preferred; }
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // Awalan yang berbenturan memakai kombinasi berikutnya yang belum digunakan.
+  const firsts = preferred[0] + alphabet;
+  for (const first of firsts) {
+    for (const second of alphabet) {
+      if (!used.includes(first + second)) { return first + second; }
+    }
+  }
+  throw new Error('Awalan produk sudah penuh.');
+}
+
+function assignMasterCodes_(db) {
+  const read = function (name) {
+    const sheet = db.getSheetByName(name);
+    if (!sheet || sheet.getLastRow() < 2) { return []; }
+    return sheet.getRange(2, 1, sheet.getLastRow() - 1, HV_SCHEMA[name].length).getValues()
+      .map(function (values, index) {
+        const row = { _row: index + 2 };
+        HV_SCHEMA[name].forEach(function (key, col) { row[key] = values[col]; });
+        return row;
+      }).filter(function (row) { return !!row.id; });
+  };
+  const categories = read('Categories');
+  const products = read('Products');
+  const changes = [];
+  const validate = function (records, field, pattern) {
+    const seen = [];
+    records.forEach(function (row) {
+      if (!row[field]) { return; }
+      if (!pattern.test(row[field]) || seen.includes(row[field])) {
+        throw new Error('Kode atau awalan ' + field + ' tidak valid/duplikat. Migrasi dihentikan.');
+      }
+      seen.push(row[field]);
+    });
+  };
+  validate(categories, 'code', /^HV\d{2,}$/);
+  validate(categories, 'productPrefix', /^[A-Z]{2}$/);
+  validate(products, 'code', /^[A-Z]{2}\d{3,}$/);
+  products.forEach(function (row) {
+    if (!categories.some(function (category) { return category.id === row.categoryId; })) {
+      throw new Error('Kategori produk ' + row.name + ' tidak ditemukan. Migrasi dihentikan.');
+    }
+  });
+  const set = function (table, row, key, value) {
+    row[key] = value;
+    changes.push({ table: table, row: row._row, column: HV_SCHEMA[table].indexOf(key) + 1, value: value });
+  };
+  categories.forEach(function (row) {
+    if (!row.code) { set('Categories', row, 'code', nextMasterCode_('HV', 2, categories, db.getId())); }
+    if (!row.productPrefix) { set('Categories', row, 'productPrefix', productPrefix_(row.name, categories)); }
+  });
+  products.forEach(function (row) {
+    if (!row.code) {
+      const category = categories.find(function (item) { return item.id === row.categoryId; });
+      set('Products', row, 'code', nextMasterCode_(category.productPrefix, 3, products, db.getId()));
+    }
+  });
+  changes.forEach(function (change) {
+    db.getSheetByName(change.table).getRange(change.row, change.column).setValue(change.value);
+  });
+  return { updatedCells: changes.length };
 }

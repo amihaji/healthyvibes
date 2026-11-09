@@ -1389,7 +1389,7 @@ test('Retry pesanan mempertahankan nomor lama tanpa mengambil urutan baru', func
   assert.throws(() => context.createOrder_(data), /akun Konsumen/);
   assert.throws(() => context.createOrder_(data, { id: 'other', role: 'Konsumen' }), /data berbeda/);
   assert.equal(properties.size, 0);
-  assert.ok(source('apps-script/Files.gs').includes("const name = order.id + '.pdf';"));
+  assert.ok(source('apps-script/Files.gs').includes("const name = 'NO-' + order.id + '.pdf';"));
 });
 
 test('Pembuatan pesanan menyimpan nomor baru dan retry tidak menaikkan counter', function () {
@@ -1726,7 +1726,9 @@ function handoverContext() {
   });
   context.folder_ = kind => {
     assert.equal(kind, 'TANDATERIMA');
-    return { getFiles: () => ({ hasNext: () => false }), createFile: () => ({ getId: () => 'private-proof-id' }) };
+    return { getFiles: () => ({ hasNext: () => false }), createFile: () => ({
+      getId: () => 'private-proof-id', setDescription() {}, setName() {}
+    }) };
   };
   return { ...fixture, files, data: {
     orderId: fixture.order.id, accessToken: 'oldKey1234', received: true,
@@ -1812,6 +1814,7 @@ test('Form tanda terima memakai endpoint akun tanpa mengirim kunci privat', asyn
 // Seluruh transaksi ongkir memakai Sheets/Drive tiruan, bukan layanan produksi.
 function shippingContext() {
   const { context, properties } = orderNumberContext();
+  properties.set('DATABASE_ID', 'testdb');
   for (const file of ['Schema.gs', 'Admin.gs', 'Api.gs', 'Files.gs']) {
     vm.runInContext(source('apps-script/' + file), context);
   }
@@ -1990,16 +1993,18 @@ test('Invoice dan laporan merinci ongkir dari snapshot tanpa mengubah jumlah pem
   const { context, tables, data } = shippingContext();
   const customer = context.createOrder_(data);
   let html = '';
+  let pdfName = '';
   context.Utilities = {
     formatDate: () => '05/11/2026 15:00',
     newBlob: text => {
       html = text;
-      return { getAs: () => ({ setName: () => ({}) }) };
+      return { getAs: () => ({ setName: name => { pdfName = name; return {}; } }) };
     }
   };
   context.folder_ = () => ({ getFilesByName: () => ({ hasNext: () => false }),
     createFile: () => ({ getId: () => 'invoice-id' }) });
   context.invoice_(tables.Orders[0]);
+  assert.equal(pdfName, 'NO-' + customer.id + '.pdf');
   assert.ok(html.includes('Total produk: Rp 45000'));
   assert.ok(html.includes('Pengiriman Gojek: Rp 10000'));
   assert.ok(html.includes('Total pembayaran: Rp 55000'));
@@ -2014,6 +2019,8 @@ test('Invoice dan laporan merinci ongkir dari snapshot tanpa mengubah jumlah pem
 
 test('Installer menambah ShippingRates tanpa mengganti database, folder, atau isi tabel lama', function () {
   const context = setupContext('owner@example.com', 'owner@example.com');
+  // Migrasi kode diuji terpisah dengan adapter Sheet lengkap.
+  context.assignMasterCodes_ = () => ({ updatedCells: 0 });
   const schema = vm.runInContext('HV_SCHEMA', context);
   const sheets = new Map();
   const makeSheet = rows => ({
@@ -2249,7 +2256,7 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
     window: {}, document: { getElementById: id => elements[id] }, safe: String,
     tableLabels: { Products: 'Produk' }, masterText: (key, value) => value,
     state: { user: { role: 'Admin' }, admin: { tables: { Products: [
-      { id: 'p1', name: 'Produk Uji', unit: 'Paket', sizeUnit: 'gr', sizeValue: 100 }
+      { id: 'p1', name: 'Produk Uji', unit: 'Paket', sizeUnit: 'gr', sizeValue: 100, code: 'SN001' }
     ] } } }
   });
   vm.runInContext(source('js/icons.js'), context);
@@ -2262,6 +2269,9 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   context.renderMaster('Products');
   const html = elements['admin-body'].innerHTML;
   assert.ok(html.includes('<th>Satuan</th>'));
+  assert.ok(html.includes('<th>ID Produk</th>'));
+  assert.ok(html.includes('<thead><tr><th>ID Produk</th>'));
+  assert.ok(html.includes('<td>SN001</td>'));
   assert.ok(html.includes('<th>Ukuran</th>'));
   assert.ok(html.includes('<td>Paket</td>'));
   assert.ok(html.includes('<td>100 gr</td>'));
@@ -2563,6 +2573,13 @@ test('Setup Produk menyediakan pilihan Satuan dan Ukuran untuk tambah serta edit
   assert.ok(empty.includes('name="sizeUnit"'));
   assert.ok(empty.includes('name="sizeValue" type="number"'));
   assert.ok(empty.includes('step="any"'));
+  assert.ok(empty.includes('ID Produk</label>'));
+  assert.ok(empty.includes('id="master-code" type="text" readonly'));
+  assert.ok(!empty.includes('name="code"'));
+  const categoryForm = context.masterFields('Categories', { code: 'HV01', productPrefix: 'SN' });
+  assert.ok(categoryForm.includes('ID Kategori</label>'));
+  assert.ok(categoryForm.includes('value="HV01"'));
+  assert.ok(categoryForm.includes('maxlength="2" readonly'));
   for (const option of ['Biji', 'Slice', 'Paket', 'Loyang', 'Cup', 'Botol', 'ml', 'gr']) {
     assert.ok(empty.includes('<option value="' + option + '">' + option + '</option>'));
   }
@@ -2642,7 +2659,7 @@ test('Backend menolak pilihan produk di luar daftar tanpa mengubah data', functi
 test('Migrasi Products menambahkan kolom kanan tanpa mengubah produk lama dan aman diulang', function () {
   const context = setupContext('owner@test', 'owner@test');
   const expected = Array.from(vm.runInContext('HV_SCHEMA.Products', context));
-  const original = expected.slice(0, -3);
+  const original = expected.slice(0, -4);
   let headers = original.slice();
   let columns = original.length;
   const product = ['p1', 'cat', 'Produk Lama', 'Deskripsi', 10000, 'photo1', true, '2026-11-09'];
@@ -2659,7 +2676,7 @@ test('Migrasi Products menambahkan kolom kanan tanpa mengubah produk lama dan am
   context.extendSchemaColumns_(db, 'Products');
   context.extendSchemaColumns_(db, 'Products');
   assert.deepEqual(headers, expected);
-  assert.deepEqual(headers.slice(-3), ['unit', 'sizeUnit', 'sizeValue']);
+  assert.deepEqual(headers.slice(-4), ['unit', 'sizeUnit', 'sizeValue', 'code']);
   assert.equal(columns, expected.length);
   assert.equal(JSON.stringify(product), before);
   assert.ok(source('apps-script/Schema.gs').includes("extendSchemaColumns_(db, 'Products')"));
@@ -2706,7 +2723,7 @@ test('Nilai ukuran tidak valid atau tanpa ml/gr ditolak tanpa mengubah produk', 
 test('Migrasi nilai ukuran mempertahankan pilihan Satuan dan Ukuran yang sudah terisi', function () {
   const context = setupContext('owner@test', 'owner@test');
   const expected = Array.from(vm.runInContext('HV_SCHEMA.Products', context));
-  let headers = expected.slice(0, -1);
+  let headers = expected.slice(0, -2);
   const product = ['p1', 'cat', 'Produk', '', 10000, 'photo1', true, '', 'Paket', 'gr'];
   const before = JSON.stringify(product);
   const sheet = {
@@ -2764,4 +2781,175 @@ test('Migrasi ejaan hanya mengoreksi sel Slace dan aman dijalankan ulang', funct
   assert.equal(context.normalizeProductUnits_({ getSheetByName: () => null }), 0);
   assert.ok(source('apps-script/Schema.gs').includes('normalizeProductUnits_(db);'));
   assert.ok(source('apps-script/Recovery.gs').includes('normalizeProductUnits_(db);'));
+});
+
+test('Kode kategori dan produk otomatis, unik, stabil, dan tidak memakai ulang nomor terhapus', function () {
+  const { context, tables } = shippingContext();
+  tables.Categories.length = 0;
+  tables.Products.length = 0;
+  const user = { id: 'admin1', role: 'Admin' };
+  const categories = ['Snack', 'Smoothies', 'Drik'].map(name =>
+    context.saveMaster_(user, { table: 'Categories', record: { name } }));
+  assert.deepEqual(categories.map(row => row.code), ['HV01', 'HV02', 'HV03']);
+  assert.deepEqual(categories.map(row => row.productPrefix), ['SN', 'SM', 'DR']);
+  const create = (category, name) => context.saveMaster_(user, { table: 'Products',
+    record: { name, categoryId: category.id, price: 10000, code: 'PALSU' } });
+  const snack = create(categories[0], 'Wafel rasa keju');
+  assert.equal(snack.code, 'SN001');
+  assert.equal(create(categories[1], 'Smoothies Vanila').code, 'SM001');
+  assert.equal(create(categories[2], 'Vanila Drink').code, 'DR001');
+  const second = create(categories[0], 'Wafel Coklat');
+  assert.equal(second.code, 'SN002');
+  tables.Products.splice(tables.Products.findIndex(row => row.id === second.id), 1);
+  assert.equal(create(categories[0], 'Wafel Baru').code, 'SN003');
+  const edited = context.saveMaster_(user, { table: 'Products',
+    record: { id: snack.id, name: 'Nama Baru', price: 11000, categoryId: categories[1].id, code: 'SM999' } });
+  assert.equal(edited.id, snack.id);
+  assert.equal(edited.code, 'SN001');
+  const clash = context.saveMaster_(user, { table: 'Categories', record: { name: 'Snack Baru' } });
+  assert.equal(clash.code, 'HV04');
+  assert.notEqual(clash.productPrefix, 'SN');
+  assert.throws(() => context.saveMaster_(user, { table: 'Categories',
+    record: { name: 'Kategori Lain', productPrefix: 'SN' } }), /Awalan produk/);
+  assert.throws(() => context.saveMaster_(user, { table: 'Categories',
+    record: { id: categories[0].id, name: 'Snack Renamed', productPrefix: 'XX' } }), /tidak dapat diubah/);
+});
+
+test('Allocator kode memakai maksimum data/counter serta menolak tanpa lock dan counter rusak', function () {
+  const { context, properties } = shippingContext();
+  assert.equal(context.nextMasterCode_('SN', 3, [{ code: 'SN009' }], 'testdb'), 'SN010');
+  assert.equal(context.nextMasterCode_('SN', 3, [], 'testdb'), 'SN011');
+  properties.set('MASTER_CODE_testdb_SN', 'rusak');
+  assert.throws(() => context.nextMasterCode_('SN', 3, [], 'testdb'), /Counter/);
+  context.LockService = { getScriptLock: () => ({ hasLock: () => false }) };
+  assert.throws(() => context.nextMasterCode_('HV', 2, [], 'testdb'), /lock transaksi/);
+});
+
+test('Migrasi kode mengisi hanya kolom baru, mempertahankan relasi, dan aman diulang', function () {
+  const { context } = shippingContext();
+  const schema = vm.runInContext('HV_SCHEMA', context);
+  const data = {
+    Categories: [Array.from(schema.Categories), ['cat-old', 'Snack', true, 'waktu-lama', '', '']],
+    Products: [Array.from(schema.Products),
+      ['product-old', 'cat-old', 'Wafel', 'Deskripsi', 10000, 'photo-old', true, 'lama', 'Biji', 'gr', 100, '']]
+  };
+  let writes = 0;
+  const db = { getId: () => 'staging-db', getSheetByName: table => ({
+    getLastRow: () => data[table].length,
+    getRange: (row, column, height = 1, width = 1) => ({
+      getValues: () => data[table].slice(row - 1, row - 1 + height)
+        .map(line => line.slice(column - 1, column - 1 + width)),
+      setValue: value => { data[table][row - 1][column - 1] = value; writes += 1; }
+    })
+  }) };
+  const productBefore = data.Products[1].slice(0, -1);
+  const categoryBefore = data.Categories[1].slice(0, -2);
+  assert.equal(context.assignMasterCodes_(db).updatedCells, 3);
+  assert.deepEqual(data.Categories[1].slice(-2), ['HV01', 'SN']);
+  assert.equal(data.Products[1].at(-1), 'SN001');
+  assert.deepEqual(data.Products[1].slice(0, -1), productBefore);
+  assert.deepEqual(data.Categories[1].slice(0, -2), categoryBefore);
+  assert.equal(context.assignMasterCodes_(db).updatedCells, 0);
+  assert.equal(writes, 3);
+  data.Categories.push(['cat2', 'Snack2', true, '', 'HV01', 'XX']);
+  assert.throws(() => context.assignMasterCodes_(db), /duplikat/);
+  assert.equal(writes, 3);
+  data.Categories.pop();
+  data.Products[1][1] = 'category-missing';
+  assert.throws(() => context.assignMasterCodes_(db), /tidak ditemukan/);
+  assert.equal(writes, 3);
+});
+
+function namedUploadContext(kind) {
+  const fixture = shippingContext();
+  const { context, tables } = fixture;
+  tables.Products[0].code = 'SN001';
+  tables.Products[0].name = 'Wafel rasa keju';
+  tables.Orders.push({ id: 'HV-091126-0001', fulfillment: 'READY', receipt: 'PICKUP' });
+  const driveFiles = [];
+  context.imageBlob_ = () => ({
+    name: '', getBytes: () => Array(32).fill(0),
+    setName(name) { this.name = name; return this; }
+  });
+  context.folder_ = () => ({
+    getFiles: () => {
+      let i = 0;
+      return { hasNext: () => i < driveFiles.length, next: () => driveFiles[i++] };
+    },
+    createFile: blob => {
+      const id = 'file-' + (driveFiles.length + 1);
+      const file = {
+        name: blob.name, description: '',
+        getId: () => id,
+        getName() { return this.name; }, getDescription() { return this.description; },
+        setName(value) { this.name = value; }, setDescription(value) { this.description = value; }
+      };
+      driveFiles.push(file);
+      return file;
+    }
+  });
+  context.accountOrderAccess_ = () => tables.Orders[0];
+  return { ...fixture, driveFiles, data: {
+    kind, productId: 'p1', orderId: 'HV-091126-0001', received: true,
+    requestId: 'upload1', mimeType: 'image/jpeg', base64: 'test'
+  } };
+}
+
+test('Nama foto mengikuti TT/BT atau ID Produk-NamaProduk dengan ekstensi sesuai MIME', function () {
+  for (const [kind, expected] of [
+    ['TANDATERIMA', 'TT-HV-091126-0001.jpg'],
+    ['STRUK', 'BT-HV-091126-0001.jpg'],
+    ['PRODUK', 'SN001-WafelRasaKeju.jpg']
+  ]) {
+    const { context, data, driveFiles } = namedUploadContext(kind);
+    const user = kind === 'TANDATERIMA' ? null : { id: 'admin1', role: 'Admin' };
+    const customer = kind === 'TANDATERIMA' ? { id: 'customer' } : null;
+    context.upload_(user, data, customer);
+    assert.equal(driveFiles[0].name, expected);
+    context.upload_(user, data, customer);
+    assert.equal(driveFiles.length, 1);
+  }
+  const { context, data, driveFiles } = namedUploadContext('STRUK');
+  data.mimeType = 'image/png';
+  context.upload_({ role: 'Admin' }, data);
+  assert.equal(driveFiles[0].name, 'BT-HV-091126-0001.png');
+});
+
+test('Retry upload bernama sederhana menemukan file jika penyimpanan metadata gagal', function () {
+  const { context, data, driveFiles, tables } = namedUploadContext('PRODUK');
+  const append = context.append_;
+  context.append_ = () => { throw new Error('Sheet terputus'); };
+  assert.throws(() => context.upload_({ role: 'Admin' }, data), /Sheet terputus/);
+  assert.equal(driveFiles.length, 1);
+  context.append_ = append;
+  context.upload_({ role: 'Admin' }, data);
+  assert.equal(driveFiles.length, 1);
+  assert.equal(tables.Files.length, 1);
+  assert.equal(driveFiles[0].name, 'SN001-WafelRasaKeju.jpg');
+  data.requestId = 'upload2';
+  context.upload_({ role: 'Admin' }, data);
+  assert.equal(driveFiles.length, 2);
+  assert.equal(tables.Files.length, 2);
+});
+
+test('Nama sementara memungkinkan retry jika penanda Drive gagal ditulis', function () {
+  const { context, data, driveFiles } = namedUploadContext('STRUK');
+  const folder = context.folder_();
+  const create = folder.createFile;
+  folder.createFile = blob => {
+    const file = create(blob);
+    let fail = true;
+    const set = file.setDescription;
+    file.setDescription = function (value) {
+      if (fail) { fail = false; throw new Error('Drive terputus'); }
+      set.call(this, value);
+    };
+    return file;
+  };
+  context.folder_ = () => folder;
+  assert.throws(() => context.upload_({ role: 'Admin' }, data), /Drive terputus/);
+  assert.ok(driveFiles[0].name.startsWith(context.digest_(data.requestId) + '-'));
+  context.upload_({ role: 'Admin' }, data);
+  assert.equal(driveFiles.length, 1);
+  assert.equal(driveFiles[0].name, 'BT-HV-091126-0001.jpg');
 });

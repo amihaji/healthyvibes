@@ -185,6 +185,33 @@ function saveMaster_(user, data) {
     record.version = Number(old ? old.version : 0) + 1;
   }
 
+  if (['Categories', 'Products'].includes(table)) {
+    const categories = rows_('Categories');
+    const scope = PropertiesService.getScriptProperties().getProperty('DATABASE_ID');
+    if (!scope) { throw new Error('Database belum dipasang.'); }
+    const category = table === 'Categories' ? record :
+      categories.find(function (row) { return row.id === record.categoryId; });
+    const requested = table === 'Categories' ? text_(input.productPrefix || '', 'Awalan produk', 2, true).toUpperCase() : '';
+    if (requested && !/^[A-Z]{2}$/.test(requested)) { throw new Error('Awalan produk harus 2 huruf A-Z.'); }
+    if (category.productPrefix && requested && requested !== category.productPrefix) {
+      throw new Error('Awalan kategori yang sudah tersimpan tidak dapat diubah.');
+    }
+    const prefix = category.productPrefix || requested || productPrefix_(category.name, categories);
+    if (!/^[A-Z]{2}$/.test(prefix) || categories.some(function (row) {
+      return row.id !== category.id && row.productPrefix === prefix;
+    })) { throw new Error('Awalan produk sudah digunakan atau tidak valid.'); }
+    const categoryCode = category.code || nextMasterCode_('HV', 2, categories, scope);
+    if (table === 'Categories') {
+      record.code = categoryCode;
+      record.productPrefix = prefix;
+    } else {
+      record.code = record.code || nextMasterCode_(prefix, 3, rows_('Products'), scope);
+      if (!category.code || !category.productPrefix) {
+        patch_('Categories', category, { code: categoryCode, productPrefix: prefix });
+      }
+    }
+  }
+
   if (old) {
     patch_(table, old, record);
   } else {

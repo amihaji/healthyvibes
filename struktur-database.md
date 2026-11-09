@@ -8,8 +8,8 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | Sheet | Kegunaan | Relasi / aturan penting |
 | --- | --- | --- |
 | Settings | Identitas dan aturan toko | `key` unik; rahasia tidak disimpan di sini. |
-| Categories | Kategori produk | `id` dirujuk Products. Nonaktif, bukan hapus transaksi. |
-| Products | Nama, kategori, harga, deskripsi, foto, satuan, ukuran | `photoFileId` menunjuk PRODUK; `unit`: Biji/Slice/Paket/Loyang/Cup/Botol; `sizeUnit`: ml/gr; `sizeValue`: nilai ukuran. |
+| Categories | Kategori produk dan ID Kategori | `id` internal tetap; `code`: HV01/HV02; `productPrefix`: awalan ID Produk seperti SN/SM/DR. |
+| Products | Nama, kategori, harga, deskripsi, foto, satuan, ukuran, ID Produk | `id` internal tetap; `code`: SN001/SM001/DR001; `photoFileId` menunjuk PRODUK; `unit`: Biji/Slice/Paket/Loyang/Cup/Botol; `sizeUnit`: ml/gr; `sizeValue`: nilai ukuran. |
 | Discounts | Diskon per produk dan periode | Admin/Operator dengan hak menu; periode aktif tidak bertumpuk. |
 | Vouchers | Kode, nilai, minimum, maksimum, masa berlaku | Kode unik; tidak ada kuota penggunaan. |
 | ReadyStock | Kapasitas total stok siap jual | Satu baris per produk; tidak dicampur preorder. |
@@ -120,3 +120,41 @@ Jalankan `installHealthyVibes` dengan akun pemilik, lalu perbarui deployment
 melalui Manage Deployments, Edit, New Version, Deploy. Publikasikan frontend
 terbaru agar dropdown dan kolom Satuan/Ukuran muncul pada Setup Produk.
 Migrasi dapat dijalankan ulang tanpa mengubah ID, harga, foto, atau pesanan.
+
+## ID Kategori, ID Produk, dan Nama File
+
+ID yang terlihat di aplikasi adalah kode baru, bukan pengganti ID internal.
+Relasi kategori, produk, stok, pesanan, dan file lama tetap menggunakan ID internal.
+Kolom `code` dan `productPrefix` ditambahkan di kanan Categories; kolom `code`
+ditambahkan di kanan Products.
+
+- ID Kategori otomatis: HV01, HV02, HV03, dan seterusnya, berdasarkan urutan penambahan.
+- Awalan ID Produk diambil dari dua huruf awal nama kategori: Snack = SN, Smoothies = SM, Drik/Drink = DR.
+- Kategori baru boleh mengisi awalan dua huruf A-Z sendiri. Jika kosong dan awalan berbenturan, sistem memilih kombinasi lain yang belum digunakan.
+- ID Produk otomatis per awalan: SN001, SN002; SM001, SM002; DR001, DR002.
+- Kode tidak dapat diketik/diganti. Nama kategori, nama produk, atau kategori produk boleh berubah tanpa mengganti kode yang sudah diterbitkan.
+- Awalan kategori tetap setelah disimpan. Counter tersimpan per database dan awalan; penghapusan baris tidak mengulang nomor.
+- Installer mengisi kode pada data lama menurut urutan baris. Kode yang sudah ada dipertahankan; kode duplikat atau relasi kategori tidak valid menghentikan migrasi.
+
+Nama file untuk upload baru:
+
+| Jenis | Nama contoh |
+| --- | --- |
+| Tanda terima | `TT-HV-091126-0001.jpg` |
+| Bukti transfer | `BT-HV-091126-0001.jpg` |
+| Foto produk | `SN001-WafelRasaKeju.jpg` |
+| Invoice pesanan | `NO-HV-091126-0001.pdf` |
+
+Frontend mengonversi gambar JPG/PNG/WebP menjadi JPG sebelum upload. Jika gambar
+PNG/WebP dikirim langsung melalui API, backend tetap memakai ekstensi MIME
+aslinya agar isi file tidak salah dilabeli JPG. File tetap privat. Identitas retry
+disimpan sebagai penanda privat Drive, bukan bagian dari nama final; nama file
+yang sama boleh dimiliki beberapa upload berbeda tanpa menimpa file lama.
+File lama tidak diganti namanya secara massal.
+
+Sebelum pembaruan database, buat backup melalui menu Backup. Perbarui
+`Schema.gs`, `Admin.gs`, `Files.gs`, dan `Recovery.gs` di project Apps Script yang
+sama, kemudian jalankan `installHealthyVibes` memakai akun pemilik.
+Pastikan `Accounts.gs` tetap tersedia. Buat deployment New Version dan
+publikasikan `js/client.js` terbaru. Restore staging juga mengisi kolom kode pada
+salinan, tanpa mengganti ID atau mengubah database produksi.

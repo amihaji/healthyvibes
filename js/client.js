@@ -1372,9 +1372,20 @@
   // Form master dikonfigurasi per tabel agar tidak menampilkan password hash.
   function masterFields(table, row) {
     const products = (state.admin.tables.Products || []).map(function (item) {
-      return [item.id, item.name];
+      return [item.id, (item.code ? item.code + ' - ' : '') + item.name];
     });
     let html = '';
+    if (['Categories', 'Products'].includes(table)) {
+      html += '<div class="mb-3"><label class="form-label" for="master-code">' +
+        (table === 'Categories' ? 'ID Kategori' : 'ID Produk') + '</label>' +
+        '<input class="form-control" id="master-code" type="text" readonly ' +
+        'placeholder="Dibuat otomatis saat disimpan" value="' + safe(row.code || '') + '"></div>';
+    }
+    if (table === 'Categories') {
+      html += field('Awalan ID Produk (2 huruf)', 'productPrefix', row.productPrefix, 'text', false)
+        .replace('<input ', '<input maxlength="2" ' + (row.productPrefix ? 'readonly ' : ''));
+      html += '<p class="small">Kosongkan agar otomatis mengikuti nama kategori, misalnya Snack: SN. Awalan tetap setelah disimpan.</p>';
+    }
     if (['Categories', 'Products', 'ServiceAreas', 'ShippingRates', 'Users'].includes(table)) {
       html += field('Nama', 'name', row.name);
     }
@@ -1385,7 +1396,7 @@
     if (table === 'Products') {
       html += selectField('Kategori', 'categoryId',
         (state.admin.tables.Categories || []).map(function (item) {
-          return [item.id, item.name];
+          return [item.id, (item.code ? item.code + ' - ' : '') + item.name];
         }), row.categoryId);
       html += field('Harga rupiah', 'price', row.price, 'number');
       html += '<div class="row"><div class="col-sm-4">' +
@@ -1482,6 +1493,7 @@
       return !['id', 'photoFileId', 'updatedAt', 'mustChangePassword'].includes(key) &&
         !(table === 'Products' && key === 'sizeValue');
     }) : [];
+    if (keys.includes('code')) { keys.unshift(keys.splice(keys.indexOf('code'), 1)[0]); }
     document.getElementById('admin-body').innerHTML = '<section class="panel">' +
       '<div class="d-flex justify-content-between gap-2 mb-3"><h2 class="h4">' +
       safe(tableLabels[table]) + '</h2>' + (editable ? '<button class="btn btn-primary btn-sm" data-new="' +
@@ -1492,7 +1504,8 @@
         const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
           active: 'Aktif', name: 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
           date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA',
-          unit: 'Satuan', sizeUnit: 'Ukuran' };
+          unit: 'Satuan', sizeUnit: 'Ukuran', productPrefix: 'Awalan ID Produk',
+          code: table === 'Categories' ? 'ID Kategori' : 'ID Produk' };
         return '<th>' + safe(label[key] || key) + '</th>';
       }).join('') +
       '<th class="record-action-cell">Aksi</th></tr></thead><tbody id="master-rows">' +

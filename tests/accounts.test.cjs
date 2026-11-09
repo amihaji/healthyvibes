@@ -595,7 +595,9 @@ test('Invoice dan unggah konsumen memakai kepemilikan akun sebelum menyentuh Dri
   f.context.invoice_ = () => { driveReads++; return { getBlob: () => blob, getName: () => 'invoice.pdf' }; };
   f.context.imageBlob_ = () => blob;
   f.context.folder_ = () => ({ getFiles: () => ({ hasNext: () => false }),
-    createFile: () => { driveReads++; return { getId: () => 'file-test' }; } });
+    createFile: () => { driveReads++; return {
+      getId: () => 'file-test', setDescription() {}, setName() {}
+    }; } });
   f.tables.Orders.push({ ...f.tables.Orders[0], id: 'foreign', customerId: 'other' });
   for (const action of ['myInvoice', 'myOrderUpload']) {
     const denied = f.context.api_({ action, token: session.token,

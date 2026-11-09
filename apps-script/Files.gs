@@ -86,20 +86,36 @@ function upload_(user, data, customer) {
     throw new Error('Batas 20 berkas per pesanan/produk tercapai.');
   }
   const blob = imageBlob_(data);
-  // Nama request deterministik mencegah file ganda bila penulisan metadata gagal.
-  const fileName = digest_(requestId) + '-' + blob.getName();
+  const extension = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[data.mimeType];
+  let fileName;
+  if (product) {
+    if (!/^[A-Z]{2}\d{3,}$/.test(product.code || '')) {
+      throw new Error('ID Produk belum tersedia. Jalankan installHealthyVibes terlebih dahulu.');
+    }
+    const words = product.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .match(/[A-Za-z0-9]+/g) || ['Produk'];
+    const name = words.map(function (word) { return word[0].toUpperCase() + word.slice(1); }).join('').slice(0, 100);
+    fileName = product.code + '-' + name + extension;
+  } else {
+    fileName = (kind === 'TANDATERIMA' ? 'TT-' : 'BT-') +
+      order.id.replace(/[^A-Za-z0-9-]/g, '') + extension;
+  }
   const folder = folder_(kind);
   const existing = folder.getFiles();
   let file = null;
   const prefix = digest_(requestId) + '-';
+  const marker = 'HV_UPLOAD:' + digest_(requestId);
   while (existing.hasNext()) {
     const candidate = existing.next();
-    if (candidate.getName().indexOf(prefix) === 0) {
+    if (candidate.getDescription() === marker || candidate.getName().indexOf(prefix) === 0) {
       file = candidate;
       break;
     }
   }
-  file = file || folder.createFile(blob.setName(fileName));
+  // Nama sementara dan penanda privat menjaga retry saat penulisan terputus.
+  file = file || folder.createFile(blob.setName(prefix + fileName));
+  file.setDescription(marker);
+  file.setName(fileName);
   append_('Files', {
     id: id_(),
     requestId: requestId,
@@ -132,7 +148,7 @@ function invoice_(order) {
   if (order.invoiceFileId) {
     return DriveApp.getFileById(order.invoiceFileId);
   }
-  const name = order.id + '.pdf';
+  const name = 'NO-' + order.id + '.pdf';
   const matches = folder_('INVOICE').getFilesByName(name);
   let file;
   if (matches.hasNext()) {
