@@ -2256,7 +2256,8 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
     window: {}, document: { getElementById: id => elements[id] }, safe: String,
     tableLabels: { Products: 'Produk' }, masterText: (key, value) => value,
     state: { user: { role: 'Admin' }, admin: { tables: { Products: [
-      { id: 'p1', name: 'Produk Uji', unit: 'Paket', sizeUnit: 'gr', sizeValue: 100, code: 'SN001' }
+      { id: 'p1', categoryId: 'cat-private', name: 'Produk Uji', description: 'Deskripsi produk uji',
+        unit: 'Paket', sizeUnit: 'gr', sizeValue: 100, code: 'SN001' }
     ] } } }
   });
   vm.runInContext(source('js/icons.js'), context);
@@ -2276,6 +2277,13 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.ok(html.includes('<td>Paket</td>'));
   assert.ok(html.includes('<td>100 gr</td>'));
   assert.ok(!html.includes('<th>sizeValue</th>'));
+  assert.ok(!html.includes('<th>categoryId</th>'));
+  assert.ok(!html.includes('<td>cat-private</td>'));
+  assert.equal(context.state.admin.tables.Products[0].categoryId, 'cat-private');
+  assert.ok(html.includes('class="table products-table"'));
+  assert.ok(html.includes('<th class="product-description-column">description</th>'));
+  assert.ok(html.includes('<td class="product-description-column">Deskripsi produk uji</td>'));
+  assert.equal(context.state.admin.tables.Products[0].description, 'Deskripsi produk uji');
   assert.ok(html.includes('aria-label="Edit Produk" title="Edit"'));
   assert.ok(html.includes('aria-label="Hapus Produk" title="Hapus"'));
   assert.ok(html.includes('title="Foto"'));
@@ -2510,6 +2518,11 @@ test('Login hanya menampilkan kotak User dan Pass dengan autofill serta pemuliha
   assert.ok(!html.includes('Login Admin, Operator, Viewer, atau Konsumen'));
   assert.ok(!html.includes('col-md-6'));
   const css = source('css/styles.css');
+  const mobileCss = css.slice(css.indexOf('@media (max-width: 767px)'), css.indexOf('@media (prefers-reduced-motion'));
+  assert.match(mobileCss, /\.products-table \.product-description-column\s*\{\s*display:\s*none;\s*\}/);
+  assert.ok(!css.slice(0, css.indexOf('@media (max-width: 767px)'))
+    .includes('.products-table .product-description-column'));
+  assert.match(css, /\.products-table th\s*\{\s*white-space:\s*nowrap;\s*\}/);
   assert.ok(css.includes('width: min(100%, 420px)'));
   assert.ok(css.includes('.panel.login-card'));
   assert.ok(css.includes('.login-password .form-control { padding-right: 54px; }'));
@@ -2571,6 +2584,7 @@ test('Setup Produk menyediakan pilihan Satuan dan Ukuran untuk tambah serta edit
   const empty = context.masterFields('Products', {});
   assert.ok(empty.includes('name="unit"'));
   assert.ok(empty.includes('name="sizeUnit"'));
+  assert.ok(empty.includes('name="categoryId"'));
   assert.ok(empty.includes('name="sizeValue" type="number"'));
   assert.ok(empty.includes('step="any"'));
   assert.ok(empty.includes('ID Produk</label>'));
@@ -3017,4 +3031,115 @@ test('Pemeriksaan header menolak bukan pemilik sebelum membuka database', functi
   const context = setupContext('other@test', 'owner@test');
   context.database_ = () => { throw new Error('Database tidak boleh dibuka'); };
   assert.throws(() => context.inspectHealthyVibesSchema(), /pemilik project/);
+});
+
+function masterPaginationContext(count) {
+  const client = source('js/client.js');
+  const body = { innerHTML: '', scrollIntoView() {} };
+  let inputHandler;
+  let focused;
+  let selection;
+  const input = { focus() { focused = 'master-search'; },
+    setSelectionRange(start, end) { selection = [start, end]; } };
+  const rows = Array.from({ length: count }, (_, index) => ({
+    id: 'p' + (index + 1), code: 'SN' + String(index + 1).padStart(3, '0'),
+    name: 'Produk ' + (index + 1), categoryId: 'cat-private', unit: 'Biji',
+    sizeUnit: 'gr', sizeValue: 100, active: true
+  }));
+  const context = vm.createContext({
+    window: {}, tableLabels: { Products: 'Setup Produk', Categories: 'Kategori' },
+    state: { user: { role: 'Admin' }, admin: { tables: { Products: rows,
+      Categories: Array.from({ length: 15 }, (_, index) => ({ id: 'cat' + index, name: 'Kategori ' + index })) } } },
+    safe: value => String(value ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;'),
+    masterText: (key, value) => value, renderUsers() {},
+    document: {
+      addEventListener: (type, handler) => { if (type === 'input') { inputHandler = handler; } },
+      getElementById: id => {
+        if (id === 'admin-body') { return body; }
+        if (id === 'master-search') { return input; }
+        if (!body.innerHTML.includes('id="' + id + '"')) { return null; }
+        return { disabled: body.innerHTML.includes('id="' + id + '" type="button" disabled'),
+          focus() { focused = id; } };
+      },
+      querySelectorAll: () => []
+    }
+  });
+  vm.runInContext(source('js/icons.js'), context);
+  context.buttonLabel = context.window.HV_UI.label;
+  vm.runInContext(client.slice(client.indexOf('  function iconButton('),
+    client.indexOf('  // Menu pengelola terbuka')), context);
+  vm.runInContext(client.slice(client.indexOf('  function renderMaster('),
+    client.indexOf('  // Membuka formulir tambah')), context);
+  vm.runInContext(client.slice(client.indexOf('  async function clickAction('),
+    client.indexOf('  // Memperbarui hasil pencarian')), context);
+  vm.runInContext(client.slice(client.indexOf('  // Memperbarui hasil pencarian'),
+    client.indexOf('  // Perubahan pilihan tindakan')), context);
+  return { context, body, rows, input: event => inputHandler(event),
+    focused: () => focused, selection: () => selection,
+    count: () => (body.innerHTML.match(/data-edit=/g) || []).length };
+}
+
+test('Setup Produk membatasi 10 record, tombol pada batas 10, dan halaman terakhir', async function () {
+  for (const total of [0, 9, 10, 11, 25]) {
+    const fixture = masterPaginationContext(total);
+    const { context, body } = fixture;
+    context.renderMaster('Products');
+    assert.equal(fixture.count(), Math.min(10, total));
+    assert.equal(body.innerHTML.includes('id="next-master"'), total >= 10);
+    if (total >= 10) {
+      assert.ok(body.innerHTML.includes('id="previous-master" type="button" disabled'));
+      assert.equal(body.innerHTML.includes('id="next-master" type="button" disabled'), total === 10);
+    }
+  }
+  const fixture = masterPaginationContext(25);
+  fixture.context.renderMaster('Products');
+  await fixture.context.clickAction({ id: 'next-master', dataset: {} });
+  assert.equal(fixture.count(), 10);
+  assert.ok(fixture.body.innerHTML.includes('Halaman 2 dari 3'));
+  assert.ok(fixture.body.innerHTML.includes('data-edit="p11"'));
+  assert.ok(!fixture.body.innerHTML.includes('data-edit="p1"'));
+  await fixture.context.clickAction({ id: 'next-master', dataset: {} });
+  assert.equal(fixture.count(), 5);
+  assert.ok(fixture.body.innerHTML.includes('id="next-master" type="button" disabled'));
+  assert.equal(fixture.focused(), 'previous-master');
+  await fixture.context.clickAction({ id: 'previous-master', dataset: {} });
+  assert.ok(fixture.body.innerHTML.includes('Halaman 2 dari 3'));
+});
+
+test('Pencarian produk mencakup semua halaman dan mempertahankan fokus serta posisi kursor', function () {
+  const fixture = masterPaginationContext(25);
+  const { context, body } = fixture;
+  context.renderMaster('Products');
+  context.state.masterPage = 2;
+  fixture.input({ target: { id: 'master-search', value: 'SN024', selectionStart: 5, selectionEnd: 5 } });
+  assert.equal(context.state.masterPage, 0);
+  assert.equal(fixture.count(), 1);
+  assert.ok(body.innerHTML.includes('data-edit="p24"'));
+  assert.ok(body.innerHTML.includes('value="SN024"'));
+  assert.equal(fixture.focused(), 'master-search');
+  assert.deepEqual(fixture.selection(), [5, 5]);
+  fixture.input({ target: { id: 'master-search', value: 'cat-private', selectionStart: 11, selectionEnd: 11 } });
+  assert.equal(fixture.count(), 0);
+  assert.ok(body.innerHTML.includes('Tidak ada record yang sesuai pencarian.'));
+  fixture.input({ target: { id: 'master-search', value: '', selectionStart: 0, selectionEnd: 0 } });
+  assert.equal(fixture.count(), 10);
+});
+
+test('Halaman produk dijepit setelah data dihapus dan tidak memengaruhi tabel lain', function () {
+  const fixture = masterPaginationContext(25);
+  const { context, body, rows } = fixture;
+  context.renderMaster('Products');
+  context.state.masterPage = 2;
+  rows.splice(10);
+  context.renderMaster('Products');
+  assert.equal(context.state.masterPage, 0);
+  assert.equal(fixture.count(), 10);
+  context.state.masterSearch = 'SN001';
+  context.renderMaster('Categories');
+  assert.equal(fixture.count(), 15);
+  assert.ok(!body.innerHTML.includes('id="next-master"'));
+  assert.equal(context.state.masterSearch, '');
+  context.renderMaster('Products');
+  context.renderMaster('Users');
+  assert.equal(context.state.masterTable, 'Users');
 });

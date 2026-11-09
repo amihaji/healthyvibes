@@ -19,6 +19,9 @@
     admin: null,
     adminLoading: false,
     adminError: '',
+    masterTable: '',
+    masterPage: 0,
+    masterSearch: '',
     checkoutStep: 1,
     recipient: {},
     checkoutResume: false,
@@ -1486,40 +1489,57 @@
 
   // Menampilkan tabel master dengan kelompok ikon aksi yang ringkas.
   function renderMaster(table) {
+    if (state.masterTable !== table) {
+      state.masterTable = table;
+      state.masterPage = 0;
+      state.masterSearch = '';
+    }
     if (table === 'Users') { renderUsers(); return; }
     const rows = state.admin.tables[table] || [];
     const editable = canManageMaster(table);
     const keys = rows.length ? Object.keys(rows[0]).filter(function (key) {
       return !['id', 'photoFileId', 'updatedAt', 'mustChangePassword'].includes(key) &&
-        !(table === 'Products' && key === 'sizeValue');
+        !(table === 'Products' && ['sizeValue', 'categoryId'].includes(key));
     }) : [];
     if (keys.includes('code')) { keys.unshift(keys.splice(keys.indexOf('code'), 1)[0]); }
+    const cellValue = function (row, key) {
+      const product = (state.admin.tables.Products || []).find(function (item) { return item.id === row[key]; });
+      const value = table === 'Products' && key === 'sizeUnit'
+        ? [row.sizeValue, row.sizeUnit].filter(function (part) {
+          return part !== '' && part !== undefined && part !== null;
+        }).join(' ') : table === 'Products' && key === 'unit' && row.unit === 'Slace'
+          ? 'Slice' : product ? product.name : row[key];
+      return masterText(key, value);
+    };
+    const query = table === 'Products' ? String(state.masterSearch || '').trim().toLowerCase() : '';
+    const matched = query ? rows.filter(function (row) {
+      return keys.map(function (key) { return String(cellValue(row, key)); }).join(' ').toLowerCase().includes(query);
+    }) : rows;
+    const pages = Math.max(1, Math.ceil(matched.length / 10));
+    state.masterPage = Math.max(0, Math.min(pages - 1, Math.floor(Number(state.masterPage) || 0)));
+    const visible = table === 'Products' ? matched.slice(state.masterPage * 10, state.masterPage * 10 + 10) : rows;
     document.getElementById('admin-body').innerHTML = '<section class="panel">' +
       '<div class="d-flex justify-content-between gap-2 mb-3"><h2 class="h4">' +
       safe(tableLabels[table]) + '</h2>' + (editable ? '<button class="btn btn-primary btn-sm" data-new="' +
       safe(table) + '" type="button">' + buttonLabel('plus', 'Tambah') + '</button>' : '') + '</div>' +
-      '<input class="form-control mb-3" id="master-search" placeholder="Cari data..." aria-label="Cari data">' +
-      '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<input class="form-control mb-3" id="master-search" placeholder="Cari data..." aria-label="Cari data" ' +
+      'value="' + safe(table === 'Products' ? state.masterSearch || '' : '') + '">' +
+      '<div class="table-wrap"><table class="table' + (table === 'Products' ? ' products-table' : '') +
+      '"><thead><tr>' +
       keys.map(function (key) {
         const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
           active: 'Aktif', name: 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
           date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA',
           unit: 'Satuan', sizeUnit: 'Ukuran', productPrefix: 'Awalan ID Produk',
           code: table === 'Categories' ? 'ID Kategori' : 'ID Produk' };
-        return '<th>' + safe(label[key] || key) + '</th>';
+        return '<th' + (table === 'Products' && key === 'description' ? ' class="product-description-column"' : '') +
+          '>' + safe(label[key] || key) + '</th>';
       }).join('') +
       '<th class="record-action-cell">Aksi</th></tr></thead><tbody id="master-rows">' +
-      rows.map(function (row) {
+      visible.map(function (row) {
         return '<tr>' + keys.map(function (key) {
-          const product = (state.admin.tables.Products || []).find(function (item) {
-            return item.id === row[key];
-          });
-          const value = table === 'Products' && key === 'sizeUnit'
-            ? [row.sizeValue, row.sizeUnit].filter(function (part) {
-              return part !== '' && part !== undefined && part !== null;
-            }).join(' ') : table === 'Products' && key === 'unit' && row.unit === 'Slace'
-              ? 'Slice' : product ? product.name : row[key];
-          return '<td>' + safe(masterText(key, value)) + '</td>';
+          return '<td' + (table === 'Products' && key === 'description' ? ' class="product-description-column"' : '') +
+            '>' + safe(cellValue(row, key)) + '</td>';
         }).join('') + '<td class="record-action-cell">' + (editable ? '<div class="record-actions">' +
           iconButton('edit', 'Edit ' + tableLabels[table], 'data-edit="' + safe(row.id) +
             '" data-table="' + safe(table) + '"', 'Edit') +
@@ -1528,7 +1548,16 @@
           (table === 'Products' ? iconButton('photo', 'Unggah foto produk',
             'data-product-upload="' + safe(row.id) + '"', 'Foto') : '') + '</div>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      (!rows.length ? '<p>Belum ada data. Tambahkan data aktual toko.</p>' : '') + '</section>';
+      (!rows.length ? '<p>Belum ada data. Tambahkan data aktual toko.</p>'
+        : !matched.length ? '<p role="status">Tidak ada record yang sesuai pencarian.</p>' : '') +
+      (table === 'Products' && rows.length >= 10
+        ? '<nav class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3" ' +
+          'aria-label="Halaman Setup Produk"><span class="small" role="status">Halaman ' +
+          (state.masterPage + 1) + ' dari ' + pages + ' | ' + matched.length + ' record</span>' +
+          '<div class="d-flex gap-2"><button class="btn btn-outline-dark btn-sm" id="previous-master" type="button"' +
+          (state.masterPage === 0 ? ' disabled' : '') + '>Sebelum</button>' +
+          '<button class="btn btn-outline-dark btn-sm" id="next-master" type="button"' +
+          (state.masterPage >= pages - 1 ? ' disabled' : '') + '>Sesudahnya</button></div></nav>' : '') + '</section>';
   }
 
   // Membuka formulir tambah atau edit sesuai jenis tabel dan data yang dipilih.
@@ -1871,6 +1900,9 @@
       state.token = '';
       state.user = null;
       state.admin = null;
+      state.masterTable = '';
+      state.masterPage = 0;
+      state.masterSearch = '';
       state.customerOrders = null;
       state.customerPage = 0;
       state.order = null;
@@ -1885,6 +1917,14 @@
     } else if (id === 'previous-orders' || id === 'next-orders') {
       state.listPage += id === 'next-orders' ? 1 : -1;
       filterOrders();
+    } else if (id === 'previous-master' || id === 'next-master') {
+      if (state.masterTable !== 'Products') { return; }
+      state.masterPage += id === 'next-master' ? 1 : -1;
+      renderMaster('Products');
+      document.getElementById('admin-body').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const current = document.getElementById(id);
+      const focus = current && current.disabled ? document.getElementById(id === 'next-master' ? 'previous-master' : 'next-master') : current;
+      if (focus && !focus.disabled) { focus.focus({ preventScroll: true }); }
     } else if (id === 'backup') {
       button.disabled = true;
       try {
@@ -1914,6 +1954,17 @@
       state.listPage = 0;
       filterOrders();
     } else if (event.target.id === 'master-search') {
+      if (state.masterTable === 'Products') {
+        state.masterSearch = event.target.value;
+        state.masterPage = 0;
+        const start = event.target.selectionStart;
+        const end = event.target.selectionEnd;
+        renderMaster('Products');
+        const input = document.getElementById('master-search');
+        input.focus();
+        input.setSelectionRange(start, end);
+        return;
+      }
       const query = event.target.value.toLowerCase();
       document.querySelectorAll('#master-rows tr').forEach(function (row) {
         row.hidden = !row.textContent.toLowerCase().includes(query);

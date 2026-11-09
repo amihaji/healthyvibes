@@ -614,6 +614,9 @@
     font-size: 13px;
   }
 
+  /* Judul kolom Setup Produk tetap satu baris; tabel digulir pada layar sempit. */
+  .products-table th { white-space: nowrap; }
+
   /* Tombol ikon aksi ringkas dengan ukuran yang sama pada setiap form. */
   .btn.action-icon {
     display: inline-flex;
@@ -882,6 +885,8 @@
 
   /* Penyesuaian khusus HP, hingga lebar 767px. */
   @media (max-width: 767px) {
+    /* Deskripsi tetap tersedia di desktop dan form, tetapi tidak memenuhi tabel HP. */
+    .products-table .product-description-column { display: none; }
     /* Voucher memakai satu kolom agar kode dan tanggal mudah dibaca pada HP. */
     .voucher-grid { grid-template-columns: minmax(0, 1fr); }
     /* Pencarian di baris pertama; kategori dan filter stok tetap berdampingan pada HP. */
