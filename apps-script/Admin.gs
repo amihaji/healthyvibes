@@ -41,6 +41,26 @@ function saveMaster_(user, data) {
     record.description = text_(input.description || '', 'Deskripsi', 500, true);
     record.price = integer_(input.price, 'Harga', 1, 1000000000);
     record.categoryId = text_(input.categoryId, 'Kategori', 100);
+    // Payload lama boleh tidak mengirim kolom baru; pilihan yang tersimpan tetap dipertahankan.
+    record.unit = text_(input.unit === undefined ? record.unit || '' : input.unit, 'Satuan', 20, true);
+    record.sizeUnit = text_(input.sizeUnit === undefined ? record.sizeUnit || '' : input.sizeUnit, 'Ukuran', 20, true);
+    if (record.unit && !['Biji', 'Slace', 'Paket'].includes(record.unit)) {
+      throw new Error('Satuan harus Biji, Slace, atau Paket.');
+    }
+    if (record.sizeUnit && !['ml', 'gr'].includes(record.sizeUnit)) {
+      throw new Error('Ukuran harus ml atau gr.');
+    }
+    const sizeValue = input.sizeValue === undefined ? record.sizeValue ?? '' : input.sizeValue;
+    if (sizeValue === '' || typeof sizeValue === 'string' && !sizeValue.trim()) {
+      record.sizeValue = '';
+    } else {
+      if (!['string', 'number'].includes(typeof sizeValue) ||
+        !Number.isFinite(Number(sizeValue)) || Number(sizeValue) <= 0 || Number(sizeValue) > 1000000000) {
+        throw new Error('Nilai ukuran harus angka positif, maksimal 1000000000.');
+      }
+      if (!record.sizeUnit) { throw new Error('Pilih ml atau gr untuk nilai ukuran.'); }
+      record.sizeValue = Number(sizeValue);
+    }
     if (!rows_('Categories').some(function (row) {
       return row.id === record.categoryId && active_(row.active);
     })) {

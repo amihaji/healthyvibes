@@ -36,6 +36,7 @@ function restoreStaging_(user, data) {
   removeLegacyOrderAccessColumn_(db);
   extendAccountSchema_(db);
   extendOrderAccountSchema_(db);
+  extendSchemaColumns_(db, 'Products');
   const resets = db.getSheetByName('PasswordResets') || db.insertSheet('PasswordResets');
   if (!resets.getLastRow()) {
     resets.getRange(1, 1, 1, HV_SCHEMA.PasswordResets.length).setValues([HV_SCHEMA.PasswordResets]);

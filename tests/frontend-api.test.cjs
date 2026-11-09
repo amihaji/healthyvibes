@@ -2248,7 +2248,9 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   const context = vm.createContext({
     window: {}, document: { getElementById: id => elements[id] }, safe: String,
     tableLabels: { Products: 'Produk' }, masterText: (key, value) => value,
-    state: { user: { role: 'Admin' }, admin: { tables: { Products: [{ id: 'p1', name: 'Produk Uji' }] } } }
+    state: { user: { role: 'Admin' }, admin: { tables: { Products: [
+      { id: 'p1', name: 'Produk Uji', unit: 'Paket', sizeUnit: 'gr', sizeValue: 100 }
+    ] } } }
   });
   vm.runInContext(source('js/icons.js'), context);
   context.buttonLabel = context.window.HV_UI.label;
@@ -2259,6 +2261,11 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
     client.indexOf('  // Membuka formulir tambah')), context);
   context.renderMaster('Products');
   const html = elements['admin-body'].innerHTML;
+  assert.ok(html.includes('<th>Satuan</th>'));
+  assert.ok(html.includes('<th>Ukuran</th>'));
+  assert.ok(html.includes('<td>Paket</td>'));
+  assert.ok(html.includes('<td>100 gr</td>'));
+  assert.ok(!html.includes('<th>sizeValue</th>'));
   assert.ok(html.includes('aria-label="Edit Produk" title="Edit"'));
   assert.ok(html.includes('aria-label="Hapus Produk" title="Hapus"'));
   assert.ok(html.includes('title="Foto"'));
@@ -2539,4 +2546,157 @@ test('Kesalahan login tampil dalam form dan tombol Masuk aktif kembali', async f
   await handler({ target: form, preventDefault() {} });
   assert.ok(result.innerHTML.includes('User atau password salah &lt;uji&gt;'));
   assert.equal(submit.disabled, false);
+});
+
+test('Setup Produk menyediakan pilihan Satuan dan Ukuran untuk tambah serta edit', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({
+    safe: value => String(value ?? ''),
+    state: { admin: { tables: { Products: [], Categories: [{ id: 'cat', name: 'Makanan' }] } } }
+  });
+  vm.runInContext(client.slice(client.indexOf('  function field('),
+    client.indexOf('  // Mengambil isian formulir')), context);
+  vm.runInContext(client.slice(client.indexOf('  function masterFields('),
+    client.indexOf('  // Menyiapkan tanggal dan jam WITA')), context);
+  const empty = context.masterFields('Products', {});
+  assert.ok(empty.includes('name="unit"'));
+  assert.ok(empty.includes('name="sizeUnit"'));
+  assert.ok(empty.includes('name="sizeValue" type="number"'));
+  assert.ok(empty.includes('step="any"'));
+  for (const option of ['Biji', 'Slace', 'Paket', 'ml', 'gr']) {
+    assert.ok(empty.includes('<option value="' + option + '">' + option + '</option>'));
+  }
+  assert.ok(empty.includes('<option value="" selected>Pilih satuan</option>'));
+  assert.ok(empty.includes('<option value="" selected>Pilih ukuran</option>'));
+  const edited = context.masterFields('Products', { unit: 'Slace', sizeUnit: 'gr', sizeValue: 100 });
+  assert.ok(edited.includes('<option value="Slace" selected>Slace</option>'));
+  assert.ok(edited.includes('<option value="gr" selected>gr</option>'));
+  assert.ok(edited.includes('value="100"'));
+  assert.ok(empty.includes('col-sm-4'));
+  assert.ok(!context.masterFields('Categories', {}).includes('name="sizeUnit"'));
+});
+
+test('Satuan dan Ukuran tersimpan serta dikembalikan saat tambah atau edit produk', function () {
+  const { context, tables } = shippingContext();
+  tables.Categories.push({ id: 'cat', name: 'Makanan', active: true });
+  const user = { id: 'admin1', role: 'Admin' };
+  const base = { name: 'Produk Uji', categoryId: 'cat', price: 10000, active: true };
+  for (const unit of ['Biji', 'Slace', 'Paket']) {
+    for (const sizeUnit of ['ml', 'gr']) {
+      const result = context.saveMaster_(user, { table: 'Products', record: { ...base, unit, sizeUnit } });
+      assert.equal(result.unit, unit);
+      assert.equal(result.sizeUnit, sizeUnit);
+      assert.equal(tables.Products.find(row => row.id === result.id).sizeUnit, sizeUnit);
+    }
+  }
+  const edited = context.saveMaster_(user, { table: 'Products',
+    record: { ...base, id: 'p1', unit: 'Paket', sizeUnit: 'gr' } });
+  assert.equal(edited.unit, 'Paket');
+  assert.equal(tables.Products[0].unit, 'Paket');
+  const retryOldClient = context.saveMaster_(user, { table: 'Products', record: { ...base, id: 'p1' } });
+  assert.equal(retryOldClient.unit, 'Paket');
+  assert.equal(retryOldClient.sizeUnit, 'gr');
+  const cleared = context.saveMaster_(user, { table: 'Products',
+    record: { ...base, id: 'p1', unit: '', sizeUnit: '' } });
+  assert.equal(cleared.unit, '');
+  assert.equal(cleared.sizeUnit, '');
+  assert.equal(context.saveMaster_(user, { table: 'Products', record: base }).unit, '');
+});
+
+test('Backend menolak pilihan produk di luar daftar tanpa mengubah data', function () {
+  const { context, tables } = shippingContext();
+  tables.Categories.push({ id: 'cat', active: true });
+  const before = JSON.stringify(tables.Products);
+  for (const invalid of [
+    { unit: 'Kg' }, { unit: 'Slice' }, { unit: 'biji' }, { unit: ['Biji', 'Paket'] },
+    { sizeUnit: 'kg' }, { sizeUnit: 'ML' }, { sizeUnit: 100 }, { sizeUnit: null }
+  ]) {
+    assert.throws(() => context.saveMaster_({ id: 'admin1', role: 'Admin' }, {
+      table: 'Products', record: { id: 'p1', name: 'Produk', price: 10000,
+        categoryId: 'cat', unit: 'Biji', sizeUnit: 'gr', ...invalid }
+    }), /Satuan|Ukuran/);
+    assert.equal(JSON.stringify(tables.Products), before);
+  }
+});
+
+test('Migrasi Products menambahkan kolom kanan tanpa mengubah produk lama dan aman diulang', function () {
+  const context = setupContext('owner@test', 'owner@test');
+  const expected = Array.from(vm.runInContext('HV_SCHEMA.Products', context));
+  const original = expected.slice(0, -3);
+  let headers = original.slice();
+  let columns = original.length;
+  const product = ['p1', 'cat', 'Produk Lama', 'Deskripsi', 10000, 'photo1', true, '2026-11-09'];
+  const before = JSON.stringify(product);
+  const sheet = {
+    getLastRow: () => 2, getLastColumn: () => headers.length, getMaxColumns: () => columns,
+    insertColumnsAfter: (start, count) => { assert.equal(start, original.length); columns += count; },
+    getRange: (row, col, height, width) => {
+      assert.equal(row, 1);
+      return { getValues: () => [headers.slice()], setValues: values => { headers = Array.from(values[0]); } };
+    }
+  };
+  const db = { getSheetByName: name => { assert.equal(name, 'Products'); return sheet; } };
+  context.extendSchemaColumns_(db, 'Products');
+  context.extendSchemaColumns_(db, 'Products');
+  assert.deepEqual(headers, expected);
+  assert.deepEqual(headers.slice(-3), ['unit', 'sizeUnit', 'sizeValue']);
+  assert.equal(columns, expected.length);
+  assert.equal(JSON.stringify(product), before);
+  assert.ok(source('apps-script/Schema.gs').includes("extendSchemaColumns_(db, 'Products')"));
+  assert.ok(source('apps-script/Recovery.gs').includes("extendSchemaColumns_(db, 'Products')"));
+  headers[2] = 'kolom-berbeda';
+  assert.throws(() => context.extendSchemaColumns_(db, 'Products'), /Migrasi dihentikan/);
+  assert.equal(JSON.stringify(product), before);
+});
+
+test('Nilai ukuran positif dan desimal tersimpan sebagai angka serta tetap utuh saat edit lama', function () {
+  const { context, tables } = shippingContext();
+  tables.Categories.push({ id: 'cat', active: true });
+  const user = { id: 'admin1', role: 'Admin' };
+  const base = { id: 'p1', name: 'Produk', price: 10000, categoryId: 'cat', unit: 'Biji', sizeUnit: 'gr' };
+  for (const sizeValue of ['100', 250, '0.5', '12.75']) {
+    const result = context.saveMaster_(user, { table: 'Products', record: { ...base, sizeValue } });
+    assert.equal(result.sizeValue, Number(sizeValue));
+    assert.equal(tables.Products[0].sizeValue, Number(sizeValue));
+  }
+  const retained = context.saveMaster_(user, { table: 'Products', record: base });
+  assert.equal(retained.sizeValue, 12.75);
+  const cleared = context.saveMaster_(user, { table: 'Products', record: { ...base, sizeValue: '' } });
+  assert.equal(cleared.sizeValue, '');
+  assert.equal(cleared.sizeUnit, 'gr');
+});
+
+test('Nilai ukuran tidak valid atau tanpa ml/gr ditolak tanpa mengubah produk', function () {
+  const { context, tables } = shippingContext();
+  tables.Categories.push({ id: 'cat', active: true });
+  const before = JSON.stringify(tables.Products);
+  const base = { id: 'p1', name: 'Produk', price: 10000, categoryId: 'cat', sizeUnit: 'gr' };
+  for (const sizeValue of [0, -1, 'abc', '100 gr', Infinity, NaN, 1000000001, true, null, [], {}]) {
+    assert.throws(() => context.saveMaster_({ id: 'admin1', role: 'Admin' }, {
+      table: 'Products', record: { ...base, sizeValue }
+    }), /Nilai ukuran/);
+    assert.equal(JSON.stringify(tables.Products), before);
+  }
+  assert.throws(() => context.saveMaster_({ id: 'admin1', role: 'Admin' }, {
+    table: 'Products', record: { ...base, sizeValue: 100, sizeUnit: '' }
+  }), /Pilih ml atau gr/);
+  assert.equal(JSON.stringify(tables.Products), before);
+});
+
+test('Migrasi nilai ukuran mempertahankan pilihan Satuan dan Ukuran yang sudah terisi', function () {
+  const context = setupContext('owner@test', 'owner@test');
+  const expected = Array.from(vm.runInContext('HV_SCHEMA.Products', context));
+  let headers = expected.slice(0, -1);
+  const product = ['p1', 'cat', 'Produk', '', 10000, 'photo1', true, '', 'Paket', 'gr'];
+  const before = JSON.stringify(product);
+  const sheet = {
+    getLastRow: () => 2, getLastColumn: () => headers.length, getMaxColumns: () => 26,
+    getRange: () => ({ getValues: () => [headers.slice()],
+      setValues: values => { headers = Array.from(values[0]); } })
+  };
+  context.extendSchemaColumns_({ getSheetByName: () => sheet }, 'Products');
+  context.extendSchemaColumns_({ getSheetByName: () => sheet }, 'Products');
+  assert.deepEqual(headers, expected);
+  assert.equal(JSON.stringify(product), before);
+  assert.equal(product[expected.indexOf('sizeValue')], undefined);
 });

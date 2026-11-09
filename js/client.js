@@ -1388,6 +1388,17 @@
           return [item.id, item.name];
         }), row.categoryId);
       html += field('Harga rupiah', 'price', row.price, 'number');
+      html += '<div class="row"><div class="col-sm-4">' +
+        selectField('Satuan', 'unit', [
+          ['', 'Pilih satuan'], ['Biji', 'Biji'], ['Slace', 'Slace'], ['Paket', 'Paket']
+        ], row.unit || '') + '</div><div class="col-sm-4">' +
+        '<div class="mb-3"><label class="form-label" for="f-sizeValue">Nilai ukuran</label>' +
+        '<input class="form-control" id="f-sizeValue" name="sizeValue" type="number" ' +
+        'inputmode="decimal" min="0" max="1000000000" step="any" placeholder="Contoh: 100" ' +
+        'value="' + safe(row.sizeValue ?? '') + '"></div></div><div class="col-sm-4">' +
+        selectField('Unit ukuran', 'sizeUnit', [
+          ['', 'Pilih ukuran'], ['ml', 'ml'], ['gr', 'gr']
+        ], row.sizeUnit || '') + '</div></div>';
       html += field('Deskripsi', 'description', row.description, 'text', false);
     }
     if (['ReadyStock', 'PreorderCapacity', 'Discounts'].includes(table)) {
@@ -1467,7 +1478,8 @@
     const rows = state.admin.tables[table] || [];
     const editable = canManageMaster(table);
     const keys = rows.length ? Object.keys(rows[0]).filter(function (key) {
-      return !['id', 'photoFileId', 'updatedAt', 'mustChangePassword'].includes(key);
+      return !['id', 'photoFileId', 'updatedAt', 'mustChangePassword'].includes(key) &&
+        !(table === 'Products' && key === 'sizeValue');
     }) : [];
     document.getElementById('admin-body').innerHTML = '<section class="panel">' +
       '<div class="d-flex justify-content-between gap-2 mb-3"><h2 class="h4">' +
@@ -1478,7 +1490,8 @@
       keys.map(function (key) {
         const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
           active: 'Aktif', name: 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
-          date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA' };
+          date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA',
+          unit: 'Satuan', sizeUnit: 'Ukuran' };
         return '<th>' + safe(label[key] || key) + '</th>';
       }).join('') +
       '<th class="record-action-cell">Aksi</th></tr></thead><tbody id="master-rows">' +
@@ -1487,7 +1500,11 @@
           const product = (state.admin.tables.Products || []).find(function (item) {
             return item.id === row[key];
           });
-          return '<td>' + safe(masterText(key, product ? product.name : row[key])) + '</td>';
+          const value = table === 'Products' && key === 'sizeUnit'
+            ? [row.sizeValue, row.sizeUnit].filter(function (part) {
+              return part !== '' && part !== undefined && part !== null;
+            }).join(' ') : product ? product.name : row[key];
+          return '<td>' + safe(masterText(key, value)) + '</td>';
         }).join('') + '<td class="record-action-cell">' + (editable ? '<div class="record-actions">' +
           iconButton('edit', 'Edit ' + tableLabels[table], 'data-edit="' + safe(row.id) +
             '" data-table="' + safe(table) + '"', 'Edit') +

@@ -7,7 +7,7 @@ const HV_SCHEMA = {
   Categories: ['id', 'name', 'active', 'updatedAt'],
   Products: [
     'id', 'categoryId', 'name', 'description', 'price',
-    'photoFileId', 'active', 'updatedAt'
+    'photoFileId', 'active', 'updatedAt', 'unit', 'sizeUnit', 'sizeValue'
   ],
   Discounts: [
     'id', 'productId', 'type', 'value', 'startsAt', 'endsAt', 'active'
@@ -182,6 +182,7 @@ function installHealthyVibes_() {
     removeLegacyOrderAccessColumn_(db);
     extendAccountSchema_(db);
     extendOrderAccountSchema_(db);
+    extendSchemaColumns_(db, 'Products');
 
     Object.keys(HV_SCHEMA).forEach(function (name) {
       const headers = HV_SCHEMA[name];

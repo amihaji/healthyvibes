@@ -9,7 +9,7 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | --- | --- | --- |
 | Settings | Identitas dan aturan toko | `key` unik; rahasia tidak disimpan di sini. |
 | Categories | Kategori produk | `id` dirujuk Products. Nonaktif, bukan hapus transaksi. |
-| Products | Nama, kategori, harga, deskripsi, foto | `photoFileId` menunjuk PRODUK. |
+| Products | Nama, kategori, harga, deskripsi, foto, satuan, ukuran | `photoFileId` menunjuk PRODUK; `unit`: Biji/Slace/Paket; `sizeUnit`: ml/gr; `sizeValue`: nilai ukuran. |
 | Discounts | Diskon per produk dan periode | Admin/Operator dengan hak menu; periode aktif tidak bertumpuk. |
 | Vouchers | Kode, nilai, minimum, maksimum, masa berlaku | Kode unik; tidak ada kuota penggunaan. |
 | ReadyStock | Kapasitas total stok siap jual | Satu baris per produk; tidak dicampur preorder. |
@@ -100,3 +100,20 @@ Jalankan `installHealthyVibes` setelah menambahkan `Accounts.gs` dan memperbarui
 backend. Kolom akun baru ditambahkan di kanan tanpa menimpa data lama.
 Lengkapi email/WhatsApp Admin sebelum mengaktifkan pemblokiran tiga kesalahan.
 Panduan lengkap tersedia di `panduan-setup-user.md`.
+
+## Pembaruan Setup Produk
+
+Setup Produk memiliki pilihan Satuan (Biji, Slace, Paket) dan Ukuran (ml, gr).
+Nilai ukuran dapat diisi bersama unitnya, misalnya 100 gr atau 250 ml.
+Angka harus positif (boleh desimal), maksimal 1000000000; nilai yang terisi
+wajib disertai pilihan ml/gr. Kolom teknis `unit`, `sizeUnit`, dan `sizeValue`
+ditambahkan di kanan tabel Products. Data produk lama tetap utuh; nilai kosong
+tidak diisi otomatis. Tabel Setup Produk menampilkan angka dan unit bersama.
+
+Untuk database yang sudah terpasang, perbarui `Schema.gs`, `Admin.gs`, dan
+`Recovery.gs` di editor Apps Script. Pastikan `Accounts.gs` tersedia karena
+installer memakai fungsi `extendSchemaColumns_` dari berkas tersebut.
+Jalankan `installHealthyVibes` dengan akun pemilik, lalu perbarui deployment
+melalui Manage Deployments, Edit, New Version, Deploy. Publikasikan frontend
+terbaru agar dropdown dan kolom Satuan/Ukuran muncul pada Setup Produk.
+Migrasi dapat dijalankan ulang tanpa mengubah ID, harga, foto, atau pesanan.
