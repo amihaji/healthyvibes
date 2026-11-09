@@ -95,6 +95,34 @@ function installHealthyVibes() {
   return result;
 }
 
+// Diagnostik pemilik: hanya membaca header, tidak menjalankan migrasi atau menampilkan isi produk.
+function inspectHealthyVibesSchema() {
+  requireSetupAccess_();
+  const db = database_();
+  const result = ['Categories', 'Products'].map(function (name) {
+    const sheet = db.getSheetByName(name);
+    const actual = sheet && sheet.getLastRow()
+      ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
+    const expected = HV_SCHEMA[name];
+    const mismatches = actual.reduce(function (list, key, index) {
+      if (key !== expected[index]) {
+        list.push({ column: index + 1, actual: key,
+          expected: expected[index] === undefined ? '(kolom tambahan)' : expected[index] });
+      }
+      return list;
+    }, []);
+    const detail = {
+      table: name, exists: !!sheet, actual: actual, expected: expected,
+      mismatches: mismatches,
+      missingColumns: expected.slice(actual.length),
+      canAppend: actual.length <= expected.length && mismatches.length === 0
+    };
+    console.info(name + ': ' + JSON.stringify(detail));
+    return detail;
+  });
+  return result;
+}
+
 // Jalankan dari editor untuk menghapus konfirmasi ongkir lama pada database yang sama.
 function removeShippingConfirmation() {
   requireSetupAccess_();

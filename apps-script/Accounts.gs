@@ -167,7 +167,13 @@ function extendSchemaColumns_(db, name) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const expected = HV_SCHEMA[name];
   if (headers.length > expected.length || headers.some(function (key, index) { return key !== expected[index]; })) {
-    throw new Error('Kolom ' + name + ' berbeda. Migrasi dihentikan tanpa menimpa data.');
+    const index = headers.findIndex(function (key, column) { return key !== expected[column]; });
+    throw new Error('Kolom ' + name + ' berbeda pada posisi ' + (index + 1) +
+      '. Aktual: ' + JSON.stringify(headers[index]) + '; diharapkan: ' +
+      JSON.stringify(expected[index] === undefined ? '(tidak ada kolom tambahan)' : expected[index]) +
+      '. Header aktual: ' + JSON.stringify(headers) + '. Header yang diharapkan: ' +
+      JSON.stringify(expected) + '. Migrasi dihentikan tanpa menimpa data. ' +
+      'Jalankan inspectHealthyVibesSchema dari editor untuk pemeriksaan baca-saja.');
   }
   if (sheet.getMaxColumns() < expected.length) {
     sheet.insertColumnsAfter(sheet.getMaxColumns(), expected.length - sheet.getMaxColumns());

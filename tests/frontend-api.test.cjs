@@ -2953,3 +2953,68 @@ test('Nama sementara memungkinkan retry jika penanda Drive gagal ditulis', funct
   assert.equal(driveFiles.length, 1);
   assert.equal(driveFiles[0].name, 'BT-HV-091126-0001.jpg');
 });
+
+test('Header tidak sesuai menyebut posisi serta header aktual/harapan tanpa menulis Sheet', function () {
+  const context = setupContext('owner@test', 'owner@test');
+  const expected = Array.from(vm.runInContext('HV_SCHEMA.Products', context));
+  for (const actual of [
+    expected.map((key, index) => index === 9 ? 'sizeValue' : key),
+    [...expected, 'kolomTambahan'],
+    expected.map((key, index) => index === 2 ? 'Nama Produk' : key)
+  ]) {
+    let writes = 0;
+    const sheet = {
+      getLastRow: () => 2, getLastColumn: () => actual.length,
+      getRange: () => ({ getValues: () => [actual.slice()],
+        setValues: () => { writes += 1; } })
+    };
+    assert.throws(() => context.extendSchemaColumns_({ getSheetByName: () => sheet }, 'Products'), error => {
+      assert.ok(error.message.includes('Header aktual: ' + JSON.stringify(actual)));
+      assert.ok(error.message.includes('Header yang diharapkan: ' + JSON.stringify(expected)));
+      assert.ok(error.message.includes('inspectHealthyVibesSchema'));
+      if (actual[9] === 'sizeValue') {
+        assert.ok(error.message.includes('posisi 10. Aktual: "sizeValue"; diharapkan: "sizeUnit"'));
+      }
+      return true;
+    });
+    assert.equal(writes, 0);
+  }
+});
+
+test('Pemeriksaan header baca-saja membedakan skema lama valid dan urutan berbeda', function () {
+  const context = setupContext('owner@test', 'owner@test');
+  const schema = vm.runInContext('HV_SCHEMA', context);
+  const headers = {
+    Categories: Array.from(schema.Categories),
+    Products: Array.from(schema.Products).slice(0, 8)
+  };
+  const logs = [];
+  context.console = { info: message => logs.push(message) };
+  context.database_ = () => ({
+    getSheetByName: name => ({
+      getLastRow: () => 200, getLastColumn: () => headers[name].length,
+      getRange: (row, column, height) => {
+        assert.equal(row, 1);
+        assert.equal(column, 1);
+        assert.equal(height, 1);
+        return { getValues: () => [headers[name].slice()] };
+      }
+    })
+  });
+  let products = context.inspectHealthyVibesSchema().find(row => row.table === 'Products');
+  assert.equal(products.canAppend, true);
+  assert.deepEqual(Array.from(products.missingColumns), ['unit', 'sizeUnit', 'sizeValue', 'code']);
+  headers.Products.push('sizeValue', 'unit', 'sizeUnit');
+  products = context.inspectHealthyVibesSchema().find(row => row.table === 'Products');
+  assert.equal(products.canAppend, false);
+  assert.equal(products.mismatches[0].column, 9);
+  assert.equal(products.mismatches[0].actual, 'sizeValue');
+  assert.equal(products.mismatches[0].expected, 'unit');
+  assert.ok(logs.some(message => message.startsWith('Products: ')));
+});
+
+test('Pemeriksaan header menolak bukan pemilik sebelum membuka database', function () {
+  const context = setupContext('other@test', 'owner@test');
+  context.database_ = () => { throw new Error('Database tidak boleh dibuka'); };
+  assert.throws(() => context.inspectHealthyVibesSchema(), /pemilik project/);
+});

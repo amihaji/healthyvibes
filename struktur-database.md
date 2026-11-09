@@ -158,3 +158,28 @@ sama, kemudian jalankan `installHealthyVibes` memakai akun pemilik.
 Pastikan `Accounts.gs` tetap tersedia. Buat deployment New Version dan
 publikasikan `js/client.js` terbaru. Restore staging juga mengisi kolom kode pada
 salinan, tanpa mengganti ID atau mengubah database produksi.
+
+## Jika Migrasi Products Berhenti
+
+Pesan `Kolom Products berbeda` berarti header aktual tidak sesuai dengan urutan
+kolom di `HV_SCHEMA.Products`, bukan berarti isi produk harus dihapus.
+Penyebab spesifik perlu diperiksa dari header database yang bersangkutan.
+
+1. Perbarui `Accounts.gs` dan `Schema.gs` ke versi lokal terbaru di editor Apps Script.
+2. Simpan, lalu pilih dan jalankan `inspectHealthyVibesSchema` memakai akun pemilik.
+3. Periksa baris log `Products:`. `actual` adalah header Google Sheets, `expected`
+   adalah skema script yang sedang dijalankan, dan `mismatches` menunjukkan posisi berbeda.
+4. Jika `canAppend` bernilai `true`, kolom lama masih sesuai dan kolom yang kurang
+   dapat ditambahkan oleh `installHealthyVibes`. Pastikan semua berkas backend
+   berasal dari versi yang sama sebelum menjalankan installer kembali.
+5. Jika `canAppend` bernilai `false`, kirim log `Products:` untuk menentukan
+   migrasi yang cocok dengan susunan data aktual. Jangan menghapus tab Products,
+   menimpa header, atau memindahkan nama header tanpa memindahkan datanya.
+
+Pemeriksaan ini hanya membaca baris header, tidak menampilkan isi produk,
+mengubah database, membuat file, atau menjalankan migrasi.
+Header Products versi terbaru:
+
+```text
+id, categoryId, name, description, price, photoFileId, active, updatedAt, unit, sizeUnit, sizeValue, code
+```
