@@ -887,6 +887,16 @@
   @media (max-width: 767px) {
     /* Deskripsi tetap tersedia di desktop dan form, tetapi tidak memenuhi tabel HP. */
     .products-table .product-description-column { display: none; }
+    .products-table .product-name-column { white-space: nowrap; }
+    /* Tombol tetap di kanan area gulir, dengan latar solid menutup data di bawahnya. */
+    .products-table .record-action-cell {
+      position: sticky;
+      right: 0;
+      z-index: 1;
+      background: white;
+      box-shadow: -6px 0 8px #08192e0a;
+    }
+    .products-table th.record-action-cell { z-index: 2; background: #f2f3f4; }
     /* Voucher memakai satu kolom agar kode dan tanggal mudah dibaca pada HP. */
     .voucher-grid { grid-template-columns: minmax(0, 1fr); }
     /* Pencarian di baris pertama; kategori dan filter stok tetap berdampingan pada HP. */

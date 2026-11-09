@@ -1532,13 +1532,15 @@
           date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA',
           unit: 'Satuan', sizeUnit: 'Ukuran', productPrefix: 'Awalan ID Produk',
           code: table === 'Categories' ? 'ID Kategori' : 'ID Produk' };
-        return '<th' + (table === 'Products' && key === 'description' ? ' class="product-description-column"' : '') +
+        return '<th' + (table === 'Products' && ['description', 'name'].includes(key)
+          ? ' class="product-' + key + '-column"' : '') +
           '>' + safe(label[key] || key) + '</th>';
       }).join('') +
       '<th class="record-action-cell">Aksi</th></tr></thead><tbody id="master-rows">' +
       visible.map(function (row) {
         return '<tr>' + keys.map(function (key) {
-          return '<td' + (table === 'Products' && key === 'description' ? ' class="product-description-column"' : '') +
+          return '<td' + (table === 'Products' && ['description', 'name'].includes(key)
+            ? ' class="product-' + key + '-column"' : '') +
             '>' + safe(cellValue(row, key)) + '</td>';
         }).join('') + '<td class="record-action-cell">' + (editable ? '<div class="record-actions">' +
           iconButton('edit', 'Edit ' + tableLabels[table], 'data-edit="' + safe(row.id) +

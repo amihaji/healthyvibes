@@ -2283,6 +2283,8 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.ok(html.includes('class="table products-table"'));
   assert.ok(html.includes('<th class="product-description-column">description</th>'));
   assert.ok(html.includes('<td class="product-description-column">Deskripsi produk uji</td>'));
+  assert.ok(html.includes('<th class="product-name-column">Nama</th>'));
+  assert.ok(html.includes('<td class="product-name-column">Produk Uji</td>'));
   assert.equal(context.state.admin.tables.Products[0].description, 'Deskripsi produk uji');
   assert.ok(html.includes('aria-label="Edit Produk" title="Edit"'));
   assert.ok(html.includes('aria-label="Hapus Produk" title="Hapus"'));
@@ -2304,6 +2306,10 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.ok(source('css/styles.css').includes('background: #e9ecef'));
   assert.ok(source('css/styles.css').includes('flex-wrap: nowrap'));
   const css = source('css/styles.css');
+  const mobileStyles = css.slice(css.indexOf('@media (max-width: 767px)'), css.indexOf('@media (prefers-reduced-motion'));
+  assert.match(mobileStyles, /\.products-table \.product-name-column\s*\{\s*white-space:\s*nowrap;\s*\}/);
+  assert.match(mobileStyles, /\.products-table \.record-action-cell\s*\{[^}]*position:\s*sticky;[^}]*right:\s*0;[^}]*z-index:\s*1;[^}]*background:\s*white;/);
+  assert.match(mobileStyles, /\.products-table th\.record-action-cell\s*\{\s*z-index:\s*2;[^}]*background:\s*#f2f3f4;/);
   assert.match(css, /\.btn\.action-icon\s*\{[^}]*flex: 0 0 36px;[^}]*width: 36px;[^}]*height: 36px;[^}]*min-height: 36px;/);
   assert.match(css, /\.action-icon \.ui-icon\s*\{[^}]*width: 16px;[^}]*height: 16px;/);
 });
