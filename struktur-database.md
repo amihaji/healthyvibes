@@ -20,7 +20,7 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | Users | Akun, kontak pemulihan, level dan hak menu | `permissionsJson`, hitungan salah, blokir dan login terakhir; `deliveryJson` untuk penerima terakhir, `registrationId` untuk retry pendaftaran; hash bcrypt tidak dikirim ke browser. |
 | PasswordResets | Tautan reset email/WhatsApp | Hanya hash token; berlaku 15 menit, sekali pakai, terikat versi akun. |
 | Sessions | Hash token sesi dan kedaluwarsa | Versi harus cocok akun; revokasi pada perubahan akun. |
-| Orders | Pesanan dan snapshot kebijakan/harga | `requestId` unik; `customerId` berasal dari sesi Konsumen. `accessHash` hanya untuk akses pesanan lama tanpa akun. |
+| Orders | Pesanan dan snapshot kebijakan/harga | `requestId` unik; `customerId` berasal dari sesi Konsumen. Akses kunci privat sudah dihapus. |
 | OrderItems | Item dan harga saat pemesanan | Anak Orders; ID deterministik untuk rekonsiliasi. |
 | StockLedger | Jejak reservasi dan pelepasan | Kuota dihitung dari snapshot Orders agar crash anak tidak melonggarkan stok. |
 | Payments | Pembayaran tagihan terverifikasi | Total pesanan baru mencakup produk dan ongkir; referensi transaksi unik, bukan foto. |
@@ -35,7 +35,7 @@ Source skema lengkap: `apps-script/Schema.gs`. Nama kolom teknis tetap konsisten
 | Folder | Isi | Akses |
 | --- | --- | --- |
 | PRODUK | Foto produk aktual | Drive privat; backend melepas foto produk aktif untuk katalog. |
-| INVOICE | PDF tagihan berbasis snapshot | Pemilik akun yang Login, pemilik pesanan lama dengan kunci akses, atau Admin/Operator berizin. |
+| INVOICE | PDF tagihan berbasis snapshot | Pemilik akun yang Login atau Admin/Operator berizin. |
 | STRUK | Foto bukti transfer pelanggan | Pelanggan mengunggah untuk pesanannya; Admin/Operator memeriksa. |
 | TANDATERIMA | Foto penerimaan pesanan | Diunggah konsumen melalui Status Pesanan saat siap diambil/sudah dikirim. |
 | BACKUP | Salinan Sheet, berkas, manifest | Admin/Operator dengan hak Backup; pemulihan khusus Admin, selalu ke staging. |
@@ -60,6 +60,32 @@ WhatsApp/email tidak dipakai untuk mengklaim pesanan lama. Migrasi menambahkan
 kolom `customerId` tanpa mengisi kepemilikan pada baris lama.
 Jangan mengubah data transaksi langsung dari Sheets: tindakan tersebut dapat melewati validasi/audit aplikasi.
 Batasi editor database pada pemilik yang bertanggung jawab.
+
+## Pembersihan Pesanan Percobaan Tanpa Akun
+
+Akses pesanan dengan nomor dan kunci privat sudah dihapus. Pesanan Saya melalui
+Login, checkout, dan data pesanan akun tetap dipertahankan.
+
+1. Perbarui `Api.gs`, `Orders.gs`, `Files.gs`, `Admin.gs`, `Schema.gs`,
+   dan `Recovery.gs` di editor Google Apps Script dari source lokal.
+2. Dengan akun pemilik project, jalankan `removeLegacyOrders` dari `Schema.gs`.
+3. Jalankan `installHealthyVibes` untuk menyelaraskan struktur database.
+4. Perbarui deployment melalui Manage Deployments, Edit, New Version, Deploy.
+5. Publikasikan frontend terbaru dan periksa Pesanan Saya melalui Login.
+
+Pembersihan menghapus baris Orders yang memiliki ID tetapi `customerId` kosong,
+termasuk pesanan PREPARING, beserta OrderItems, StockLedger, Payments, Refunds,
+Shipping, Files, dan AuditLog yang merujuk ID tersebut. Berkas invoice/unggahan
+yang tercatat dipindahkan ke sampah Drive, kecuali masih dirujuk data lain.
+Kolom `accessHash` dihapus. Akun, sesi, katalog, stok master, tarif, dan counter
+nomor pesanan tetap disimpan. Fungsi dapat dijalankan ulang; penghapusan induk
+dilakukan terakhir untuk mendukung pengulangan setelah proses terputus.
+
+Backup lama tidak dihapus dan mungkin masih berisi data percobaan. Berkas Drive
+tanpa metadata/ID tersimpan tidak ikut dibersihkan. Pembersihan bukan API publik
+dan tidak dijalankan otomatis saat install. Jangan menjalankannya bila pesanan
+tanpa akun masih perlu disimpan. Perubahan source lokal saja tidak menghapus
+data pada Google Sheets; fungsi harus dijalankan di editor cloud.
 
 ## Pembersihan Konfirmasi Ongkir Lama
 

@@ -48,7 +48,7 @@ jobs:
           done
 
       - name: Uji transport API dan aturan backend secara lokal
-        run: node --test tests/frontend-api.test.cjs
+        run: node --test tests/frontend-api.test.cjs tests/accounts.test.cjs tests/legacy-orders.test.cjs
 
       - name: Siapkan GitHub Pages
         uses: actions/configure-pages@v5

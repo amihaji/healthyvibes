@@ -118,11 +118,6 @@ function dispatch_(request) {
     catalog: function () { return catalog_(data); },
     quote: function () { return quote_(data); },
     registerCustomer: function () { return registerCustomer_(data); },
-    orderStatus: function () { return customerOrder_(customerAccess_(data)); },
-    customerUpload: function () { return upload_(null, data); },
-    customerInvoice: function () {
-      return download_(null, Object.assign({}, data, { kind: 'INVOICE' }));
-    },
     productPhoto: function () { return productPhoto_(data); },
     storeAsset: function () { return storeAsset_(data); },
     login: function () { return login_(data); },
@@ -147,7 +142,6 @@ function dispatch_(request) {
     saveSettings: ['Admin', 'Operator'],
     uploadStoreAsset: ['Admin', 'Operator'],
     verifyPayment: ['Admin', 'Operator'],
-    resetOrderAccess: ['Admin'],
     fulfillment: ['Admin', 'Operator'],
     upload: ['Admin', 'Operator'],
     download: ['Admin', 'Operator'],
@@ -163,7 +157,7 @@ function dispatch_(request) {
   const pages = {
     saveMaster: data.table, deleteMaster: data.table, sendPasswordReset: 'Users',
     saveSettings: 'Pengaturan', uploadStoreAsset: 'Pengaturan',
-    verifyPayment: 'Pesanan', resetOrderAccess: 'Pesanan', fulfillment: 'Pesanan',
+    verifyPayment: 'Pesanan', fulfillment: 'Pesanan',
     upload: data.kind === 'PRODUK' ? 'Products' : 'Pesanan', download: 'Pesanan',
     shipping: 'Pesanan', report: 'Laporan', backup: 'Backup', restoreStaging: 'Backup'
   };
@@ -189,7 +183,6 @@ function dispatch_(request) {
     saveSettings: function () { return saveSettings_(user, data); },
     uploadStoreAsset: function () { return uploadStoreAsset_(user, data); },
     verifyPayment: function () { return verifyPayment_(user, data); },
-    resetOrderAccess: function () { return resetOrderAccess_(user, data); },
     fulfillment: function () { return fulfillment_(user, data); },
     upload: function () { return upload_(user, data); },
     download: function () { return download_(user, data); },

@@ -1226,7 +1226,7 @@ test('Nomor pesanan menolak tanpa lock, counter rusak, dan nomor lebih dari 9999
   assert.equal(context.nextOrderId_('2026-11-02T16:00:00Z', []), 'HV-031126-0001');
 });
 
-test('Checkout akun tidak membuat kunci privat, akses kunci tetap tersedia untuk pesanan lama', function () {
+test('Checkout dan tampilan akun tidak menyediakan akses kunci privat lama', function () {
   const client = source('js/client.js');
   const code = client.slice(client.indexOf('  function checkoutPayload('),
     client.indexOf('  // Menampilkan langkah penerima'));
@@ -1238,10 +1238,13 @@ test('Checkout akun tidak membuat kunci privat, akses kunci tetap tersedia untuk
   vm.runInContext(code, context);
   assert.ok(!('accessToken' in context.checkoutPayload()));
   assert.ok(!client.includes('function randomToken('));
-  assert.ok(client.includes('Simpan melalui tombol "Unduh Kunci Akses"'));
+  for (const removed of ['Unduh Kunci Akses', 'legacy-orders', 'reset-access-form',
+    'orderAccessForm', 'state.accessToken', "'customerUpload'", "'orderStatus'", "'customerInvoice'"]) {
+    assert.ok(!client.includes(removed), removed);
+  }
 });
 
-test('Status menerima kunci baru dan lama, tetapi menolak kunci salah serta tidak membocorkan hash', function () {
+test('Status hanya dapat dibuka melalui pemilik akun dan tidak membocorkan hash', function () {
   const { context } = orderNumberContext();
   const digest = function (value) {
     return require('node:crypto').createHash('sha256').update(value).digest('hex');
@@ -1250,15 +1253,16 @@ test('Status menerima kunci baru dan lama, tetapi menolak kunci salah serta tida
   context.equal_ = function (left, right) { return left === right; };
   for (const key of ['AbC123_-xy', 'a'.repeat(43)]) {
     const order = {
-      id: 'HV-051126-0001', accessHash: digest(key),
+      id: 'HV-051126-0001', customerId: 'consumer1', accessHash: digest(key),
       transactionState: 'COMMITTED', snapshotJson: '{"items":[]}'
     };
     context.rows_ = function () { return [order]; };
-    assert.equal(context.customerAccess_({ orderId: order.id, accessToken: key }), order);
-    for (const wrong of [key.toUpperCase(), '', 'incorrect1']) {
+    const user = { id: 'consumer1', role: 'Konsumen' };
+    assert.equal(context.accountOrderAccess_(user, { orderId: order.id }), order);
+    for (const wrong of [null, { id: 'other', role: 'Konsumen' }, { id: 'consumer1', role: 'Admin' }]) {
       assert.throws(function () {
-        context.customerAccess_({ orderId: order.id, accessToken: wrong });
-      }, /Pesanan atau kunci akses tidak valid/);
+        context.accountOrderAccess_(wrong, { orderId: order.id, accessToken: key });
+      }, /Login|tidak ditemukan/);
     }
     context.publicRecord_ = function (record, fields) {
       return Object.fromEntries(fields.map(function (field) { return [field, record[field]]; }));
@@ -1300,37 +1304,22 @@ function recoveryContext(role) {
   return { context, order, audits, writes, locks: () => locks };
 }
 
-test('Admin mengganti hash di bawah lock; kunci lama ditolak dan kunci baru diterima', function () {
+test('Endpoint pemulihan kunci lama tidak lagi tersedia untuk Admin', function () {
   const fixture = recoveryContext('Admin');
   const before = { ...fixture.order };
   const result = fixture.context.api_({
     action: 'resetOrderAccess', token: 'session',
     data: { orderId: before.id, phone: before.phone, confirmed: true }
   });
-  assert.equal(result.ok, true);
-  assert.match(result.data.accessToken, /^[A-Za-z0-9_-]{10}$/);
-  assert.equal(result.data.orderId, before.id);
+  assert.equal(result.ok, false);
+  assert.match(result.message, /tidak dikenal/);
   assert.equal(fixture.locks(), 1);
-  assert.equal(fixture.writes.length, 1);
-  assert.equal(fixture.writes[0].name, 'Orders');
-  assert.deepEqual(Object.keys(fixture.writes[0].changes), ['accessHash']);
-  assert.notEqual(fixture.order.accessHash, before.accessHash);
-  assert.deepEqual({ ...fixture.order, accessHash: before.accessHash }, before);
-  assert.throws(() => fixture.context.customerAccess_({
-    orderId: before.id, accessToken: 'oldKey1234'
-  }), /kunci akses tidak valid/);
-  assert.equal(fixture.context.customerAccess_({
-    orderId: before.id, accessToken: result.data.accessToken
-  }), fixture.order);
-  assert.equal(fixture.audits.length, 1);
-  assert.equal(fixture.audits[0].action, 'RESET_ORDER_ACCESS');
-  const audit = JSON.stringify(fixture.audits);
-  for (const secret of [result.data.accessToken, fixture.order.accessHash, before.phone]) {
-    assert.ok(!audit.includes(secret));
-  }
+  assert.equal(fixture.writes.length, 0);
+  assert.deepEqual(fixture.order, before);
+  assert.equal(fixture.audits.length, 0);
 });
 
-test('Rotasi ditolak untuk Operator, Viewer dan tanpa sesi, termasuk panggilan langsung', function () {
+test('Pemulihan kunci lama ditolak untuk seluruh level dan tanpa sesi', function () {
   for (const role of ['Operator', 'Viewer', 'Admin']) {
     const fixture = recoveryContext(role);
     const data = { orderId: fixture.order.id, phone: fixture.order.phone, confirmed: true };
@@ -1340,13 +1329,11 @@ test('Rotasi ditolak untuk Operator, Viewer dan tanpa sesi, termasuk panggilan l
     assert.equal(result.ok, false);
     assert.equal(fixture.writes.length, 0);
     assert.equal(fixture.audits.length, 0);
-    if (role !== 'Admin') {
-      assert.throws(() => fixture.context.resetOrderAccess_({ role }, data), /Hanya Admin/);
-    }
+    assert.equal(fixture.context.resetOrderAccess_, undefined);
   }
 });
 
-test('Nomor pesanan, HP, konfirmasi, dan status transaksi diperiksa sebelum rotasi', function () {
+test('Payload lama apa pun tidak dapat mengaktifkan kembali pemulihan kunci', function () {
   const fixture = recoveryContext('Admin');
   const valid = { orderId: fixture.order.id, phone: fixture.order.phone, confirmed: true };
   for (const changes of [
@@ -1366,26 +1353,21 @@ test('Nomor pesanan, HP, konfirmasi, dan status transaksi diperiksa sebelum rota
   assert.equal(fixture.audits.length, 0);
 });
 
-test('Form pemulihan meminta HP kosong dan konfirmasi; hasil hanya di dialog', function () {
+test('Form pesanan hanya menampilkan Login tanpa formulir kunci lama', function () {
   const client = source('js/client.js');
   const context = vm.createContext({
     safe: value => String(value || ''),
     buttonLabel: (icon, label) => label,
-    field: (label, name, value) => `<input name="${name}" value="${value}">`
+    app: { innerHTML: '' }
   });
-  vm.runInContext(client.slice(client.indexOf('  function orderAccessForm('),
-    client.indexOf('  function masterFields(')), context);
-  const html = context.orderAccessForm({ id: 'order1', phone: '08123', transactionState: 'COMMITTED' });
-  assert.ok(html.includes('name="phone" value=""'));
-  assert.ok(html.includes('name="confirmed" required'));
-  assert.ok(!html.includes('08123'));
-  assert.equal(context.orderAccessForm({ transactionState: 'PREPARING' }), '');
-  assert.ok(client.includes("state.user.role === 'Admin' && canManageMaster('Pesanan') ? orderAccessForm(order) : ''"));
+  vm.runInContext(client.slice(client.indexOf('  function renderStatusForm('),
+    client.indexOf('  function fulfillmentLabel(')), context);
+  context.renderStatusForm();
+  assert.ok(context.app.innerHTML.includes('Login'));
+  assert.ok(!context.app.innerHTML.includes('<form'));
+  assert.ok(!context.app.innerHTML.includes('<details'));
+  assert.ok(!client.includes('orderAccessForm('));
   assert.ok(client.includes("dialog.addEventListener('close'"));
-  const handler = client.slice(client.indexOf("} else if (form.id === 'reset-access-form')"),
-    client.indexOf("} else if (form.id === 'order-action-form')"));
-  assert.ok(handler.includes('readonly'));
-  assert.ok(!handler.includes('state.accessToken ='));
 });
 
 test('Retry pesanan mempertahankan nomor lama tanpa mengambil urutan baru', function () {
@@ -1394,22 +1376,18 @@ test('Retry pesanan mempertahankan nomor lama tanpa mengambil urutan baru', func
   context.settings_ = function () { return { ordersEnabled: 'true' }; };
   context.digest_ = function () { return 'hash'; };
   context.equal_ = function (left, right) { return left === right; };
+  context.saveCustomerDelivery_ = function () {};
   context.rows_ = function () {
-    return [{ id: 'HV-021126-0001', requestId: 'retry-1', requestHash: 'hash', accessHash: 'hash' }];
+    return [{ id: 'HV-021126-0001', requestId: 'retry-1', requestHash: 'hash', customerId: 'consumer1' }];
   };
   context.customerOrder_ = function (order) { return { id: order.id }; };
   context.nextOrderId_ = function () { throw new Error('Tidak boleh mengambil nomor baru saat retry.'); };
   const data = {
     requestId: 'retry-1', name: 'Pelanggan', phone: '081234567890', acceptPolicy: true
   };
-  for (const accessToken of ['AbC123_-xy', 'a'.repeat(43)]) {
-    assert.equal(context.createOrder_(Object.assign({}, data, { accessToken })).id, 'HV-021126-0001');
-  }
-  for (const accessToken of ['a'.repeat(9), 'a'.repeat(11), 'a'.repeat(42), 'a'.repeat(44), 'abcde!1234']) {
-    assert.throws(function () {
-      context.createOrder_(Object.assign({}, data, { accessToken }));
-    }, /Kunci akses pelanggan tidak valid/);
-  }
+  assert.equal(context.createOrder_(data, { id: 'consumer1', role: 'Konsumen' }).id, 'HV-021126-0001');
+  assert.throws(() => context.createOrder_(data), /akun Konsumen/);
+  assert.throws(() => context.createOrder_(data, { id: 'other', role: 'Konsumen' }), /data berbeda/);
   assert.equal(properties.size, 0);
   assert.ok(source('apps-script/Files.gs').includes("const name = order.id + '.pdf';"));
 });
@@ -1434,17 +1412,19 @@ test('Pembuatan pesanan menyimpan nomor baru dan retry tidak menaikkan counter',
   };
   context.finishOrder_ = function (order) { order.transactionState = 'COMMITTED'; return order; };
   context.audit_ = function () {};
+  context.saveCustomerDelivery_ = function () {};
   context.SpreadsheetApp = { flush: function () {} };
   const data = {
     requestId: 'pesanan-1', accessToken: 'AbC123_-xy', name: 'Pelanggan',
     phone: '081234567890', acceptPolicy: true, type: 'DIRECT',
     receipt: 'PICKUP', paymentMethod: 'PICKUP_CASH', date: '2026-11-02', time: '17:00'
   };
-  assert.equal(context.createOrder_(data).id, 'HV-021126-0001');
-  assert.equal(context.createOrder_(data).id, 'HV-021126-0001');
+  const user = { id: 'consumer1', role: 'Konsumen' };
+  assert.equal(context.createOrder_(data, user).id, 'HV-021126-0001');
+  assert.equal(context.createOrder_(data, user).id, 'HV-021126-0001');
   assert.equal(orders.length, 1);
   assert.equal(JSON.parse(properties.get('ORDER_NUMBER_COUNTER')).sequence, 1);
-  assert.equal(context.createOrder_(Object.assign({}, data, { requestId: 'pesanan-2' })).id,
+  assert.equal(context.createOrder_(Object.assign({}, data, { requestId: 'pesanan-2' }), user).id,
     'HV-021126-0002');
   assert.equal(orders.length, 2);
 });
@@ -1572,7 +1552,7 @@ function actionFormContext() {
     safe: String, fulfillmentLabel: String
   });
   vm.runInContext(client.slice(client.indexOf('  function orderActionRules('),
-    client.indexOf('  function orderAccessForm(')), context);
+    client.indexOf('  function masterFields(')), context);
   return { context, form, order };
 }
 
@@ -1665,7 +1645,7 @@ test('Detail pelanggan memuat bagian terpisah dan tidak meminta bukti untuk pesa
     client.indexOf('  function renderLogin(')), context);
   context.renderOrder();
   const html = context.app.innerHTML;
-  for (const title of ['Jadwal dan Penerima', 'Rincian Produk', 'Dokumen dan Kunci Akses', 'Perbarui Status']) {
+  for (const title of ['Jadwal dan Penerima', 'Rincian Produk', 'Dokumen Pesanan', 'Perbarui Status']) {
     assert.ok(html.includes(title));
   }
   assert.ok(!html.includes('id="proof-form"'));
@@ -1677,7 +1657,7 @@ test('Detail pelanggan memuat bagian terpisah dan tidak meminta bukti untuk pesa
   assert.ok(!context.app.innerHTML.includes('id="cancel-form"'));
 });
 
-test('Detail Admin menampilkan satu struk terbaru dan pemulihan kunci di bawah tindakan', function () {
+test('Detail Admin menampilkan struk terbaru tanpa pemulihan kunci', function () {
   const client = source('js/client.js');
   let html = '';
   const context = vm.createContext({
@@ -1700,7 +1680,7 @@ test('Detail Admin menampilkan satu struk terbaru dan pemulihan kunci di bawah t
   assert.ok(html.includes('data-file="latest"'));
   assert.ok(!html.includes('data-file="old"'));
   assert.ok(!html.includes('id="handover-form"'));
-  assert.ok(html.indexOf('id="reset-access-form"') > html.indexOf('id="order-action-form"'));
+  assert.ok(!html.includes('id="reset-access-form"'));
   assert.ok(html.includes('id="order-action-result"'));
 });
 
@@ -1729,12 +1709,12 @@ test('Status tanda terima selalu terlihat; input hanya aktif setelah dikirim ata
   assert.ok(!context.app.innerHTML.includes('id="handover-form"'));
 });
 
-// Drive dan gambar ditiru; pemeriksaan nomor pesanan/kunci memakai fungsi backend asli.
+// Drive dan gambar ditiru; pemeriksaan kepemilikan memakai fungsi backend asli.
 function handoverContext() {
-  const fixture = recoveryContext('Admin');
+  const fixture = recoveryContext('Konsumen');
   const context = fixture.context;
   const files = [];
-  Object.assign(fixture.order, { receipt: 'DELIVERY', fulfillment: 'DISPATCHED' });
+  Object.assign(fixture.order, { customerId: 'admin1', receipt: 'DELIVERY', fulfillment: 'DISPATCHED' });
   vm.runInContext(source('apps-script/Files.gs'), context);
   context.rows_ = name => name === 'Orders' ? [fixture.order] : name === 'Files' ? files : [];
   context.id_ = () => 'record1';
@@ -1754,14 +1734,14 @@ function handoverContext() {
   } };
 }
 
-test('Konsumen mengunggah tanda terima dengan kunci valid; retry tidak menggandakan berkas', function () {
+test('Konsumen mengunggah tanda terima dengan sesi valid; retry tidak menggandakan berkas', function () {
   const { context, files, data, order } = handoverContext();
-  const result = context.api_({ action: 'customerUpload', data });
+  const result = context.api_({ action: 'myOrderUpload', token: 'session', data });
   assert.equal(result.ok, true);
   assert.equal(files.length, 1);
   assert.equal(files[0].uploadedBy, 'CUSTOMER');
   assert.equal(files[0].orderId, order.id);
-  assert.equal(context.api_({ action: 'customerUpload', data }).ok, true);
+  assert.equal(context.api_({ action: 'myOrderUpload', token: 'session', data }).ok, true);
   assert.equal(files.length, 1);
   const customer = context.customerOrder_(order);
   assert.equal(customer.handoverUploaded, true);
@@ -1772,21 +1752,22 @@ test('Konsumen mengunggah tanda terima dengan kunci valid; retry tidak mengganda
   assert.equal(order.fulfillment, 'COMPLETED');
 });
 
-test('Unggahan tanda terima menolak Admin, kunci salah, tahap awal, dan tanpa konfirmasi', function () {
+test('Unggahan tanda terima menolak Admin, tanpa sesi, tahap awal, dan tanpa konfirmasi', function () {
   const { context, files, data, order } = handoverContext();
   for (const role of ['Admin', 'Operator', 'Viewer']) {
     assert.throws(() => context.upload_({ role }, data), /konsumen/);
   }
-  for (const changes of [{ accessToken: '' }, { accessToken: 'wrong' }, { received: false }, { received: 'true' }]) {
-    assert.equal(context.api_({ action: 'customerUpload', data: { ...data, ...changes } }).ok, false);
+  assert.equal(context.api_({ action: 'myOrderUpload', data }).ok, false);
+  for (const changes of [{ orderId: 'other' }, { received: false }, { received: 'true' }]) {
+    assert.equal(context.api_({ action: 'myOrderUpload', token: 'session', data: { ...data, ...changes } }).ok, false);
   }
   for (const fulfillment of ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED']) {
     order.fulfillment = fulfillment;
-    assert.equal(context.api_({ action: 'customerUpload', data }).ok, false);
+    assert.equal(context.api_({ action: 'myOrderUpload', token: 'session', data }).ok, false);
   }
   order.receipt = 'PICKUP';
   order.fulfillment = 'READY';
-  assert.equal(context.api_({ action: 'customerUpload', data }).ok, true);
+  assert.equal(context.api_({ action: 'myOrderUpload', token: 'session', data }).ok, true);
   assert.equal(files.length, 1);
 });
 
@@ -1807,7 +1788,7 @@ test('Sedang dikirim memerlukan pelunasan, tanpa konfirmasi ongkir tambahan', fu
   assert.throws(() => context.fulfillment_({ id: 'admin1' }, { orderId: order.id, status: 'COMPLETED' }), /konsumen/);
 });
 
-test('Form tanda terima mengirim akses pelanggan, bukan sesi Admin', async function () {
+test('Form tanda terima memakai endpoint akun tanpa mengirim kunci privat', async function () {
   const client = source('js/client.js');
   let request;
   const context = vm.createContext({
@@ -1820,10 +1801,10 @@ test('Form tanda terima mengirim akses pelanggan, bukan sesi Admin', async funct
   vm.runInContext(client.slice(client.indexOf('  async function submitAction('),
     client.indexOf('  // Menangani halaman sebelum instalasi')), context);
   await context.submitAction({ id: 'handover-form', elements: { photo: { files: [{}] } } });
-  assert.equal(request.action, 'customerUpload');
+  assert.equal(request.action, 'myOrderUpload');
   assert.equal(request.data.kind, 'TANDATERIMA');
   assert.equal(request.data.orderId, 'order1');
-  assert.equal(request.data.accessToken, 'customer-key');
+  assert.ok(!Object.hasOwn(request.data, 'accessToken'));
   assert.equal(request.data.received, true);
   assert.equal(context.state.order.handoverUploaded, true);
 });
@@ -1859,6 +1840,9 @@ function shippingContext() {
   let counter = 0;
   context.id_ = () => 'id' + (++counter);
   context.audit_ = () => {};
+  context.saveCustomerDelivery_ = () => {};
+  const createOrder = context.createOrder_;
+  context.createOrder_ = data => createOrder(data, { id: 'consumer1', role: 'Konsumen' });
   context.append_ = (table, record) => {
     const saved = Object.fromEntries(Array.from(schema[table], key => [key, record[key] == null ? '' : record[key]]));
     tables[table].push(saved);

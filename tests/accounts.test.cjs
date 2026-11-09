@@ -551,15 +551,22 @@ test('Status akun menolak ID milik orang lain, pesanan lama dan pesanan belum se
   assert.throws(() => f.context.accountOrderAccess_(user, { orderId: order.id }), /rekonsiliasi/);
 });
 
-test('Kunci privat tidak membuka pesanan akun; akses pesanan lama tetap berfungsi', () => {
+test('Endpoint akses kunci lama dihapus, termasuk untuk sesi Konsumen', () => {
   const f = consumerFixture();
   const session = f.login();
   const user = f.context.authorize_(session.token, ['Konsumen']);
   const order = f.context.createOrder_(f.orderData, user);
-  f.tables.Orders[0].accessHash = f.context.digest_('Known12345');
-  assert.throws(() => f.context.customerAccess_({ orderId: order.id, accessToken: 'Known12345' }), /tidak valid/);
+  assert.equal(f.context.customerAccess_, undefined);
+  assert.equal(f.context.resetOrderAccess_, undefined);
   f.tables.Orders[0].customerId = '';
-  assert.equal(f.context.customerAccess_({ orderId: order.id, accessToken: 'Known12345' }).id, order.id);
+  for (const action of ['orderStatus', 'customerUpload', 'customerInvoice', 'resetOrderAccess', 'removeLegacyOrders']) {
+    const result = f.context.api_({ action, token: session.token,
+      data: { orderId: order.id, accessToken: 'Known12345' } });
+    assert.equal(result.ok, false);
+    assert.match(result.message, /tidak dikenal/);
+  }
+  assert.throws(() => f.context.upload_(null, { kind: 'STRUK', orderId: order.id }), /Login/);
+  assert.throws(() => f.context.download_(null, { kind: 'INVOICE', orderId: order.id }), /Login/);
 });
 
 test('Alamat penerima tersimpan untuk belanja berikutnya tanpa mengganti kontak pemulihan', () => {
@@ -608,14 +615,14 @@ test('Invoice dan unggah konsumen memakai kepemilikan akun sebelum menyentuh Dri
     data: { orderId: order.id, kind: 'TANDATERIMA', requestId: 'handover-1', received: true } }).ok, true);
 });
 
-test('Akun dengan pesanan tidak dapat dihapus; pemulihan kunci hanya untuk pesanan lama', () => {
+test('Akun dengan pesanan tetap tidak dapat dihapus setelah akses lama dihapus', () => {
   const f = consumerFixture();
   const session = f.login();
   const user = f.context.authorize_(session.token, ['Konsumen']);
   const order = f.context.createOrder_(f.orderData, user);
   const admin = { ...f.user, role: 'Admin', permissionsJson: '["Users","Pesanan"]' };
   assert.throws(() => f.context.deleteMaster_(admin, { table: 'Users', id: user.id, confirmed: true }), /masih dipakai/);
-  assert.throws(() => f.context.resetOrderAccess_(admin, { orderId: order.id, phone: order.phone, confirmed: true }), /Reset Password/);
+  assert.equal(f.context.resetOrderAccess_, undefined);
 });
 
 test('Migrasi Orders menambah customerId tanpa mengisi pemilik untuk pesanan lama', () => {

@@ -48,7 +48,7 @@ function upload_(user, data, customer) {
   } else if (kind === 'STRUK') {
     order = customer ? accountOrderAccess_(customer, data) : user
       ? rows_('Orders').find(function (row) { return row.id === data.orderId; })
-      : customerAccess_(data);
+      : accountOrderAccess_(null, data);
     if (!order || order.fulfillment === 'CANCELLED') {
       throw new Error('Bukti transfer tidak dapat diunggah.');
     }
@@ -56,7 +56,7 @@ function upload_(user, data, customer) {
     if (user) {
       throw new Error('Tanda terima harus diunggah konsumen melalui Status Pesanan.');
     }
-    order = customer ? accountOrderAccess_(customer, data) : customerAccess_(data);
+    order = accountOrderAccess_(customer, data);
     const eligible = order.receipt === 'DELIVERY'
       ? order.fulfillment === 'DISPATCHED'
       : order.receipt === 'PICKUP' && order.fulfillment === 'READY';
@@ -176,7 +176,7 @@ function download_(user, data, customer) {
   if (data.kind === 'INVOICE') {
     const order = customer ? accountOrderAccess_(customer, data) : user
       ? rows_('Orders').find(function (row) { return row.id === data.orderId; })
-      : customerAccess_(data);
+      : accountOrderAccess_(null, data);
     if (!order || order.transactionState !== 'COMMITTED') {
       throw new Error('Invoice tidak tersedia.');
     }

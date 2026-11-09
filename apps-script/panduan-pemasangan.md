@@ -358,7 +358,7 @@ Perbarui deployment sesudah pembersihan dan jangan melakukan transaksi selama pe
 - Preorder belum terverifikasi setelah 18.00 diperiksa manual. Tidak ada pembatalan otomatis.
 - Foto struk tidak mengubah status pembayaran.
 - Konsumen mengunggah tanda terima melalui Status Pesanan sebelum Admin menyelesaikan pesanan.
-- Pelanggan wajib menyimpan kunci akses privat; nomor pesanan/nomor HP saja tidak membuka data.
+- Pelanggan membuka Pesanan Saya melalui Login akun Konsumen; akses kunci privat lama sudah dihapus.
 - Laporan berdasarkan tanggal pesanan WITA; pembayaran/refund terkait sampai waktu laporan ditarik. Sisa kas bukan laba.
 - Ekspor `.xlsx` asli dan PDF memakai data laporan yang sama. Pustaka ekspor dimuat dari CDN saat diperlukan.
 

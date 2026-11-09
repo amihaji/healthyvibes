@@ -33,6 +33,7 @@ function restoreStaging_(user, data) {
   const db = SpreadsheetApp.openById(restored.getId());
   // Backup lama dibersihkan pada salinan staging, tanpa menyentuh produksi.
   removeShippingConfirmation_(db);
+  removeLegacyOrderAccessColumn_(db);
   extendAccountSchema_(db);
   extendOrderAccountSchema_(db);
   const resets = db.getSheetByName('PasswordResets') || db.insertSheet('PasswordResets');

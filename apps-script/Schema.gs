@@ -33,7 +33,7 @@ const HV_SCHEMA = {
     'lastSeenAt', 'expiresAt', 'revoked'
   ],
   Orders: [
-    'id', 'requestId', 'requestHash', 'accessHash', 'createdAt',
+    'id', 'requestId', 'requestHash', 'createdAt',
     'type', 'receipt', 'date', 'time', 'name', 'phone',
     'areaId', 'address', 'paymentMethod', 'subtotal', 'voucherCode',
     'voucherDiscount', 'total', 'paymentDeadline', 'paymentStatus',
@@ -179,6 +179,7 @@ function installHealthyVibes_() {
     db.setSpreadsheetTimeZone('Asia/Makassar');
     db.setSpreadsheetLocale('id_ID');
     removeShippingConfirmation_(db);
+    removeLegacyOrderAccessColumn_(db);
     extendAccountSchema_(db);
     extendOrderAccountSchema_(db);
 
@@ -228,4 +229,99 @@ function installHealthyVibes_() {
       message: 'Database dan folder siap. Isi konfigurasi serta buat Admin pertama.'
     };
   });
+}
+
+// Installer hanya menghapus kolom usang, bukan baris transaksi.
+function removeLegacyOrderAccessColumn_(db) {
+  const sheet = db.getSheetByName('Orders');
+  if (!sheet || !sheet.getLastRow()) { return 0; }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const remaining = headers.filter(function (key) { return key !== 'accessHash'; });
+  if (remaining.length > HV_SCHEMA.Orders.length ||
+    remaining.some(function (key, index) { return key !== HV_SCHEMA.Orders[index]; }) ||
+    headers.filter(function (key) { return key === 'accessHash'; }).length > 1) {
+    throw new Error('Kolom Orders berbeda. Pembersihan dihentikan tanpa menimpa data.');
+  }
+  const index = headers.indexOf('accessHash');
+  if (index < 0) { return 0; }
+  sheet.deleteColumn(index + 1);
+  return 1;
+}
+
+// Hanya dapat dijalankan pemilik dari editor, tidak tersedia melalui API.
+function removeLegacyOrders() {
+  requireSetupAccess_();
+  const result = withLock_(function () {
+    const result = removeLegacyOrders_(database_());
+    SpreadsheetApp.flush();
+    return result;
+  });
+  console.info('Pesanan tanpa akun dihapus: ' + result.orders +
+    '; baris terkait: ' + result.relatedRows + '; berkas ke sampah: ' + result.files +
+    '; kolom kunci dihapus: ' + result.columns + '. Pesanan akun tetap disimpan.');
+  return result;
+}
+
+function removeLegacyOrders_(db) {
+  // Baca nama kolom asli agar aman sebelum/sesudah migrasi akun dan kunci.
+  const tables = {};
+  Object.keys(HV_SCHEMA).forEach(function (name) {
+    const sheet = db.getSheetByName(name);
+    if (!sheet || !sheet.getLastRow()) { tables[name] = []; return; }
+    const values = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues();
+    const headers = values[0];
+    const expected = HV_SCHEMA[name];
+    const known = name === 'Orders' ? headers.filter(function (key) { return key !== 'accessHash'; }) : headers;
+    if (known.length > expected.length ||
+      known.some(function (key, index) { return key !== expected[index]; }) ||
+      new Set(headers).size !== headers.length) {
+      throw new Error('Kolom ' + name + ' berbeda. Pembersihan dihentikan.');
+    }
+    tables[name] = values.slice(1).map(function (row, index) {
+      const record = { _row: index + 2 };
+      headers.forEach(function (key, position) { record[key] = row[position]; });
+      return record;
+    });
+  });
+  const legacy = tables.Orders.filter(function (order) {
+    return order.id && !String(order.customerId || '').trim();
+  });
+  const ids = new Set(legacy.map(function (order) { return order.id; }));
+  const related = ['OrderItems', 'StockLedger', 'Payments', 'Refunds', 'Shipping', 'Files', 'AuditLog'];
+  const selected = {};
+  related.forEach(function (name) {
+    selected[name] = tables[name].filter(function (row) {
+      return ids.has(name === 'AuditLog' ? row.entityId : row.orderId);
+    });
+  });
+  const files = new Set(legacy.map(function (row) { return row.invoiceFileId; }).filter(Boolean));
+  selected.Files.forEach(function (row) { if (row.driveFileId) { files.add(row.driveFileId); } });
+  // Jangan buang berkas yang juga dirujuk pesanan akun, produk, atau aset toko.
+  const retained = new Set();
+  tables.Files.filter(function (row) { return !ids.has(row.orderId); })
+    .forEach(function (row) { retained.add(row.driveFileId); });
+  tables.Orders.filter(function (row) { return !ids.has(row.id); })
+    .forEach(function (row) { retained.add(row.invoiceFileId); });
+  tables.Products.forEach(function (row) { retained.add(row.photoFileId); });
+  tables.Settings.filter(function (row) { return ['logoFileId', 'qrisFileId'].includes(row.key); })
+    .forEach(function (row) { retained.add(row.value); });
+  const result = { orders: legacy.length, relatedRows: 0, files: 0, columns: 0 };
+  files.forEach(function (id) {
+    if (!retained.has(id)) {
+      DriveApp.getFileById(id).setTrashed(true);
+      result.files += 1;
+    }
+  });
+  related.forEach(function (name) {
+    selected[name].sort(function (a, b) { return b._row - a._row; }).forEach(function (row) {
+      db.getSheetByName(name).deleteRow(row._row);
+      result.relatedRows += 1;
+    });
+  });
+  // Induk dihapus terakhir agar pengulangan dapat melanjutkan pembersihan terputus.
+  legacy.sort(function (a, b) { return b._row - a._row; }).forEach(function (row) {
+    db.getSheetByName('Orders').deleteRow(row._row);
+  });
+  result.columns = removeLegacyOrderAccessColumn_(db);
+  return result;
 }

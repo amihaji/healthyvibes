@@ -170,17 +170,21 @@ Username atau kontak yang sudah terdaftar tidak dapat digunakan membuat akun ked
 gunakan Login atau Lupa Password.
 
 Pesanan hanya ditautkan dari akun yang sedang Login, bukan kecocokan nomor WhatsApp.
-Pesanan lama tetap dibuka melalui **Buka Pesanan Lama** dengan nomor dan kunci lama.
-Pesanan lama tidak otomatis dimasukkan ke akun baru.
-Pemulihan kunci Admin hanya untuk pesanan lama; pesanan akun memakai Reset Password.
+Akses **Buka Pesanan Lama**, unduh kunci, dan pemulihan kunci Admin sudah dihapus.
+Data percobaan tanpa akun dibersihkan melalui `removeLegacyOrders` dari editor
+Apps Script dengan akun pemilik. Lihat langkah lengkap di `struktur-database.md`.
+Pesanan akun memakai Login atau Reset Password, bukan kunci privat.
 Akun yang dirujuk pesanan tidak bisa dihapus; gunakan Edit untuk menonaktifkan bila perlu.
 
 ## Pemeriksaan
 
-132 pengujian otomatis lulus menggunakan layanan tiruan, tanpa transaksi Google
-atau pengiriman email/WhatsApp nyata. Alur pendaftaran, checkout, riwayat, pagination,
-invoice, unggahan, Login ulang dan alamat tersimpan lulus pemeriksaan browser
-pada layar 320, 390, 768, dan 1280 px.
+139 pengujian otomatis lulus menggunakan layanan tiruan, tanpa transaksi Google
+atau pengiriman email/WhatsApp nyata, termasuk penghapusan akses lama dan
+pembersihan pesanan tanpa akun. Pemeriksaan browser terbaru memastikan halaman
+Pesanan Saya tidak lagi menampilkan formulir nomor pesanan/kunci privat.
+Pemeriksaan browser sebelumnya untuk pendaftaran, checkout, riwayat, pagination,
+invoice, unggahan, Login ulang, dan alamat tersimpan dilakukan pada layar
+320, 390, 768, dan 1280 px.
 Pengiriman produksi tetap perlu dicoba
 setelah konfigurasi dan deployment siap, sebaiknya menggunakan akun uji.
 Jangan sengaja memblokir Admin utama untuk mencoba fitur.

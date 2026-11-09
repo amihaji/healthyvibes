@@ -26,7 +26,6 @@
     customerPage: 0,
     quote: null,
     requestId: '',
-    accessToken: '',
     order: null,
     report: null,
     listPage: 0
@@ -142,7 +141,6 @@
           state.user = null;
           state.customerOrders = null;
           state.order = null;
-          state.accessToken = '';
           state.page = 'admin';
           renderLogin();
         }
@@ -220,7 +218,7 @@
     }
   }
 
-  // Hapus isi dialog setelah ditutup agar kunci pemulihan tidak tertinggal.
+  // Hapus isi dialog setelah ditutup agar data privat tidak tertinggal.
   dialog.addEventListener('close', function () {
     document.getElementById('editor-content').innerHTML = '';
   });
@@ -338,8 +336,7 @@
       '<span>' + (result.page + 1) + ' / ' + result.pageCount + '</span>' +
       '<button class="btn btn-outline-dark btn-sm" id="next-my-orders" type="button"' +
       (result.page + 1 >= result.pageCount ? ' disabled' : '') + '>' + buttonLabel('next', 'Berikutnya') +
-      '</button></div><button class="btn btn-link btn-sm mt-3" id="legacy-orders" type="button">' +
-      buttonLabel('key', 'Buka Pesanan Lama') + '</button></section>';
+      '</button></div></section>';
   }
 
   let catalogRequest = 0;
@@ -630,7 +627,6 @@
     }
     if (!state.requestId) {
       state.requestId = crypto.randomUUID();
-      state.accessToken = '';
     }
     state.checkoutStep = 1;
     state.quote = null;
@@ -823,20 +819,13 @@
     notify('Pesanan berhasil dibuat. Lihat perkembangannya di Pesanan Saya.');
   }
 
-  // Menampilkan formulir pengecekan pesanan dengan nomor dan kunci akses privat.
+  // Menampilkan formulir pengecekan pesanan melalui Login akun Konsumen.
   function renderStatusForm() {
     app.innerHTML = '<section class="panel mx-auto" style="max-width:650px">' +
       '<h1 class="h2">Pesanan Saya</h1><p>Login untuk melihat riwayat dan status seluruh pesanan akun Anda.</p>' +
       '<div class="d-flex gap-2 flex-wrap mb-3"><button class="btn btn-primary btn-sm" data-nav="admin" type="button">' +
       buttonLabel('login', 'Login') + '</button><button class="btn btn-outline-dark btn-sm" data-nav="shop" type="button">' +
-      buttonLabel('menu', 'Mulai Belanja') + '</button></div>' +
-      '<details><summary>Buka pesanan lama dengan kunci akses</summary><p class="mt-3">Nomor pesanan saja tidak cukup. ' +
-      'Kunci akses dibuat otomatis dan ditampilkan pada halaman "Pesanan Anda" setelah pesanan berhasil. ' +
-      'Simpan melalui tombol "Unduh Kunci Akses", lalu masukkan kunci tersebut di sini. ' +
-      'Huruf besar dan kecil harus sesuai.</p>' +
-      '<form id="status-form">' + field('Nomor pesanan', 'orderId', state.order?.id) +
-      field('Kunci akses privat', 'accessToken', state.accessToken) +
-      '<button class="btn btn-primary" type="submit">' + buttonLabel('eye', 'Lihat Pesanan') + '</button></form></details></section>';
+      buttonLabel('menu', 'Mulai Belanja') + '</button></div></section>';
   }
 
   // Mengubah kode internal menjadi status yang mudah dipahami pelanggan.
@@ -943,16 +932,12 @@
         ? safe(dateTimeText(order.paymentDeadline)) + ' WITA'
         : 'Sebelum dikirim; pesanan langsung ambil dapat dibayar saat diambil.') +
       '</p></section>' +
-      '<section class="order-section"><h2 class="h5">' + (order.accountOwned ? 'Dokumen Pesanan' : 'Dokumen dan Kunci Akses') + '</h2>' +
-      (!order.accountOwned ? '<div class="alert alert-warning">Simpan kunci akses berikut secara privat. ' +
-      'Kunci ini memberikan akses pesanan.<br><code class="text-break">' +
-      safe(state.accessToken) + '</code></div>' : '<p class="small">Pesanan ini tersimpan di akun Anda. Tidak perlu kunci akses privat.</p>') +
+      '<section class="order-section"><h2 class="h5">Dokumen Pesanan</h2>' +
+      '<p class="small">Pesanan ini tersimpan di akun Anda.</p>' +
       '<div class="d-flex gap-2 flex-wrap justify-content-center">' +
       '<button class="btn btn-green btn-sm" id="download-invoice" type="button">' + buttonLabel('download', 'Unduh Invoice PDF') + '</button>' +
-      (!order.accountOwned ? '<button class="btn btn-outline-dark btn-sm" id="save-access" type="button">' +
-        buttonLabel('key', 'Unduh Kunci Akses') + '</button>' :
-        '<button class="btn btn-outline-dark btn-sm" data-nav="status" type="button">' +
-        buttonLabel('orders', 'Pesanan Saya') + '</button>') +
+      '<button class="btn btn-outline-dark btn-sm" data-nav="status" type="button">' +
+      buttonLabel('orders', 'Pesanan Saya') + '</button>' +
       '</div></section>' +
       (order.paymentStatus !== 'PAID' && !['CANCELLED', 'COMPLETED'].includes(order.fulfillment)
         ? '<form id="proof-form" class="order-section">' +
@@ -1303,8 +1288,7 @@
       field('Nomor/link pelacakan', 'tracking', '', 'text', false, true) + '</div>' +
       '<div id="order-action-result" role="status" aria-live="polite"></div>' +
       '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit" disabled>' +
-      buttonLabel('check', 'Jalankan Tindakan') + '</button></div></form><hr>' : '') +
-      (state.user.role === 'Admin' && canManageMaster('Pesanan') ? orderAccessForm(order) : ''));
+      buttonLabel('check', 'Jalankan Tindakan') + '</button></div></form><hr>' : ''));
   }
 
   // Setiap tindakan menentukan isian aktif, kewajiban isian, dan petunjuk penggunaan.
@@ -1368,22 +1352,6 @@
     form.querySelector('[type="submit"]').disabled = !rule || !!unavailable;
     form.querySelector('#order-action-help').textContent = unavailable || (rule ? rule.help
       : 'Pilih tindakan untuk melihat kegunaannya dan mengaktifkan isian yang diperlukan.');
-  }
-
-  // Nomor HP harus diketik dari informasi pelanggan, bukan diisi otomatis.
-  function orderAccessForm(order) {
-    if (order.transactionState !== 'COMMITTED' || order.customerId) { return ''; }
-    return '<section aria-labelledby="reset-access-title"><h2 class="h5" id="reset-access-title">' +
-      buttonLabel('key', 'Pemulihan Kunci Akses') + '</h2>' +
-      '<p class="small">Kunci lama dinonaktifkan. Kunci baru hanya tampil sekali.</p>' +
-      '<form id="reset-access-form" data-id="' + safe(order.id) + '">' +
-      field('Nomor HP pelanggan (sesuai pesanan)', 'phone', '', 'tel') +
-      '<label class="d-flex align-items-center gap-2 mb-3">' +
-      '<input class="form-check-input m-0" type="checkbox" name="confirmed" required>' +
-      '<span>Identitas pelanggan sudah diperiksa.</span></label>' +
-      '<div id="reset-access-result" role="status" aria-live="polite"></div>' +
-      '<div class="d-flex justify-content-center"><button class="btn btn-primary btn-sm" type="submit">' +
-      buttonLabel('key', 'Buat Kunci Baru') + '</button></div></form></section><hr>';
   }
 
   // Form master dikonfigurasi per tabel agar tidak menampilkan password hash.
@@ -1783,7 +1751,6 @@
       const order = await rpc('myOrderStatus', { orderId: button.dataset.myOrder });
       if (token !== state.token || state.page !== 'status') { return; }
       state.order = order;
-      state.accessToken = '';
       renderOrder();
       return;
     }
@@ -1830,24 +1797,18 @@
       }
     } else if (id === 'refresh-order') {
       const token = state.token;
-      const order = await rpc(state.order.accountOwned ? 'myOrderStatus' : 'orderStatus', {
-        orderId: state.order.id, accessToken: state.accessToken
+      const order = await rpc('myOrderStatus', {
+        orderId: state.order.id
       });
       if (token !== state.token || state.page !== 'status') { return; }
       state.order = order;
       renderOrder();
     } else if (id === 'download-invoice') {
       const token = state.token;
-      const file = await rpc(state.order.accountOwned ? 'myInvoice' : 'customerInvoice', {
-        orderId: state.order.id, accessToken: state.accessToken
+      const file = await rpc('myInvoice', {
+        orderId: state.order.id
       });
       if (token === state.token && state.page === 'status') { saveDownload(file); }
-    } else if (id === 'save-access') {
-      saveBlob(new Blob([
-        'Healthy Vibes\nNomor pesanan: ' + state.order.id +
-        '\nKunci akses privat: ' + state.accessToken +
-        '\nJangan bagikan kunci ini kepada orang lain.'
-      ], { type: 'text/plain' }), 'Akses-Pesanan-Healthy-Vibes.txt');
     } else if (id === 'change-password') {
       passwordDialog();
     } else if (id === 'forgot-password') {
@@ -1864,13 +1825,9 @@
       state.customerOrders = null;
       state.customerPage = 0;
       state.order = null;
-      state.accessToken = '';
       state.recipient = {};
       state.checkoutResume = false;
       await navigate('admin');
-    } else if (id === 'legacy-orders') {
-      renderStatusForm();
-      app.querySelector('details').open = true;
     } else if (id === 'previous-my-orders' || id === 'next-my-orders') {
       state.customerPage += id === 'next-my-orders' ? 1 : -1;
       await loadMyOrders();
@@ -1953,10 +1910,9 @@
     try {
       await submitAction(form);
     } catch (error) {
-      if (['reset-access-form', 'order-action-form', 'handover-form', 'delete-master-form',
+      if (['order-action-form', 'handover-form', 'delete-master-form',
         'request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)) {
-        const selector = form.id === 'reset-access-form' ? '#reset-access-result'
-          : form.id === 'handover-form' ? '#handover-result'
+        const selector = form.id === 'handover-form' ? '#handover-result'
             : form.id === 'delete-master-form' ? '#delete-master-result'
               : ['request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)
                 ? '[role="status"]' : '#order-action-result';
@@ -1978,10 +1934,6 @@
     const data = formData(form);
     if (form.id === 'checkout-form') {
       await submitCheckout(form);
-    } else if (form.id === 'status-form') {
-      state.order = await rpc('orderStatus', data);
-      state.accessToken = data.accessToken;
-      renderOrder();
     } else if (form.id === 'login-form') {
       const result = await rpc('login', data);
       state.token = result.token;
@@ -2031,13 +1983,12 @@
       const order = customer ? state.order : null;
       const photo = await photoData(form.elements.photo.files[0], form.id === 'product-photo-form');
       if (customer && (token !== state.token || order !== state.order || state.page !== 'status')) { return; }
-      await rpc(customer ? state.order.accountOwned ? 'myOrderUpload' : 'customerUpload' : 'upload', Object.assign({}, photo, {
+      await rpc(customer ? 'myOrderUpload' : 'upload', Object.assign({}, photo, {
         requestId: crypto.randomUUID(),
         kind: form.id === 'handover-form' ? 'TANDATERIMA' : customer ? 'STRUK' : 'PRODUK',
         orderId: customer ? state.order.id : '',
         productId: form.id === 'product-photo-form' ? form.dataset.id : '',
-        received: form.id === 'handover-form' && data.received === 'on',
-        accessToken: customer ? state.accessToken : ''
+        received: form.id === 'handover-form' && data.received === 'on'
       }));
       if (customer && (token !== state.token || state.page !== 'status')) { return; }
       if (form.id === 'handover-form') {
@@ -2107,19 +2058,6 @@
       await rpc('uploadStoreAsset', Object.assign({}, photo, { asset: data.asset }));
       await loadAdmin();
       notify('Berhasil tersimpan.');
-    } else if (form.id === 'reset-access-form') {
-      const result = await rpc('resetOrderAccess', {
-        orderId: form.dataset.id, phone: data.phone, confirmed: data.confirmed === 'on'
-      });
-      // Hasil hanya di dialog, tidak disimpan di state, URL, atau penyimpanan browser.
-      form.innerHTML = '<div class="alert alert-success" role="status">' +
-        '<p>Kunci baru berhasil dibuat. Kunci lama tidak berlaku lagi.</p>' +
-        '<p>Nomor pesanan: <strong>' + safe(result.orderId) + '</strong></p>' +
-        '<label class="form-label" for="recovered-access">Kunci akses baru (10 karakter)</label>' +
-        '<input id="recovered-access" class="form-control" type="text" readonly value="' +
-        safe(result.accessToken) + '">' +
-        '<p class="small mt-2 mb-0">Salin dan sampaikan secara pribadi kepada pelanggan. ' +
-        'Huruf besar dan kecil harus sesuai. Kunci ini tidak dapat dilihat kembali setelah dialog ditutup.</p></div>';
     } else if (form.id === 'order-action-form') {
       if (!orderActionRules(data.action)) {
         throw new Error('Pilih tindakan terlebih dahulu.');
