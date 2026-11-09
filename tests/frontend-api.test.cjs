@@ -2470,3 +2470,73 @@ test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', func
   });
   assert.equal(callbackCalled, false);
 });
+
+test('Login hanya menampilkan kotak User dan Pass dengan autofill serta pemulihan', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({
+    app: { innerHTML: '' }, buttonLabel: (icon, label) => label,
+    window: { HV_UI: { icon: () => '<svg aria-hidden="true"></svg>' } }
+  });
+  vm.runInContext(client.slice(client.indexOf('  function renderLogin('),
+    client.indexOf('  function toggleLoginPassword(')), context);
+  context.renderLogin();
+  const html = context.app.innerHTML;
+  assert.ok(html.includes('panel login-card'));
+  assert.ok(html.includes('for="login-user">User</label>'));
+  assert.ok(html.includes('for="login-pass">Pass</label>'));
+  assert.ok(html.includes('autocomplete="username"'));
+  assert.ok(html.includes('autocomplete="current-password"'));
+  assert.ok(html.includes('autocapitalize="none" spellcheck="false"'));
+  assert.ok(html.includes('id="forgot-password"'));
+  assert.ok(html.includes('id="login-error" role="alert"'));
+  assert.ok(!html.includes('Kelola toko'));
+  assert.ok(!html.includes('Login Admin, Operator, Viewer, atau Konsumen'));
+  assert.ok(!html.includes('col-md-6'));
+  const css = source('css/styles.css');
+  assert.ok(css.includes('width: min(100%, 420px)'));
+  assert.ok(css.includes('.panel.login-card'));
+  assert.ok(css.includes('.login-password .form-control { padding-right: 54px; }'));
+});
+
+test('Tampilkan password menjaga isi serta memperbarui status dan nama aksesibel', function () {
+  const client = source('js/client.js');
+  const input = { type: 'password', value: 'password-uji' };
+  const attributes = {};
+  const button = { setAttribute: (key, value) => { attributes[key] = value; } };
+  const context = vm.createContext({ document: { getElementById: () => input } });
+  vm.runInContext(client.slice(client.indexOf('  function toggleLoginPassword('),
+    client.indexOf('  function passwordDialog(')), context);
+  context.toggleLoginPassword(button);
+  assert.equal(input.type, 'text');
+  assert.equal(input.value, 'password-uji');
+  assert.equal(attributes['aria-pressed'], 'true');
+  assert.equal(attributes['aria-label'], 'Sembunyikan password');
+  context.toggleLoginPassword(button);
+  assert.equal(input.type, 'password');
+  assert.equal(input.value, 'password-uji');
+  assert.equal(attributes['aria-pressed'], 'false');
+  assert.equal(attributes.title, 'Tampilkan password');
+});
+
+test('Kesalahan login tampil dalam form dan tombol Masuk aktif kembali', async function () {
+  const client = source('js/client.js');
+  let handler;
+  const submit = { disabled: false };
+  const result = { innerHTML: '', scrollIntoView() {} };
+  const form = { id: 'login-form', querySelector: selector => {
+    if (selector === '[type="submit"]') { return submit; }
+    assert.equal(selector, '#login-error');
+    return result;
+  } };
+  const context = vm.createContext({
+    document: { addEventListener: (type, callback) => { handler = callback; } },
+    submitAction: async () => { throw new Error('User atau password salah <uji>'); },
+    safe: value => value.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+    notify: () => { throw new Error('Kesalahan login harus tampil dalam form'); }
+  });
+  vm.runInContext(client.slice(client.indexOf('  // Tombol submit dikunci selama request'),
+    client.indexOf('  // Mengirim formulir yang sesuai')), context);
+  await handler({ target: form, preventDefault() {} });
+  assert.ok(result.innerHTML.includes('User atau password salah &lt;uji&gt;'));
+  assert.equal(submit.disabled, false);
+});

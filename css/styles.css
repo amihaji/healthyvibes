@@ -343,6 +343,60 @@
     min-width: 0;
   }
 
+  /* Satu kotak login terpusat; tetap mengalir saat keyboard HP terbuka. */
+  .login-shell {
+    display: grid;
+    place-items: center;
+    min-height: clamp(360px, 55svh, 520px);
+    padding-block: clamp(16px, 4vw, 40px);
+  }
+  .panel.login-card {
+    width: min(100%, 420px);
+    padding: clamp(24px, 4vw, 36px);
+    border-radius: 18px;
+    box-shadow: 0 12px 36px #08192e0a;
+  }
+  .login-card h1 {
+    margin: 0 0 28px;
+    text-align: center;
+    font-size: 26px;
+    color: var(--green);
+  }
+  .login-form { display: grid; gap: 18px; }
+  .login-form .form-label { margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+  .login-form .form-control {
+    min-height: 48px;
+    font-size: 16px;
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  .login-form .form-control:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px #0b25451a;
+  }
+  .login-password { position: relative; }
+  .login-password .form-control { padding-right: 54px; }
+  .login-password-toggle {
+    position: absolute;
+    right: 3px;
+    top: 2px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #5b6b80;
+  }
+  .login-password-toggle:hover,
+  .login-password-toggle[aria-pressed="true"] { color: var(--green); background: #edf1f5; }
+  .login-submit.btn { width: 100%; min-height: 48px; border-radius: 10px; font-size: 15px; }
+  .login-help { text-align: center; margin-top: 12px; }
+  .login-help .btn-link { color: var(--green); text-underline-offset: 3px; }
+  #login-error:empty { display: none; }
+  #login-error .alert { margin: 0; padding: 10px 12px; font-size: 13px; overflow-wrap: anywhere; }
+
   /* Katalog di kiri dan keranjang selebar 290px di kanan pada desktop. */
   .shop-layout {
     display: grid;

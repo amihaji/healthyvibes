@@ -949,19 +949,34 @@
       handoverForm(order) + '</section>';
   }
 
-  // Menampilkan formulir login pengelola menggunakan username dan password.
+  // Form ringkas yang mendukung autofill tanpa menyimpan credential di browser.
   function renderLogin() {
-    app.innerHTML = '<div class="row g-4 align-items-center mx-auto" style="max-width:960px">' +
-      '<div class="col-md-6"><section class="hero"><h1>Kelola toko,<br>dengan lebih teratur.</h1>' +
-      '<p>Login Admin, Operator, Viewer, atau Konsumen.</p></section></div>' +
-      '<div class="col-md-6"><section class="panel"><h2>Login</h2>' +
-      '<form id="login-form">' + field('Username (minimal 6 karakter)', 'username', '') +
-      field('Password', 'password', '', 'password') +
-      '<button class="btn btn-primary" type="submit">' + buttonLabel('login', 'Masuk') + '</button></form>' +
-      '<button class="btn btn-link btn-sm mt-3" type="button" id="forgot-password">' +
-      buttonLabel('key', 'Lupa Password') + '</button>' +
-      '<p class="small mt-2">Akun diblokir setelah 3 kali salah password.</p>' +
-      '</section></div></div>';
+    app.innerHTML = '<div class="login-shell"><section class="panel login-card" aria-labelledby="login-title">' +
+      '<h1 id="login-title">Login</h1><form id="login-form" class="login-form">' +
+      '<div><label class="form-label" for="login-user">User</label>' +
+      '<input class="form-control" id="login-user" name="username" type="text" ' +
+      'autocomplete="username" autocapitalize="none" spellcheck="false" minlength="6" ' +
+      'placeholder="Username Anda" required></div>' +
+      '<div><label class="form-label" for="login-pass">Pass</label><div class="login-password">' +
+      '<input class="form-control" id="login-pass" name="password" type="password" ' +
+      'autocomplete="current-password" minlength="6" placeholder="Password Anda" required>' +
+      '<button class="login-password-toggle" id="toggle-login-password" type="button" ' +
+      'aria-label="Tampilkan password" title="Tampilkan password" aria-controls="login-pass" aria-pressed="false">' +
+      window.HV_UI.icon('eye') + '</button></div></div>' +
+      '<div id="login-error" role="alert" aria-live="polite"></div>' +
+      '<button class="btn btn-primary login-submit" type="submit">' + buttonLabel('login', 'Masuk') +
+      '</button></form><div class="login-help"><button class="btn btn-link" type="button" id="forgot-password">' +
+      'Lupa Password?</button></div></section></div>';
+  }
+
+  function toggleLoginPassword(button) {
+    const input = document.getElementById('login-pass');
+    const visible = input.type === 'password';
+    input.type = visible ? 'text' : 'password';
+    button.setAttribute('aria-pressed', String(visible));
+    const label = visible ? 'Sembunyikan password' : 'Tampilkan password';
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
   }
 
   // Membuka formulir penggantian password pengelola.
@@ -1811,6 +1826,8 @@
       if (token === state.token && state.page === 'status') { saveDownload(file); }
     } else if (id === 'change-password') {
       passwordDialog();
+    } else if (id === 'toggle-login-password') {
+      toggleLoginPassword(button);
     } else if (id === 'forgot-password') {
       showEditor('Lupa Password', '<form id="request-reset-form">' +
         field('Username', 'username', document.querySelector('#login-form [name="username"]')?.value) +
@@ -1910,9 +1927,10 @@
     try {
       await submitAction(form);
     } catch (error) {
-      if (['order-action-form', 'handover-form', 'delete-master-form',
+      if (['login-form', 'order-action-form', 'handover-form', 'delete-master-form',
         'request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)) {
-        const selector = form.id === 'handover-form' ? '#handover-result'
+        const selector = form.id === 'login-form' ? '#login-error'
+          : form.id === 'handover-form' ? '#handover-result'
             : form.id === 'delete-master-form' ? '#delete-master-result'
               : ['request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)
                 ? '[role="status"]' : '#order-action-result';
@@ -1935,6 +1953,7 @@
     if (form.id === 'checkout-form') {
       await submitCheckout(form);
     } else if (form.id === 'login-form') {
+      form.querySelector('#login-error').textContent = '';
       const result = await rpc('login', data);
       state.token = result.token;
       state.user = result.user;
