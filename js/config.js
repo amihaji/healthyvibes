@@ -2,7 +2,7 @@
 // Isi URL deployment web app Apps Script yang berakhiran /exec.
 window.HV_CONFIG = Object.freeze({
   // Alamat backend Google Apps Script yang menerima permintaan dari website.
-  apiUrl: 'https://script.google.com/macros/s/AKfycbzwHJFfNfx8M8vcZkBr7TJ_iR0l21sAr0J2PIBCNMxwnMNG3z2hEztOWpJsbhJwByfVkg/exec',
+  apiUrl: 'https://script.google.com/macros/s/AKfycby1OyyhHeM7N286LWLO-_Iqq7wRxgtE2k0cMmEknK7bi14n-r5BPL9olzE_HPJX1iuNFQ/exec',
   // Batas tunggu permintaan biasa: 180.000 milidetik = 3 menit.
   requestTimeoutMs: 180000,
   // Batas tunggu backup/pemulihan: 420.000 milidetik = 7 menit.
