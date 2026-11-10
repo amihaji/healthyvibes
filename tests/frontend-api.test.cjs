@@ -3171,6 +3171,59 @@ test('Login dan tombol Logout header menyinkronkan identitas akun serta membersi
   assert.equal(button.dataset.nav, 'admin');
 });
 
+test('Akun mobile berada setelah tiga tautan menu dan kembali ke header saat resize atau logout', function () {
+  const { context, button, user, header, client } = accountHeaderContext();
+  const container = children => ({
+    children,
+    appendChild(child) {
+      if (child.parentElement) {
+        child.parentElement.children = child.parentElement.children.filter(item => item !== child);
+      }
+      this.children.push(child);
+      child.parentElement = this;
+    }
+  });
+  const desktop = container([]);
+  const nav = container(['Home', 'Katalog', 'Pesanan Saya']);
+  const account = { children: [user, button] };
+  desktop.appendChild(account);
+  context.headerViewport = { matches: true };
+  context.document.getElementById = id => ({
+    'header-auth': button, 'header-user': user, 'header-account': account, 'site-nav': nav
+  })[id] || null;
+  context.document.querySelector = selector => selector === '.header-inner' ? desktop : header;
+  context.state.token = 'test-only';
+  context.state.user = { username: 'admin01', role: 'Admin' };
+  context.renderAccountHeader();
+  assert.equal(account.parentElement, nav);
+  assert.deepEqual(nav.children.slice(0, 3), ['Home', 'Katalog', 'Pesanan Saya']);
+  assert.equal(nav.children[3], account);
+  assert.equal(desktop.children.length, 0);
+  context.renderAccountHeader();
+  assert.equal(nav.children.length, 4);
+  context.headerViewport.matches = false;
+  context.renderAccountHeader();
+  assert.equal(account.parentElement, desktop);
+  assert.equal(nav.children.length, 3);
+  context.headerViewport.matches = true;
+  context.renderAccountHeader();
+  assert.equal(account.parentElement, nav);
+  context.state.token = '';
+  context.state.user = null;
+  context.renderAccountHeader();
+  assert.equal(account.parentElement, desktop);
+  assert.equal(nav.children.length, 3);
+  assert.equal(user.hidden, true);
+  assert.equal(button.dataset.nav, 'admin');
+  assert.ok(client.includes("headerViewport.addEventListener('change', renderAccountHeader)"));
+  const css = source('css/styles.css');
+  const mobileCss = css.slice(css.indexOf('@media (max-width: 767px)'), css.indexOf('@media (prefers-reduced-motion'));
+  assert.match(mobileCss, /\.site-nav\s*\{[^}]*display:\s*none;[^}]*grid-row:\s*2;[^}]*flex-direction:\s*column;/);
+  assert.match(mobileCss, /\.menu-open \.site-nav\s*\{\s*display:\s*flex;/);
+  assert.ok(!mobileCss.includes('.site-header.is-authenticated .site-nav { grid-row: 3; }'));
+  assert.ok(!mobileCss.includes('.header-account { grid-column: 1 / -1; grid-row: 2; }'));
+});
+
 test('Setup Produk membatasi 10 record, tombol pada batas 10, dan halaman terakhir', async function () {
   for (const total of [0, 9, 10, 11, 25]) {
     const fixture = masterPaginationContext(total);

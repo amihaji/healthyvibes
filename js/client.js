@@ -39,6 +39,8 @@
   // Semua tombol memakai pembuat ikon dan teks yang sama.
   const buttonLabel = window.HV_UI.label;
   const adminViewport = window.matchMedia('(max-width: 1050px)');
+  const headerViewport = window.matchMedia('(max-width: 767px)');
+  headerViewport.addEventListener('change', renderAccountHeader);
 
   // Username dipakai sebagai identitas login; token sesi tidak ditampilkan.
   function renderAccountHeader() {
@@ -64,6 +66,12 @@
     user.textContent = username;
     user.title = active ? 'Buka akun: ' + username : '';
     user.setAttribute('aria-label', active ? 'Buka akun: ' + username : 'Buka akun');
+    const account = document.getElementById('header-account');
+    if (account) {
+      const target = active && headerViewport.matches
+        ? document.getElementById('site-nav') : document.querySelector('.header-inner');
+      if (target && account.parentElement !== target) { target.appendChild(account); }
+    }
   }
 
   // Tombol ringkas tetap memiliki nama aksesibel dan tooltip fungsi.

@@ -930,7 +930,7 @@
     /* Menampilkan tombol buka/tutup navigasi HP. */
     .nav-toggle { display: inline-flex; }
     /* Menu HP ditempatkan pada baris kedua dan ditutup secara awal. */
-    .site-nav { display: none; grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--line); padding-block: 8px; }
+    .site-nav { display: none; grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; flex-direction: column; align-items: stretch; gap: 12px; border-top: 1px solid var(--line); padding-block: 8px; }
     /* Menu muncul setelah tombol navigasi HP dibuka. */
     .menu-open .site-nav { display: flex; }
     /* Menyesuaikan jarak gulir dengan tinggi header HP. */
@@ -953,11 +953,11 @@
     .settings-button { width: 44px; padding: 0; gap: 0; }
     /* Label Login tetap tampil di desktop; pada HP namanya tersedia lewat aria-label. */
     .settings-button .header-action-text { display: none; }
-    /* Akun aktif memakai baris sendiri agar username dan Logout muat pada HP kecil. */
+    /* Akun aktif berada di dalam menu toggle, setelah tiga tautan pelanggan. */
     .site-header.is-authenticated .header-inner { grid-template-columns: minmax(0, 1fr) auto; }
-    .site-header.is-authenticated .header-account { grid-column: 1 / -1; grid-row: 2; }
-    .site-header.is-authenticated .site-nav { grid-row: 3; }
-    .site-header.is-authenticated .settings-button { width: auto; padding-inline: 10px; gap: 6px; }
+    .site-nav .header-account { flex-direction: column; align-items: stretch; }
+    .site-nav .header-user { max-width: none; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+    .site-header.is-authenticated .settings-button { width: 100%; padding-inline: 10px; gap: 6px; justify-content: flex-start; }
     .site-header.is-authenticated .settings-button .header-action-text { display: inline; }
 
     /* Mengurangi ruang dalam panel pembuka pada HP. */

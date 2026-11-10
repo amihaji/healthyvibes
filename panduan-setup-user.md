@@ -81,8 +81,10 @@ hanya untuk pembaruan ini.
 
 ## 5. Menggunakan Setup User
 
-- Sebelum masuk, header bertuliskan **Login** (ikon di HP). Setelah masuk, tombol berubah
-  menjadi **Logout** dan username aktif tampil di sampingnya, termasuk di HP.
+- Sebelum masuk, header bertuliskan **Login** (ikon di HP). Setelah masuk, desktop
+  menampilkan username aktif di samping **Logout**.
+- Di HP, klik tombol menu navigasi untuk melihat **Home**, **Katalog**, **Pesanan Saya**,
+  username aktif, lalu **Logout**. Akun tidak memakai baris header tersendiri.
 - Klik username aktif untuk membuka akun/panel. Klik **Logout** untuk keluar;
   header kembali menjadi **Login** dan username disembunyikan.
 - Menu **Setup User** menyediakan **Buat**, **Edit**, **Hapus**, **View**, dan **Reset**.
