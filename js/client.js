@@ -493,6 +493,12 @@
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<label class="form-check-label d-inline-flex align-items-center gap-2" for="availability-filter">' +
       buttonLabel('stock', 'Tersedia saja') + '</label></div></div>' +
+      '<div class="hv-category-pills" role="group" aria-label="Pilih kategori produk">' +
+      '<button type="button" class="hv-category-pill" data-category-pill="" aria-pressed="' + (!state.productCategory) + '">Semua</button>' +
+      catalog.categories.map(function (row) {
+        return '<button type="button" class="hv-category-pill" data-category-pill="' + safe(row.id) +
+          '" aria-pressed="' + (row.id === state.productCategory) + '">' + safe(row.name) + '</button>';
+      }).join('') + '</div>' +
       renderVouchers(catalog.vouchers || []) +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
       '<div id="product-pagination"></div>' +
@@ -1227,7 +1233,17 @@
     }
     if (page === 'Dashboard') {
       const kpi = state.admin.kpi;
-      body.innerHTML = '<div class="kpis">' + [
+      const quickPages = adminMenu().filter(function (name) { return name !== 'Dashboard'; }).slice(0, 6);
+      const quickLinks = '<section class="hv-admin-quick" aria-label="Akses cepat pengelola">' +
+        '<h2 class="h4">Akses Cepat</h2><div class="hv-admin-quick-grid">' +
+        quickPages.map(function (name) {
+          return '<button class="hv-admin-quick-item" data-admin-page="' + safe(name) + '" type="button">' +
+            window.HV_UI.icon(adminIcons[name]) + '<span>' + safe(tableLabels[name] || name) + '</span>' +
+            window.HV_UI.icon('chevron') + '</button>';
+        }).join('') + '</div></section>';
+      body.innerHTML = '<div class="hv-admin-welcome"><h2>Selamat datang, ' + safe(state.user.name) + '</h2>' +
+        '<p>Kelola toko melalui menu yang tersedia sesuai hak akses akun.</p></div>' +
+        quickLinks + '<div class="kpis">' + [
         ['Pesanan', kpi.orders],
         ['Belum lunas', kpi.pending],
         ['Pembayaran diterima', rupiah(kpi.payments)]
@@ -1814,6 +1830,18 @@
     if (button.dataset.nav) {
       return navigate(button.dataset.nav);
     }
+    if (button.hasAttribute('data-category-pill')) {
+      const select = document.getElementById('category-filter');
+      if (!select) { return; }
+      select.value = button.dataset.categoryPill;
+      state.productCategory = select.value;
+      state.productPage = 0;
+      document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
+        pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
+      });
+      renderProducts();
+      return;
+    }
     if (button.dataset.type) {
       state.type = button.dataset.type;
       state.cart = {};
@@ -1992,6 +2020,9 @@
       state.productPage = 0;
       state.productSearch = document.getElementById('product-search').value;
       state.productCategory = document.getElementById('category-filter').value;
+      document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
+        pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
+      });
       if (event.target.id === 'availability-filter') { state.availableOnly = event.target.checked; }
       renderProducts();
     } else if (['order-search', 'order-filter'].includes(event.target.id)) {

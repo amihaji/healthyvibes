@@ -1207,3 +1207,30 @@ body { background:var(--hv-canvas); }
   .site-footer { padding-bottom:80px; }
 }
 @media(max-width:359px) { .product-card .price { flex-direction:column; align-items:stretch!important; } .product-card .price .btn { width:100%; } }
+
+/* Healthy Vibes v1.2 Tahap B: struktur UI mengikuti mockup tanpa mengubah transaksi. */
+.hv-category-pills{display:flex;gap:9px;overflow-x:auto;overscroll-behavior-x:contain;padding:5px 2px 13px;margin:3px 0 13px;scrollbar-width:thin}
+.hv-category-pill{border:1px solid #dfe9e3;border-radius:999px;background:#fff;color:#24463d;padding:10px 17px;white-space:nowrap;min-height:43px;font-weight:600;box-shadow:0 3px 10px #123e3210}
+.hv-category-pill[aria-pressed="true"]{background:#065B55;border-color:#065B55;color:#fff}
+.hv-category-pill:focus-visible,.hv-admin-quick-item:focus-visible{outline:3px solid #F58B32;outline-offset:2px}
+.hv-admin-welcome{padding:24px 26px;border-radius:23px;color:#fff;background:linear-gradient(115deg,#065B55,#207b66);margin-bottom:20px}
+.hv-admin-welcome h2{font-size:clamp(22px,3vw,31px);margin:0 0 8px;font-weight:750}
+.hv-admin-welcome p{margin:0;color:#e6f5ec}
+.hv-admin-quick{margin-bottom:22px}
+.hv-admin-quick h2{margin-bottom:14px}
+.hv-admin-quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.hv-admin-quick-item{border:1px solid #e2eae5;background:#fff;border-radius:18px;padding:20px 12px;min-height:122px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#124c40;font-weight:650;box-shadow:0 6px 22px #16483b0d}
+.hv-admin-quick-item>.ui-icon:first-child{width:30px;height:30px}
+.hv-admin-quick-item>.ui-icon:last-child{display:none}
+.hv-admin-quick-item:hover{background:#f0f8f2;border-color:#b7d3c6}
+.hv-admin-quick-item span{text-align:center;overflow-wrap:anywhere}
+@media(max-width:767px){
+ .hv-category-pills{margin-top:8px;margin-bottom:15px}
+ .hv-category-pill{padding:9px 15px}
+ .hv-admin-welcome{padding:23px 20px}
+ .hv-admin-quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+ .hv-admin-quick-item{padding:14px 6px;min-height:108px;font-size:12px}
+ .hv-admin-quick-item>.ui-icon:first-child{width:25px;height:25px}
+}
+@media(max-width:359px){.hv-admin-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.hv-admin-quick-item{transition:none}}
