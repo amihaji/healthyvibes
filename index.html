@@ -63,6 +63,12 @@
     </div>
     <!-- Isi halaman katalog, checkout, status, dan pengelola dibuat oleh client.js di sini. -->
     <main id="app" class="container py-4"></main>
+    <!-- Navigasi cepat mobile: menggunakan aksi navigasi yang sudah tersedia. -->
+    <nav class="hv-bottom-nav" aria-label="Navigasi cepat mobile">
+      <button type="button" data-nav="shop" aria-label="Buka katalog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></svg><span>Katalog</span></button>
+      <button type="button" data-nav="status" aria-label="Buka pesanan saya"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><span>Pesanan</span></button>
+      <button type="button" data-nav="admin" aria-label="Buka akun atau panel pengelola"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 16-5 16 0"/></svg><span>Akun / Admin</span></button>
+    </nav>
     <!-- Identitas pendukung dan informasi layanan pada footer berlatar abu-abu muda. -->
     <footer class="site-footer">
       <div class="container">
