@@ -1035,3 +1035,74 @@
     /* Menonaktifkan efek transisi seluruh elemen dan lapisan tambahannya. */
     *, *::before, *::after { transition: none !important; }
   }
+
+/* ================================================================
+   Healthy Vibes UI Refresh v1.0 | visual-only overrides
+   Tidak mengubah selector ID, event, endpoint, atau alur transaksi.
+   ================================================================ */
+:root {
+  --green: #065B55;
+  --orange: #F58B32;
+  --cream: #FFFCF6;
+  --ink: #171717;
+  --line: #E3E8E6;
+  --hv-muted: #596864;
+  --hv-soft: #F2F3F4;
+}
+body { background: var(--cream); color: var(--ink); }
+.site-topbar { background: #064741; color: #F2F8F5; }
+.site-header { border-bottom-color: #dce7e2; box-shadow: 0 5px 22px #063d3410; }
+.nav-button, .icon-button, .header-user { color: var(--green); }
+.nav-button:hover, .nav-button[aria-current="page"],
+.icon-button:hover, .icon-button[aria-current="page"] { color: #03413c; }
+.icon-button:hover, .icon-button[aria-current="page"] { border-color: #7eb4a7; }
+.nav-button::after { background: var(--orange); }
+.hero, .admin-navigation, .admin-nav, .busy, .mobile-cart { background: var(--green); }
+.shop-hero::before { background: linear-gradient(100deg, #053c37ed 0%, #065b55c9 43%, #063f3950 100%); }
+.shop-hero h1 span { color: #FFB76D; }
+.hero-eyebrow { color: #FFD4AD; }
+.hero-copy p, .hero-note { color: #EDF6F2; }
+.section-eyebrow { color: #A65312; }
+.menu-heading p, .product-page-info span, .admin-account,
+.order-caption, .product-specs, .promo-period { color: var(--hv-muted); }
+.panel, .product-card, .kpi { border-color: var(--line); border-radius: 14px; box-shadow: 0 3px 16px #073d3510; }
+.product-card { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.product-card:hover { border-color: #a3c6bb; box-shadow: 0 12px 30px #073d3519; transform: translateY(-2px); }
+.product-card img { border-radius: 10px; }
+.product-specs span, .table th { background: var(--hv-soft); }
+.promo-badge { background: #FFF0DF; color: #79400f; }
+.voucher-card { background: #fffdfa; border-color: #e3b98b; }
+.site-footer { background: #EEF3F0; border-top-color: #DCE7E2; }
+.btn-primary, .btn-primary:disabled { background: var(--orange); border-color: var(--orange); color: #171717; }
+.btn-green { background: var(--green); border-color: var(--green); color: #fff; }
+.btn.btn-primary:not(:disabled):is(:hover, :focus, :active) { background: #DE7622; border-color: #DE7622; color: #171717; }
+.btn.btn-green:not(:disabled):is(:hover, :focus, :active) { background: #03443F; border-color: #03443F; color: #fff; }
+.btn-outline-dark { --bs-btn-color: #065B55; --bs-btn-border-color: #8DB6AC; --bs-btn-hover-bg: #065B55; --bs-btn-hover-border-color: #065B55; }
+.form-control:focus, .form-select:focus { border-color: #71a99c; box-shadow: 0 0 0 .2rem #065b5522; }
+.form-check-input:checked { background-color: var(--green); border-color: var(--green); }
+.login-card h1 { color: var(--green); }
+.login-form .form-control:focus { border-color: #71a99c; box-shadow: 0 0 0 3px #065b5520; }
+.admin-nav .selected { background: #ffffff25; border-left-color: var(--orange); }
+.admin-nav .btn:is(:hover, :focus-visible, :active) { background: #E8F3EF; color: #053e39; }
+.status-tag { background: #E4F3EE; color: #07554d; }
+.order-status-panel { background: #F5F9F6; }
+.order-progress .is-current, .order-notice { background: #FFF1E2; }
+.steps .current { background: var(--green); }
+.users-table th, .users-table th.record-action-cell { background: #EDF3EF; }
+@media (max-width: 767px) {
+  .shop-hero::before { background: linear-gradient(100deg, #053c37f0 0%, #065b55c9 62%, #063f3980 100%); }
+  .products-table th.record-action-cell, .orders-table th.record-action-cell { background: #EDF3EF; }
+  .mobile-cart { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .site-nav { background: white; }
+}
+@media (max-width: 359px) {
+  .catalog-filters { grid-template-columns: minmax(0, 1fr); }
+  .catalog-filters #product-search { grid-column: auto; }
+  .availability-option { width: 100%; }
+  .products { grid-template-columns: minmax(0, 1fr); }
+  .mobile-cart { left: 8px; right: 8px; gap: 6px; }
+  .mobile-cart .btn { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card:hover { transform: none; }
+}
