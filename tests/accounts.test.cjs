@@ -662,6 +662,7 @@ test('Checkout tidak menyimpan atau mengirim password dalam data penerima dan pe
   const context = vm.createContext({
     state,
     formData: () => data,
+    renderAccountHeader: () => {},
     renderCheckout: () => {},
     renderOrder: () => {},
     notify: () => {},

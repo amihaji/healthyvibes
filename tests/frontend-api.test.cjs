@@ -948,7 +948,7 @@ test('Navigasi pengelola berikon sesuai role, halaman aktif, dan ukuran layar', 
       const body = { innerHTML: '' };
       const app = { innerHTML: '' };
       const context = vm.createContext({
-        window: {}, app: app, safe: String, rupiah: String,
+        window: {}, app: app, safe: String, rupiah: String, renderAccountHeader() {},
         adminViewport: { matches: mobile },
         state: {
           adminPage: 'Dashboard', user: { name: 'Akun uji', role: role },
@@ -2505,6 +2505,7 @@ test('Bcrypt asinkron ditolak jelas jika runtime tidak memiliki scheduler', func
 test('Login hanya menampilkan kotak User dan Pass dengan autofill serta pemulihan', function () {
   const client = source('js/client.js');
   const context = vm.createContext({
+    renderAccountHeader() {},
     app: { innerHTML: '' }, buttonLabel: (icon, label) => label,
     window: { HV_UI: { icon: () => '<svg aria-hidden="true"></svg>' } }
   });
@@ -3084,6 +3085,91 @@ function masterPaginationContext(count) {
     focused: () => focused, selection: () => selection,
     count: () => (body.innerHTML.match(/data-edit=/g) || []).length };
 }
+
+function accountHeaderContext() {
+  const element = () => ({
+    dataset: {}, attributes: {}, innerHTML: '', textContent: '', hidden: true,
+    setAttribute(name, value) { this.attributes[name] = value; },
+    removeAttribute(name) {
+      delete this.attributes[name];
+      if (name === 'data-nav') { delete this.dataset.nav; }
+    }
+  });
+  const button = element();
+  button.dataset.nav = 'admin';
+  const user = element();
+  const header = { active: false, classList: { toggle(name, value) { header.active = value; } } };
+  const client = source('js/client.js');
+  const context = vm.createContext({
+    state: { token: '', user: null }, window: {},
+    document: { getElementById: id => id === 'header-auth' ? button : id === 'header-user' ? user : null,
+      querySelector: () => header }
+  });
+  vm.runInContext(source('js/icons.js'), context);
+  context.buttonLabel = context.window.HV_UI.label;
+  vm.runInContext(client.slice(client.indexOf('  function renderAccountHeader('),
+    client.indexOf('  // Tombol ringkas')), context);
+  return { context, button, user, header, client };
+}
+
+test('Header menunjukkan username dan Logout untuk semua role, lalu kembali Login saat sesi kosong', function () {
+  const { context, button, user, header } = accountHeaderContext();
+  for (const role of ['Admin', 'Operator', 'Viewer', 'Konsumen']) {
+    context.state.token = 'test-only';
+    context.state.user = { id: 'internal-id', username: role.toLowerCase() + '01', role };
+    context.renderAccountHeader();
+    assert.ok(button.innerHTML.includes('class="header-action-text">Logout</span>'));
+    assert.equal(button.attributes['aria-label'], 'Logout');
+    assert.equal(button.dataset.nav, undefined);
+    assert.equal(button.dataset.action, 'logout');
+    assert.equal(user.textContent, context.state.user.username);
+    assert.equal(user.hidden, false);
+    assert.equal(header.active, true);
+    assert.equal(user.attributes['aria-label'], 'Buka akun: ' + context.state.user.username);
+  }
+  context.state.user.username = '<img src=x onerror=alert(1)>';
+  context.renderAccountHeader();
+  assert.equal(user.textContent, '<img src=x onerror=alert(1)>');
+  assert.equal(user.innerHTML, '');
+  context.state.token = '';
+  context.renderAccountHeader();
+  assert.equal(user.textContent, '');
+  assert.equal(user.hidden, true);
+  assert.equal(header.active, false);
+  assert.equal(button.dataset.action, undefined);
+  assert.equal(button.dataset.nav, 'admin');
+  assert.ok(button.innerHTML.includes('class="header-action-text">Login</span>'));
+  context.state.user = null;
+  context.renderAccountHeader();
+  assert.equal(button.title, 'Login');
+});
+
+test('Login dan tombol Logout header menyinkronkan identitas akun serta membersihkan sesi', async function () {
+  const { context, button, user, client } = accountHeaderContext();
+  const actions = [];
+  context.formData = () => ({});
+  context.rpc = async action => {
+    actions.push(action);
+    return action === 'login' ? { token: 'test-only', user: { id: 'test-id', username: 'admin01', role: 'Admin' } } : {};
+  };
+  context.loadAdmin = async () => {};
+  context.navigate = async () => context.renderAccountHeader();
+  vm.runInContext(client.slice(client.indexOf('  async function submitAction('),
+    client.indexOf('  // Menangani halaman sebelum instalasi')), context);
+  vm.runInContext(client.slice(client.indexOf('  async function clickAction('),
+    client.indexOf('  // Memperbarui hasil pencarian')), context);
+  await context.submitAction({ id: 'login-form', querySelector: () => ({ textContent: '' }), reset() {} });
+  assert.equal(user.textContent, 'admin01');
+  assert.equal(button.dataset.action, 'logout');
+  button.id = 'header-auth';
+  await context.clickAction(button);
+  assert.deepEqual(actions, ['login', 'logout']);
+  assert.equal(context.state.token, '');
+  assert.equal(context.state.user, null);
+  assert.equal(context.state.customerOrders, null);
+  assert.equal(user.hidden, true);
+  assert.equal(button.dataset.nav, 'admin');
+});
 
 test('Setup Produk membatasi 10 record, tombol pada batas 10, dan halaman terakhir', async function () {
   for (const total of [0, 9, 10, 11, 25]) {

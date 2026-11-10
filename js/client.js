@@ -40,6 +40,32 @@
   const buttonLabel = window.HV_UI.label;
   const adminViewport = window.matchMedia('(max-width: 1050px)');
 
+  // Username dipakai sebagai identitas login; token sesi tidak ditampilkan.
+  function renderAccountHeader() {
+    const button = document.getElementById('header-auth');
+    const user = document.getElementById('header-user');
+    if (!button || !user) { return; }
+    const active = Boolean(state.token && state.user);
+    const username = active ? String(state.user.username || state.user.id || '') : '';
+    document.querySelector('.site-header').classList.toggle('is-authenticated', active);
+    button.innerHTML = buttonLabel(active ? 'logout' : 'login', active ? 'Logout' : 'Login')
+      .replace('class="button-text"', 'class="header-action-text"');
+    button.setAttribute('aria-label', active ? 'Logout' : 'Login');
+    button.title = active ? 'Logout' : 'Login';
+    if (active) {
+      button.removeAttribute('data-nav');
+      button.dataset.action = 'logout';
+      button.removeAttribute('aria-current');
+    } else {
+      button.dataset.nav = 'admin';
+      delete button.dataset.action;
+    }
+    user.hidden = !active;
+    user.textContent = username;
+    user.title = active ? 'Buka akun: ' + username : '';
+    user.setAttribute('aria-label', active ? 'Buka akun: ' + username : 'Buka akun');
+  }
+
   // Tombol ringkas tetap memiliki nama aksesibel dan tooltip fungsi.
   function iconButton(icon, label, attributes, tooltip) {
     return '<button class="btn action-icon" type="button" aria-label="' +
@@ -792,6 +818,7 @@
           });
           state.token = result.token;
           state.user = result.user;
+          renderAccountHeader();
         }
         ['name', 'phone', 'receipt', 'shippingRateId', 'areaId', 'address', 'time'].forEach(function (key) {
           state.recipient[key] = data[key] || '';
@@ -954,6 +981,7 @@
 
   // Form ringkas yang mendukung autofill tanpa menyimpan credential di browser.
   function renderLogin() {
+    renderAccountHeader();
     app.innerHTML = '<div class="login-shell"><section class="panel login-card" aria-labelledby="login-title">' +
       '<h1 id="login-title">Login</h1><form id="login-form" class="login-form">' +
       '<div><label class="form-label" for="login-user">User</label>' +
@@ -1147,6 +1175,7 @@
 
   // Menampilkan panel pengelola dan isi menu yang sedang dipilih.
   function renderAdmin() {
+    renderAccountHeader();
     const page = state.adminPage;
     app.innerHTML = '<div class="admin-toolbar mb-3">' +
       '<div><h1 class="h2 mb-1">Panel Pengelola</h1><p class="admin-account mb-0">' + safe(state.user.name) +
@@ -1897,7 +1926,7 @@
         selectField('Kirim tautan melalui', 'channel', [['email', 'Email'], ['whatsapp', 'WhatsApp']], 'email') +
         '<div id="request-reset-result" role="status"></div><button class="btn btn-primary btn-sm" type="submit">' +
         buttonLabel('key', 'Kirim Tautan') + '</button></form>');
-    } else if (id === 'logout') {
+    } else if (id === 'logout' || button.dataset.action === 'logout') {
       await rpc('logout');
       state.token = '';
       state.user = null;
@@ -2042,6 +2071,7 @@
       const result = await rpc('login', data);
       state.token = result.token;
       state.user = result.user;
+      renderAccountHeader();
       state.admin = null;
       state.report = null;
       state.adminPage = result.user.permissions?.[0] || 'Dashboard';
