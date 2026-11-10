@@ -2266,7 +2266,6 @@
       notify('Salinan staging dibuat; produksi tidak diubah. ' + result.databaseUrl);
     }
   }
-
   // Menangani halaman sebelum instalasi dengan pesan nyata, bukan data contoh.
   const resetFromLink = new URLSearchParams(window.location.hash.slice(1)).get('reset');
   if (resetFromLink) {
