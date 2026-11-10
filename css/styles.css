@@ -1106,3 +1106,44 @@ body { background: var(--cream); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .product-card:hover { transform: none; }
 }
+
+/* ================================================================
+   Healthy Vibes v1.1 | Tahap 2: usability refinements
+   CSS-only, no DOM/event/API changes. Baseline: accepted v1.0.
+   ================================================================ */
+/* Keyboard accessibility: visible focus without changing button behavior. */
+:where(.btn, .nav-button, .icon-button, .admin-nav .btn, .action-icon, a):focus-visible {
+  outline: 3px solid #F58B32;
+  outline-offset: 3px;
+}
+/* Product cards remain stable when descriptions/prices wrap. */
+.product-card { min-width: 0; }
+.product-card h2, .product-card .description { overflow-wrap: anywhere; }
+.product-card [data-photo] { overflow: hidden; border-radius: 10px; background: #F2F3F4; }
+.product-card [data-photo] img { width: 100%; height: 100%; object-fit: cover; }
+/* Improve filter alignment and keyboard readability. */
+.catalog-filters > * { min-width: 0; }
+.catalog-filters :is(.form-control, .form-select) { min-height: 44px; }
+.availability-option:focus-within { outline: 2px solid #065B55; outline-offset: 2px; }
+/* Avoid accidental horizontal page expansion from long order details. */
+.order-status-panel, .order-section, .checkout-layout > *, .shop-layout > *, .admin-layout > * { min-width: 0; }
+.order-info-grid > div, .order-action-grid > div { overflow-wrap: anywhere; }
+/* Admin table readability without changing scrolling or sticky action columns. */
+.table-wrap { overscroll-behavior-x: contain; }
+.table tbody tr:hover { background-color: #F6FAF8; }
+.table th { color: #17413B; }
+.btn.action-icon:focus-visible { outline: 3px solid #F58B32; outline-offset: 2px; }
+/* Mobile tap targets and viewport safe-area. */
+@media (max-width: 767px) {
+  .product-pagination .btn, .catalog-filters .form-control, .catalog-filters .form-select { min-height: 44px; }
+  .record-actions .action-icon { min-width: 40px; min-height: 40px; }
+  .mobile-cart { bottom: max(8px, env(safe-area-inset-bottom)); }
+  .order-info-grid, .order-action-grid { gap: 12px; }
+}
+@media (max-width: 359px) {
+  .product-pagination { gap: 8px; }
+  .order-progress { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card { transition: none; }
+}
