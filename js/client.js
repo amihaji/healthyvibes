@@ -49,6 +49,8 @@
     if (!button || !user) { return; }
     const active = Boolean(state.token && state.user);
     const username = active ? String(state.user.username || state.user.id || '') : '';
+    const customerOrders = document.getElementById('header-customer-orders');
+    if (customerOrders) { customerOrders.hidden = !(active && state.user.role === 'Konsumen'); }
     document.querySelector('.site-header').classList.toggle('is-authenticated', active);
     button.innerHTML = buttonLabel(active ? 'logout' : 'login', active ? 'Logout' : 'Login')
       .replace('class="button-text"', 'class="header-action-text"');
@@ -603,7 +605,7 @@
         return '<article class="product-card">' +
           (product.photoFileId ? '<div data-photo="' + safe(product.id) +
             '" data-photo-file="' + safe(product.photoFileId) + '"></div>' : '') +
-          '<h2>' + safe(product.name) + '</h2><p class="description">' +
+          '<h2>' + safe(product.name) + '</h2>' + renderProductSpecs(product) + '<p class="description">' +
           safe(product.description) + '</p>' + renderProductDiscount(product) + '<small>Tersedia: ' + product.available +
           '</small><div class="price d-flex flex-wrap gap-2 justify-content-between align-items-center mt-2">' +
           '<div class="product-prices">' +
@@ -649,6 +651,17 @@
         loadProductPhoto(element);
       }
     });
+  }
+
+  // Data lama tanpa satuan atau nilai ukuran tidak menghasilkan label kosong.
+  function renderProductSpecs(product) {
+    const unit = product.unit === 'Slace' ? 'Slice' : product.unit;
+    const size = Number(product.sizeValue) > 0 && product.sizeUnit
+      ? [product.sizeValue, product.sizeUnit].join(' ') : '';
+    if (!unit && !size) { return ''; }
+    return '<div class="product-specs" aria-label="Satuan dan ukuran produk">' +
+      (unit ? '<span>Satuan: <strong>' + safe(unit) + '</strong></span>' : '') +
+      (size ? '<span>Ukuran: <strong>' + safe(size) + '</strong></span>' : '') + '</div>';
   }
 
   // Memulai checkout dengan ID permintaan untuk mencegah pesanan ganda saat retry.
@@ -1272,23 +1285,15 @@
     state.listPage = Math.min(state.listPage, pageCount - 1);
     const orders = matching.slice(state.listPage * 20, (state.listPage + 1) * 20);
     document.getElementById('order-list').innerHTML =
-      '<div class="table-wrap order-desktop"><table class="table"><thead><tr>' +
-      '<th>Nomor</th><th>Pelanggan</th><th>Jadwal</th><th>Total</th><th>Status</th><th></th>' +
+      '<div class="table-wrap"><table class="table orders-table"><thead><tr>' +
+      '<th>Nomor</th><th>Pelanggan</th><th>Jadwal (WITA)</th><th>Total</th><th>Status</th><th class="record-action-cell">Aksi</th>' +
       '</tr></thead><tbody>' + orders.map(function (order) {
         return '<tr><td>' + safe(order.id) + '</td><td>' + safe(order.name) +
           '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
           '</td><td>' + safe(order.paymentStatus + ' / ' + order.fulfillment) +
-          '</td><td>' + iconButton('eye', 'Lihat detail pesanan ' + order.id,
+          '</td><td class="record-action-cell">' + iconButton('eye', 'Lihat detail pesanan ' + order.id,
             'data-order="' + safe(order.id) + '"', 'Detail') + '</td></tr>';
-      }).join('') + '</tbody></table></div><div class="order-mobile">' +
-      orders.map(function (order) {
-        return '<article class="panel"><strong>' + safe(order.name) + '</strong><p class="text-break">' +
-          safe(order.id) + '</p><p>' + safe(dateText(order.date) + ' ' + order.time) +
-          ' WITA</p><p>' + rupiah(order.total) + '</p><p>' +
-          safe(order.paymentStatus + ' / ' + order.fulfillment) + '</p>' +
-          iconButton('eye', 'Lihat detail pesanan ' + order.id,
-            'data-order="' + safe(order.id) + '"', 'Detail') + '</article>';
-      }).join('') + '</div>' +
+      }).join('') + '</tbody></table></div>' +
       '<div class="d-flex align-items-center gap-2 mt-3">' +
       '<button class="btn btn-outline-dark" id="previous-orders" type="button"' +
       (state.listPage === 0 ? ' disabled' : '') + '>' + buttonLabel('back', 'Sebelumnya') + '</button>' +

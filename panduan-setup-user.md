@@ -83,8 +83,10 @@ hanya untuk pembaruan ini.
 
 - Sebelum masuk, header bertuliskan **Login** (ikon di HP). Setelah masuk, desktop
   menampilkan username aktif di samping **Logout**.
-- Di HP, klik tombol menu navigasi untuk melihat **Home**, **Katalog**, **Pesanan Saya**,
-  username aktif, lalu **Logout**. Akun tidak memakai baris header tersendiri.
+- Di HP, menu navigasi berisi **Home**, **Katalog**, username aktif, lalu **Logout**.
+  **Pesanan Saya** muncul setelah Katalog hanya saat login sebagai **Konsumen**;
+  disembunyikan untuk Admin, Operator, Viewer, dan pengunjung yang belum login.
+  Akun tidak memakai baris header tersendiri.
 - Klik username aktif untuk membuka akun/panel. Klik **Logout** untuk keluar;
   header kembali menjadi **Login** dan username disembunyikan.
 - Menu **Setup User** menyediakan **Buat**, **Edit**, **Hapus**, **View**, dan **Reset**.
@@ -98,6 +100,13 @@ hanya untuk pembaruan ini.
 Username dan password minimal **6 karakter**. Akun yang dibuat Admin wajib
 mengganti password sementara saat login pertama. Akun checkout memakai password
 yang dipilih konsumen sendiri, sehingga tidak perlu menggantinya saat pertama Login.
+
+Daftar **Panel Pengelola > Pesanan** memakai tabel pada desktop dan HP, dengan
+gulir horizontal serta kolom Aksi tetap terlihat di kanan pada HP.
+Kartu katalog menampilkan satuan dan ukuran yang sudah diisi pada Setup Produk.
+Untuk menampilkan data tersebut dari server, perbarui `apps-script/Api.gs` lalu
+pilih **New Version** pada deployment Apps Script; URL API tetap sama.
+Tombol orange dan biru tua memakai abu-abu terang saat hover, fokus, atau diklik.
 
 | Level | Penggunaan |
 | --- | --- |

@@ -720,7 +720,8 @@ test('Katalog menampilkan rincian diskon dan voucher yang aktif sesuai jenis pes
   context.slots_ = function () { return { date: '2026-11-06', times: [] }; };
   const period = { active: true, startsAt: '2026-11-01T00:00:00Z', endsAt: '2026-11-10T09:00:00Z' };
   const tables = {
-    Products: [{ id: 'p1', price: 10000, active: true }, { id: 'p2', price: 10000, active: true }],
+    Products: [{ id: 'p1', price: 10000, active: true, unit: 'Botol', sizeValue: 250, sizeUnit: 'ml',
+      internal: 'RAHASIA' }, { id: 'p2', price: 10000, active: true }],
     Discounts: [
       Object.assign({}, period, { productId: 'p1', type: 'PERCENT', value: 20, internal: 'RAHASIA' }),
       Object.assign({}, period, { productId: 'p2', type: 'AMOUNT', value: 1000, endsAt: '2026-11-02T00:00:00Z' })
@@ -736,6 +737,9 @@ test('Katalog menampilkan rincian diskon dan voucher yang aktif sesuai jenis pes
   context.rows_ = function (name) { return tables[name] || []; };
   for (const type of ['DIRECT', 'PREORDER']) {
     const result = context.catalog_({ type: type });
+    assert.equal(result.products[0].unit, 'Botol');
+    assert.equal(result.products[0].sizeValue, 250);
+    assert.equal(result.products[0].sizeUnit, 'ml');
     assert.equal(result.products[0].unitPrice, 8000);
     assert.equal(result.products[0].discount.startsAt, period.startsAt);
     assert.equal(result.products[0].discount.endsAt, period.endsAt);
@@ -2308,8 +2312,8 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   const css = source('css/styles.css');
   const mobileStyles = css.slice(css.indexOf('@media (max-width: 767px)'), css.indexOf('@media (prefers-reduced-motion'));
   assert.match(mobileStyles, /\.products-table \.product-name-column\s*\{\s*white-space:\s*nowrap;\s*\}/);
-  assert.match(mobileStyles, /\.products-table \.record-action-cell\s*\{[^}]*position:\s*sticky;[^}]*right:\s*0;[^}]*z-index:\s*1;[^}]*background:\s*white;/);
-  assert.match(mobileStyles, /\.products-table th\.record-action-cell\s*\{\s*z-index:\s*2;[^}]*background:\s*#f2f3f4;/);
+  assert.match(mobileStyles, /\.products-table \.record-action-cell,\s*\.orders-table \.record-action-cell\s*\{[^}]*position:\s*sticky;[^}]*right:\s*0;[^}]*z-index:\s*1;[^}]*background:\s*white;/);
+  assert.match(mobileStyles, /\.products-table th\.record-action-cell,\s*\.orders-table th\.record-action-cell\s*\{\s*z-index:\s*2;[^}]*background:\s*#f2f3f4;/);
   assert.match(css, /\.btn\.action-icon\s*\{[^}]*flex: 0 0 36px;[^}]*width: 36px;[^}]*height: 36px;[^}]*min-height: 36px;/);
   assert.match(css, /\.action-icon \.ui-icon\s*\{[^}]*width: 16px;[^}]*height: 16px;/);
 });
@@ -3098,19 +3102,104 @@ function accountHeaderContext() {
   const button = element();
   button.dataset.nav = 'admin';
   const user = element();
+  const customerOrders = element();
   const header = { active: false, classList: { toggle(name, value) { header.active = value; } } };
   const client = source('js/client.js');
   const context = vm.createContext({
     state: { token: '', user: null }, window: {},
-    document: { getElementById: id => id === 'header-auth' ? button : id === 'header-user' ? user : null,
+    document: { getElementById: id => id === 'header-auth' ? button : id === 'header-user' ? user :
+      id === 'header-customer-orders' ? customerOrders : null,
       querySelector: () => header }
   });
   vm.runInContext(source('js/icons.js'), context);
   context.buttonLabel = context.window.HV_UI.label;
   vm.runInContext(client.slice(client.indexOf('  function renderAccountHeader('),
     client.indexOf('  // Tombol ringkas')), context);
-  return { context, button, user, header, client };
+  return { context, button, user, customerOrders, header, client };
 }
+
+test('Pesanan Saya hanya terlihat untuk sesi Konsumen, termasuk setelah logout', function () {
+  const { context, customerOrders } = accountHeaderContext();
+  for (const role of ['Admin', 'Operator', 'Viewer', 'Konsumen']) {
+    context.state.token = 'test-only';
+    context.state.user = { username: 'user01', role };
+    context.renderAccountHeader();
+    assert.equal(customerOrders.hidden, role !== 'Konsumen');
+  }
+  context.state.token = '';
+  context.renderAccountHeader();
+  assert.equal(customerOrders.hidden, true);
+  context.state.user = null;
+  context.renderAccountHeader();
+  assert.equal(customerOrders.hidden, true);
+  assert.match(source('index.html'), /id="header-customer-orders"[^>]*hidden/);
+  assert.match(source('css/styles.css'), /#header-customer-orders\[hidden\] \{ display: none; \}/);
+});
+
+test('Kartu produk menampilkan satuan dan ukuran, aman untuk data lama dan teks HTML', function () {
+  const client = source('js/client.js');
+  const context = vm.createContext({});
+  vm.runInContext(client.slice(client.indexOf('  function safe('), client.indexOf('  let pending =')), context);
+  vm.runInContext(client.slice(client.indexOf('  function renderProductSpecs('),
+    client.indexOf('  async function startCheckout(')), context);
+  const html = context.renderProductSpecs({ unit: 'Botol', sizeValue: 250, sizeUnit: 'ml' });
+  assert.ok(html.includes('Satuan: <strong>Botol</strong>'));
+  assert.ok(html.includes('Ukuran: <strong>250 ml</strong>'));
+  assert.ok(context.renderProductSpecs({ unit: 'Slace', sizeValue: 0.5, sizeUnit: 'gr' }).includes('0.5 gr'));
+  assert.ok(context.renderProductSpecs({ unit: 'Slace' }).includes('Slice'));
+  assert.equal(context.renderProductSpecs({}), '');
+  assert.equal(context.renderProductSpecs({ sizeValue: '', sizeUnit: 'gr' }), '');
+  assert.equal(context.renderProductSpecs({ sizeValue: 100 }), '');
+  assert.ok(!context.renderProductSpecs({ unit: '<img src=x>' }).includes('<img'));
+  assert.ok(client.includes("renderProductSpecs(product) + '<p class=\"description\">'"));
+});
+
+test('Pesanan pengelola memakai satu tabel, filter dan pagination tetap berfungsi', function () {
+  const client = source('js/client.js');
+  const list = { innerHTML: '' };
+  const search = { value: '' };
+  const filter = { value: '' };
+  const orders = Array.from({ length: 21 }, (_, i) => ({
+    id: 'HV-' + String(i + 1).padStart(4, '0'), name: 'Pelanggan ' + i, phone: '081' + i,
+    createdAt: '2026-11-' + String(i + 1).padStart(2, '0'),
+    date: '2026-11-10', time: '10:00', total: 10000,
+    paymentStatus: 'UNPAID', fulfillment: i === 0 ? 'READY' : 'NEW'
+  }));
+  const context = vm.createContext({
+    state: { admin: { tables: { Orders: orders } }, listPage: 0 },
+    document: { getElementById: id => ({ 'order-search': search, 'order-filter': filter, 'order-list': list })[id] },
+    safe: String, dateText: String, rupiah: String, buttonLabel: (_, text) => text,
+    iconButton: (_, label, attributes) => '<button ' + attributes + '>' + label + '</button>'
+  });
+  vm.runInContext(client.slice(client.indexOf('  function filterOrders('), client.indexOf('  // Detail pesanan')), context);
+  context.filterOrders();
+  assert.equal((list.innerHTML.match(/data-order=/g) || []).length, 20);
+  assert.ok(list.innerHTML.includes('class="table orders-table"'));
+  assert.ok(list.innerHTML.includes('<th class="record-action-cell">Aksi</th>'));
+  assert.ok(!list.innerHTML.includes('<article'));
+  context.state.listPage = 1;
+  context.filterOrders();
+  assert.equal((list.innerHTML.match(/data-order=/g) || []).length, 1);
+  search.value = 'HV-0021';
+  context.filterOrders();
+  assert.equal(context.state.listPage, 0);
+  assert.ok(list.innerHTML.includes('data-order="HV-0021"'));
+  search.value = '';
+  filter.value = 'READY';
+  context.filterOrders();
+  assert.equal((list.innerHTML.match(/data-order=/g) || []).length, 1);
+  assert.ok(list.innerHTML.includes('data-order="HV-0001"'));
+  const css = source('css/styles.css');
+  assert.match(css, /\.orders-table \.record-action-cell \{[^}]*position: sticky;[^}]*right: 0;/);
+  assert.ok(!css.includes('.order-desktop'));
+});
+
+test('Tombol orange dan biru tua memakai abu-abu terang saat hover, fokus, dan klik', function () {
+  const css = source('css/styles.css');
+  assert.match(css, /\.btn\.btn-primary:not\(:disabled\):is\(:hover, :focus, :active\),\s*\.btn\.btn-green:not\(:disabled\):is\(:hover, :focus, :active\) \{\s*background: #e9ecef;/);
+  assert.ok(css.includes('--bs-btn-active-bg: #e9ecef;'));
+  assert.ok(css.includes('--bs-btn-active-color: var(--ink);'));
+});
 
 test('Header menunjukkan username dan Logout untuk semua role, lalu kembali Login saat sesi kosong', function () {
   const { context, button, user, header } = accountHeaderContext();
@@ -3172,7 +3261,7 @@ test('Login dan tombol Logout header menyinkronkan identitas akun serta membersi
 });
 
 test('Akun mobile berada setelah tiga tautan menu dan kembali ke header saat resize atau logout', function () {
-  const { context, button, user, header, client } = accountHeaderContext();
+  const { context, button, user, customerOrders, header, client } = accountHeaderContext();
   const container = children => ({
     children,
     appendChild(child) {
@@ -3189,12 +3278,14 @@ test('Akun mobile berada setelah tiga tautan menu dan kembali ke header saat res
   desktop.appendChild(account);
   context.headerViewport = { matches: true };
   context.document.getElementById = id => ({
-    'header-auth': button, 'header-user': user, 'header-account': account, 'site-nav': nav
+    'header-auth': button, 'header-user': user, 'header-account': account, 'site-nav': nav,
+    'header-customer-orders': customerOrders
   })[id] || null;
   context.document.querySelector = selector => selector === '.header-inner' ? desktop : header;
   context.state.token = 'test-only';
-  context.state.user = { username: 'admin01', role: 'Admin' };
+  context.state.user = { username: 'konsumen01', role: 'Konsumen' };
   context.renderAccountHeader();
+  assert.equal(customerOrders.hidden, false);
   assert.equal(account.parentElement, nav);
   assert.deepEqual(nav.children.slice(0, 3), ['Home', 'Katalog', 'Pesanan Saya']);
   assert.equal(nav.children[3], account);
@@ -3204,7 +3295,11 @@ test('Akun mobile berada setelah tiga tautan menu dan kembali ke header saat res
   context.headerViewport.matches = false;
   context.renderAccountHeader();
   assert.equal(account.parentElement, desktop);
+  assert.equal(customerOrders.hidden, false);
   assert.equal(nav.children.length, 3);
+  context.state.user.role = 'Admin';
+  context.renderAccountHeader();
+  assert.equal(customerOrders.hidden, true);
   context.headerViewport.matches = true;
   context.renderAccountHeader();
   assert.equal(account.parentElement, nav);
@@ -3214,6 +3309,7 @@ test('Akun mobile berada setelah tiga tautan menu dan kembali ke header saat res
   assert.equal(account.parentElement, desktop);
   assert.equal(nav.children.length, 3);
   assert.equal(user.hidden, true);
+  assert.equal(customerOrders.hidden, true);
   assert.equal(button.dataset.nav, 'admin');
   assert.ok(client.includes("headerViewport.addEventListener('change', renderAccountHeader)"));
   const css = source('css/styles.css');

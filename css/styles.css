@@ -321,20 +321,28 @@
     font-weight: 700;
   }
 
-  /* Warna tombol utama ketika disorot atau menerima fokus. */
-  .btn-primary:hover,
-  .btn-primary:focus {
-    background: #e77b23;
-    border-color: #e77b23;
-    color: var(--ink);
-  }
-
   /* Tombol alternatif biru tua dengan teks putih. */
-  .btn-green,
-  .btn-green:hover {
+  .btn-green {
     background: var(--green);
+    border-color: var(--green);
     color: white;
   }
+
+  /* Hover, fokus, dan klik memakai abu-abu terang, termasuk state Bootstrap. */
+  .btn-primary,
+  .btn-green {
+    --bs-btn-active-bg: #e9ecef;
+    --bs-btn-active-border-color: #adb5bd;
+    --bs-btn-active-color: var(--ink);
+    --bs-btn-focus-shadow-rgb: 100, 110, 120;
+  }
+  .btn.btn-primary:not(:disabled):is(:hover, :focus, :active),
+  .btn.btn-green:not(:disabled):is(:hover, :focus, :active) {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: var(--ink);
+  }
+  #header-customer-orders[hidden] { display: none; }
 
   /* Semua tombol berikon memiliki jarak 8px dan lebar mengikuti isi teksnya. */
   .btn:not(.brand) {
@@ -509,6 +517,10 @@
     color: #62666a;
   }
 
+  .product-specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; font-size: 12px; color: #586675; }
+  .product-specs span { padding: 4px 8px; border-radius: 6px; background: #f2f3f4; overflow-wrap: anywhere; }
+  .product-specs strong { color: var(--green); font-weight: 600; }
+
   /* Harga lama dicoret, sementara harga yang dibayar tetap lebih menonjol. */
   .product-prices { display: grid; gap: 2px; }
   .product-prices del { font-size: 12px; color: #62666a; }
@@ -596,7 +608,7 @@
   }
 
   /* Sorotan menu kontras di atas latar biru tua. */
-  .admin-nav .btn:hover { background: #ffffff14; color: white; }
+  .admin-nav .btn:is(:hover, :focus-visible, :active) { background: #e9ecef; color: var(--ink); }
 
   /* Menandai menu pengelola aktif dengan latar terang dan garis orange. */
   .admin-nav .selected {
@@ -633,6 +645,8 @@
 
   /* Judul kolom Setup Produk tetap satu baris; tabel digulir pada layar sempit. */
   .products-table th { white-space: nowrap; }
+  .orders-table th,
+  .orders-table td { white-space: nowrap; }
 
   /* Tombol ikon aksi ringkas dengan ukuran yang sama pada setiap form. */
   .btn.action-icon {
@@ -818,11 +832,6 @@
     color: white;
   }
 
-  /* Versi kartu daftar pesanan HP tidak ditampilkan pada desktop. */
-  .order-mobile {
-    display: none;
-  }
-
   /* Penyesuaian tablet dan layar lebih kecil, hingga lebar 1050px. */
   @media (max-width: 1050px) {
     /* Produk berubah menjadi dua kolom. */
@@ -906,14 +915,16 @@
     .products-table .product-description-column { display: none; }
     .products-table .product-name-column { white-space: nowrap; }
     /* Tombol tetap di kanan area gulir, dengan latar solid menutup data di bawahnya. */
-    .products-table .record-action-cell {
+    .products-table .record-action-cell,
+    .orders-table .record-action-cell {
       position: sticky;
       right: 0;
       z-index: 1;
       background: white;
       box-shadow: -6px 0 8px #08192e0a;
     }
-    .products-table th.record-action-cell { z-index: 2; background: #f2f3f4; }
+    .products-table th.record-action-cell,
+    .orders-table th.record-action-cell { z-index: 2; background: #f2f3f4; }
     /* Voucher memakai satu kolom agar kode dan tanggal mudah dibaca pada HP. */
     .voucher-grid { grid-template-columns: minmax(0, 1fr); }
     /* Pencarian di baris pertama; kategori dan filter stok tetap berdampingan pada HP. */
@@ -1007,16 +1018,8 @@
       font-size: 12px;
     }
 
-    /* Tabel pesanan desktop digantikan tampilan kartu pada HP. */
-    .order-desktop {
-      display: none;
-    }
-
-    /* Menampilkan daftar pesanan sebagai kartu yang tersusun ke bawah. */
-    .order-mobile {
-      display: grid;
-      gap: 12px;
-    }
+    .product-specs { font-size: 11px; gap: 4px; }
+    .product-specs span { padding: 3px 6px; }
 
     /* Mengecilkan label langkah checkout agar muat di HP. */
     .steps span {

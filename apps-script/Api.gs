@@ -227,7 +227,8 @@ function catalog_(data) {
   }
   const result = products.map(function (product) {
     const view = publicRecord_(product, [
-      'id', 'categoryId', 'name', 'description', 'price', 'photoFileId'
+      'id', 'categoryId', 'name', 'description', 'price', 'photoFileId',
+      'unit', 'sizeValue', 'sizeUnit'
     ]);
     const discount = discounts.find(function (row) {
       return row.productId === product.id && validPeriod_(row);
