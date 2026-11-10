@@ -1,5 +1,4 @@
   'use strict';
-
   // Sesi pengelola hanya di memori; tidak ditaruh di URL atau penyimpanan browser.
   const state = {
     token: '',
