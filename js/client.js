@@ -1830,7 +1830,7 @@
     if (button.dataset.nav) {
       return navigate(button.dataset.nav);
     }
-    if (button.hasAttribute('data-category-pill')) {
+    if (Object.prototype.hasOwnProperty.call(button.dataset, 'categoryPill')) {
       const select = document.getElementById('category-filter');
       if (!select) { return; }
       select.value = button.dataset.categoryPill;
