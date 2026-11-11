@@ -355,6 +355,13 @@ function adminData_(user, data) {
       return record;
     });
   });
+  // Sisa stok dihitung oleh server memakai aturan reservasi yang sama dengan katalog.
+  if (page === 'ReadyStock') {
+    const orders = rows_('Orders');
+    result.tables.ReadyStock.forEach(function (stock) {
+      stock.remaining = Math.max(0, Number(stock.capacity) - usedCapacity_(stock.id, orders));
+    });
+  }
   if (page === 'Pengaturan') {
     result.settings = settings_();
   }

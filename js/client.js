@@ -12,6 +12,7 @@
     productSearch: '',
     productCategory: '',
     availableOnly: true,
+    catalogView: 'grid',
     type: 'DIRECT',
     cart: {},
     page: 'shop',
@@ -482,17 +483,15 @@
       '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat..." value="' +
       safe(state.productSearch || '') + '"' +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
-      '<select class="form-select" id="category-filter" aria-label="Kategori"' +
-      (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
-      '<option value="">Semua kategori</option>' + catalog.categories.map(function (row) {
-        return '<option value="' + safe(row.id) + '"' +
-          (row.id === state.productCategory ? ' selected' : '') + '>' + safe(row.name) + '</option>';
-      }).join('') + '</select><div class="availability-option">' +
+      '<div class="availability-option">' +
       '<input class="form-check-input" type="checkbox" id="availability-filter"' +
       (state.availableOnly !== false ? ' checked' : '') +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<label class="form-check-label d-inline-flex align-items-center gap-2" for="availability-filter">' +
-      buttonLabel('stock', 'Tersedia saja') + '</label></div></div>' +
+      buttonLabel('stock', 'Tersedia saja') + '</label></div>' +
+      '<div class="hv-view-switch" role="group" aria-label="Tampilan katalog">' +
+      '<button type="button" class="hv-view-button" data-catalog-view="grid" aria-label="Tampilan grid" title="Grid" aria-pressed="' + (state.catalogView === 'grid') + '">' + window.HV_UI.icon('dashboard') + '</button>' +
+      '<button type="button" class="hv-view-button" data-catalog-view="list" aria-label="Tampilan list" title="List" aria-pressed="' + (state.catalogView === 'list') + '">' + window.HV_UI.icon('menu') + '</button></div></div>' +
       '<div class="hv-category-pills" role="group" aria-label="Pilih kategori produk">' +
       '<button type="button" class="hv-category-pill" data-category-pill="" aria-pressed="' + (!state.productCategory) + '">Semua</button>' +
       catalog.categories.map(function (row) {
@@ -603,8 +602,9 @@
       return;
     }
     const search = document.getElementById('product-search').value.toLowerCase();
-    const category = document.getElementById('category-filter').value;
+    const category = state.productCategory;
     const products = filterCatalogProducts(state.catalog.products, search, category);
+    holder.classList.toggle('hv-products-list', state.catalogView === 'list');
     const pagination = productPageData(products);
     document.getElementById('products').innerHTML = products.length
       ? pagination.items.map(function (product) {
@@ -1478,7 +1478,7 @@
       html += selectField('Produk', 'productId', products, row.productId);
     }
     if (['ReadyStock', 'PreorderCapacity'].includes(table)) {
-      html += field('Kapasitas total (termasuk yang ditahan/terpakai)', 'capacity', row.capacity, 'number');
+      html += field(table === 'ReadyStock' ? 'Stok total (termasuk yang dialokasikan)' : 'Kapasitas total (termasuk yang ditahan/terpakai)', 'capacity', row.capacity, 'number');
     }
     if (table === 'PreorderCapacity') {
       html += field('Tanggal penerimaan', 'date', row.date, 'date');
@@ -1560,9 +1560,13 @@
         !(table === 'Products' && ['sizeValue', 'categoryId'].includes(key));
     }) : [];
     if (keys.includes('code')) { keys.unshift(keys.splice(keys.indexOf('code'), 1)[0]); }
+    if (table === 'ReadyStock') { keys.splice(0, keys.length, 'productId', 'productName', 'capacity', 'remaining'); }
     const cellValue = function (row, key) {
       const product = (state.admin.tables.Products || []).find(function (item) { return item.id === row[key]; });
-      const value = table === 'Products' && key === 'sizeUnit'
+      const value = table === 'ReadyStock' && key === 'productId' ? (product ? product.code || product.id : row.productId)
+        : table === 'ReadyStock' && key === 'productName' ? (product ? product.name : 'Produk tidak ditemukan')
+        : table === 'ReadyStock' && key === 'remaining' ? row.remaining
+        : table === 'Products' && key === 'sizeUnit'
         ? [row.sizeValue, row.sizeUnit].filter(function (part) {
           return part !== '' && part !== undefined && part !== null;
         }).join(' ') : table === 'Products' && key === 'unit' && row.unit === 'Slace'
@@ -1589,7 +1593,10 @@
           active: 'Aktif', name: 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
           date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA',
           unit: 'Satuan', sizeUnit: 'Ukuran', productPrefix: 'Awalan ID Produk',
-          code: table === 'Categories' ? 'ID Kategori' : 'ID Produk' };
+          code: table === 'Categories' ? 'ID Kategori' : 'ID Produk',
+          productId: table === 'ReadyStock' ? 'Id Produk' : 'Produk',
+          productName: 'Nama Produk', capacity: table === 'ReadyStock' ? 'Stok' : 'Kapasitas',
+          remaining: 'Sisa Stok' };
         return '<th' + (table === 'Products' && ['description', 'name'].includes(key)
           ? ' class="product-' + key + '-column"' : '') +
           '>' + safe(label[key] || key) + '</th>';
@@ -1830,11 +1837,16 @@
     if (button.dataset.nav) {
       return navigate(button.dataset.nav);
     }
+    if (button.dataset.catalogView === 'grid' || button.dataset.catalogView === 'list') {
+      state.catalogView = button.dataset.catalogView;
+      document.querySelectorAll('[data-catalog-view]').forEach(function (item) {
+        item.setAttribute('aria-pressed', String(item.dataset.catalogView === state.catalogView));
+      });
+      renderProducts();
+      return;
+    }
     if (Object.prototype.hasOwnProperty.call(button.dataset, 'categoryPill')) {
-      const select = document.getElementById('category-filter');
-      if (!select) { return; }
-      select.value = button.dataset.categoryPill;
-      state.productCategory = select.value;
+      state.productCategory = button.dataset.categoryPill;
       state.productPage = 0;
       document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
         pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
@@ -2016,10 +2028,9 @@
 
   // Memperbarui hasil pencarian dan filter segera saat pengguna mengubah isian.
   document.addEventListener('input', function (event) {
-    if (['product-search', 'category-filter', 'availability-filter'].includes(event.target.id)) {
+    if (['product-search', 'availability-filter'].includes(event.target.id)) {
       state.productPage = 0;
       state.productSearch = document.getElementById('product-search').value;
-      state.productCategory = document.getElementById('category-filter').value;
       document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
         pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
       });
