@@ -6,6 +6,7 @@
     --ink: #08192e;
     --line: #e6eaf0;
   }
+
   /* Warna latar, jenis huruf, dan jarak baris dasar halaman. */
   body {
     background: var(--cream);
@@ -17,12 +18,14 @@
 
   /* Membuat perpindahan ke bagian halaman berlangsung halus. */
   html { scroll-behavior: smooth; }
+
   /* Kursor tangan menandakan elemen yang dapat diklik atau dipilih. */
   button,
   a,
   select {
     cursor: pointer;
   }
+
   /* Kursor larangan menandakan isian/tombol tidak dapat digunakan atau diubah. */
   button:disabled,
   input:disabled,
