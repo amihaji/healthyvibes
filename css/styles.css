@@ -1234,3 +1234,35 @@ body { background:var(--hv-canvas); }
 }
 @media(max-width:359px){.hv-admin-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.hv-admin-quick-item{transition:none}}
+
+/* Healthy Vibes v1.2 Tahap C: pemolesan katalog, keranjang, checkout. CSS saja. */
+.shop-layout .product-card{border-radius:20px;overflow:hidden;box-shadow:0 7px 24px rgba(6,91,85,.055);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.shop-layout .product-card:hover{transform:translateY(-2px);border-color:#bad6cd;box-shadow:0 12px 28px rgba(6,91,85,.11)}
+.shop-layout .product-card .price{gap:12px;align-items:end}
+.shop-layout .product-card .price strong{color:#065B55;font-weight:800}
+.shop-layout .product-card .btn-primary{border-radius:12px;min-height:42px}
+.shop-layout .cart-panel{border:1px solid #e2eae5;border-radius:22px;box-shadow:0 12px 36px rgba(6,91,85,.075);overflow-wrap:anywhere}
+.shop-layout .cart-panel>h2{color:#065B55;letter-spacing:-.025em}
+.shop-layout .cart-panel .border-bottom{border-color:#e7eee9!important;padding-block:14px!important}
+.shop-layout .cart-panel .cart-quantity .btn{width:36px;height:36px;min-width:36px;padding:6px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px}
+.shop-layout .cart-panel .cart-count{min-width:24px;font-weight:750}
+.shop-layout .cart-panel #checkout-button{min-height:48px;border-radius:13px;font-weight:700}
+.checkout-layout{align-items:start}
+.checkout-layout>.panel{border:1px solid #e3ebe6;border-radius:22px;box-shadow:0 9px 28px rgba(6,91,85,.055);min-width:0}
+.checkout-layout>aside.panel{position:sticky;top:142px}
+.checkout-layout>aside.panel strong{color:#065B55}
+.checkout-layout .form-control,.checkout-layout .form-select{min-height:44px;border-radius:11px}
+.checkout-layout textarea.form-control{min-height:92px}
+.checkout-layout .form-control:focus,.checkout-layout .form-select:focus{border-color:#065B55;box-shadow:0 0 0 3px rgba(6,91,85,.12)}
+.steps{gap:10px;margin:20px 0 24px}
+.steps span{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 16px;border-radius:999px;border-color:#e1eae5;color:#3b504b;font-weight:600}
+.steps .current{background:#065B55;border-color:#065B55;color:#fff;box-shadow:0 5px 14px rgba(6,91,85,.15)}
+@media(max-width:991px){.checkout-layout>aside.panel{position:static}}
+@media(max-width:767px){
+ .shop-layout .cart-panel{border-radius:18px}
+ .checkout-layout>.panel{border-radius:18px}
+ .steps{gap:7px}
+ .steps span{font-size:12px;padding:8px 10px;min-height:38px}
+ .shop-layout .product-card:hover{transform:none}
+}
+@media(prefers-reduced-motion:reduce){.shop-layout .product-card{transition:none}.shop-layout .product-card:hover{transform:none}}
