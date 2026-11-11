@@ -1266,3 +1266,67 @@ body { background:var(--hv-canvas); }
  .shop-layout .product-card:hover{transform:none}
 }
 @media(prefers-reduced-motion:reduce){.shop-layout .product-card{transition:none}.shop-layout .product-card:hover{transform:none}}
+
+
+/* ================================================================
+   Healthy Vibes v1.2 Tahap D: Panel Pengelola, Setup Produk, Pesanan
+   Lapisan visual saja. Tidak mengubah fungsi atau hak akses.
+   ================================================================ */
+
+/* Ruang kerja pengelola lebih jelas tanpa mengubah struktur menu. */
+.admin-toolbar { padding: 20px 22px; background: #fff; border: 1px solid #e1eae5; border-radius: 20px; box-shadow: 0 7px 24px rgba(6,91,85,.045); margin-bottom: 18px; }
+.admin-toolbar h1 { color: #064d47; letter-spacing: -.035em; }
+.admin-toolbar .admin-account { color: #50635c; }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.admin-actions .btn { border-radius: 11px; min-height: 42px; }
+.admin-layout { align-items: start; }
+#admin-body { min-width: 0; }
+#admin-body > .panel { border: 1px solid #e0e9e3; border-radius: 22px; padding: clamp(16px,2.5vw,26px); box-shadow: 0 10px 30px rgba(6,91,85,.055); }
+#admin-body > .panel > .d-flex:first-child { align-items: center; flex-wrap: wrap; }
+#admin-body > .panel > .d-flex:first-child h2 { margin-bottom: 0; color: #064d47; }
+#admin-body [data-new] { border-radius: 11px; min-height: 42px; font-weight: 700; }
+#admin-body #master-search, #admin-body #order-search, #admin-body #order-filter { border: 1px solid #d8e5dc; border-radius: 12px; min-height: 44px; background: #fbfdfb; }
+#admin-body :is(#master-search,#order-search,#order-filter):focus { border-color: #065B55; box-shadow: 0 0 0 3px rgba(6,91,85,.12); }
+
+/* Tabel dapat digeser horizontal tanpa memotong data atau tombol aksi. */
+#admin-body .table-wrap { border: 1px solid #dfe9e3; border-radius: 16px; background: #fff; overflow-x: auto; max-width: 100%; }
+#admin-body .table { margin-bottom: 0; font-size: 13px; vertical-align: middle; }
+#admin-body .table thead th { background: #eef5f0; color: #164f42; font-weight: 750; border-bottom: 1px solid #d7e4dc; padding: 14px 12px; white-space: nowrap; }
+#admin-body .table tbody td { padding: 12px; border-color: #e8eee9; color: #263d35; }
+#admin-body .table tbody tr:hover > * { background-color: #f5faf6; }
+#admin-body .products-table .product-name-column { min-width: 165px; font-weight: 650; }
+#admin-body .products-table .product-description-column { min-width: 220px; max-width: 340px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+#admin-body .record-actions { gap: 7px; }
+#admin-body .record-actions .action-icon { border: 1px solid #dce7df; border-radius: 10px; background: #fff; color: #065B55; min-width: 40px; min-height: 40px; }
+#admin-body .record-actions .action-icon:hover { background: #eaf5ee; border-color: #b4d2c1; }
+#admin-body .record-actions .action-icon:focus-visible { outline: 3px solid #F58B32; outline-offset: 2px; }
+#admin-body .record-action-cell { white-space: nowrap; }
+#admin-body .orders-table td:nth-child(2) { min-width: 145px; }
+#admin-body #previous-master, #admin-body #next-master,
+#admin-body #previous-orders, #admin-body #next-orders { min-height: 40px; border-radius: 10px; }
+#admin-body button:disabled { cursor: not-allowed; }
+
+/* Dialog detail pesanan tetap mudah dibaca dan dioperasikan. */
+#editor { border: 1px solid #dfe9e3; border-radius: 22px; box-shadow: 0 26px 70px rgba(8,45,36,.22); }
+#editor-title { color: #064d47; letter-spacing: -.025em; }
+#editor-content { min-width: 0; overflow-wrap: anywhere; }
+#editor-content .order-status-panel { border: 1px solid #e0eae3; border-radius: 16px; }
+#editor-content .order-notice { border-radius: 0 12px 12px 0; background: #fff6e9; }
+#editor-content .order-action-grid { gap: 14px; }
+#editor-content .form-control, #editor-content .form-select { min-height: 43px; border-radius: 11px; }
+#editor-content .form-control:focus, #editor-content .form-select:focus { border-color: #065B55; box-shadow: 0 0 0 3px rgba(6,91,85,.12); }
+#editor-content #order-action-result { overflow-wrap: anywhere; }
+#editor-content #order-action-form button[type=submit] { min-height: 44px; border-radius: 11px; }
+
+@media (max-width: 767px) {
+  .admin-toolbar { padding: 16px; border-radius: 16px; }
+  #admin-body > .panel { border-radius: 17px; padding: 14px; }
+  #admin-body .table { font-size: 12px; }
+  #admin-body .table thead th, #admin-body .table tbody td { padding: 10px; }
+  #admin-body .table-wrap { border-radius: 12px; }
+  #editor { width: calc(100% - 16px); max-height: calc(100dvh - 16px); padding: 16px; border-radius: 16px; }
+  #editor-content .order-action-grid { grid-template-columns: minmax(0,1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #admin-body .record-actions .action-icon { transition: none; }
+}
