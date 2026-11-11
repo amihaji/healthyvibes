@@ -1629,7 +1629,7 @@
           unit: 'Satuan', sizeUnit: 'Ukuran', productPrefix: 'Awalan ID Produk',
           code: table === 'Categories' ? 'ID Kategori' : table === 'Vouchers' ? 'ID Voucher' : 'ID Produk',
           productId: 'ID Produk', productName: 'Nama Produk',
-          capacity: table === 'PreorderCapacity' ? 'Stok' : 'Kapasitas', remaining: 'Sisa Stok' };
+          capacity: ['ReadyStock', 'PreorderCapacity'].includes(table) ? 'Stok' : 'Kapasitas', remaining: 'Sisa Stok' };
         return '<th' + (table === 'Products' && ['description', 'name'].includes(key)
           ? ' class="product-' + key + '-column"' : '') +
           '>' + safe(label[key] || key) + '</th>';
