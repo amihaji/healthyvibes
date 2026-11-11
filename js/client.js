@@ -1550,22 +1550,52 @@
       return !['id', 'photoFileId', 'updatedAt', 'mustChangePassword'].includes(key) &&
         !(table === 'Products' && ['sizeValue', 'categoryId'].includes(key));
     }) : [];
+    // Ketika tabel kosong, judul kolom tetap mengikuti schema menu (tanpa migrasi).
+    if (!keys.length && !rows.length) {
+      const emptyColumns = {
+        Categories: ['code', 'name', 'active'],
+        Products: ['code', 'name', 'description', 'price', 'unit', 'sizeUnit', 'active'],
+        ReadyStock: ['productId', 'capacity'],
+        PreorderCapacity: ['productId', 'date', 'capacity'],
+        Discounts: ['productId', 'type', 'value', 'startsAt', 'endsAt', 'active'],
+        Vouchers: ['code', 'type', 'value', 'minimum', 'maximum', 'startsAt', 'endsAt', 'orderType', 'active'],
+        ShippingRates: ['name', 'price', 'active']
+      };
+      if (emptyColumns[table]) { keys.push(...emptyColumns[table]); }
+    }
     if (keys.includes('code')) { keys.unshift(keys.splice(keys.indexOf('code'), 1)[0]); }
     if (['ReadyStock', 'PreorderCapacity', 'Discounts'].includes(table)) {
       const position = keys.indexOf('productId');
       if (position >= 0) { keys.splice(position + 1, 0, 'productName'); }
       if (table === 'PreorderCapacity' && !keys.includes('remaining')) { keys.push('remaining'); }
     }
-    const productLookup = new Map((state.admin.tables.Products || []).map(function (item) {
-      return [String(item.id), item];
-    }));
+    // Hubungkan master melalui Products.id (field database asli), bukan judul HTML.
+    // Normalisasi spasi untuk kompatibilitas data impor; kode produk hanya fallback
+    // bila unik, agar produk dengan kode ganda tidak salah dipasangkan.
+    const productLookup = new Map();
+    const codeCounts = new Map();
+    (state.admin.tables.Products || []).forEach(function (item) {
+      const code = String(item.code || '').trim();
+      if (code) { codeCounts.set(code, (codeCounts.get(code) || 0) + 1); }
+    });
+    (state.admin.tables.Products || []).forEach(function (item) {
+      const id = String(item.id || '').trim();
+      const code = String(item.code || '').trim();
+      if (id) { productLookup.set(id, item); }
+      if (code && codeCounts.get(code) === 1 && !productLookup.has(code)) {
+        productLookup.set(code, item);
+      }
+    });
+    const findProduct = function (row) {
+      return productLookup.get(String(row.productId || '').trim());
+    };
     const cellValue = function (row, key) {
       if (key === 'productName') {
-        const product = productLookup.get(String(row.productId));
+        const product = findProduct(row);
         return product ? product.name : 'Produk Tidak Ditemukan';
       }
       if (key === 'productId') {
-        const product = productLookup.get(String(row.productId));
+        const product = findProduct(row);
         return product ? product.code || product.id : row.productId;
       }
       if (key === 'remaining') { return row.remaining === undefined ? '-' : row.remaining; }
