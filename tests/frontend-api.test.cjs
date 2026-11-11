@@ -871,7 +871,7 @@ test('Dashboard membaca dua tabel sekali dan tidak menyusun laporan lengkap', fu
 test('Data Admin hanya memuat tabel menu aktif beserta kebutuhan formulirnya', function () {
   for (const [page, expected] of [
     ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products', 'Orders']],
-    ['PreorderCapacity', ['PreorderCapacity', 'Products']], ['Discounts', ['Discounts', 'Products']],
+    ['PreorderCapacity', ['PreorderCapacity', 'Products', 'Orders']], ['Discounts', ['Discounts', 'Products']],
     ['Pesanan', ['Orders', 'Files', 'Shipping']], ['Laporan', ['Categories']],
     ['Pengaturan', ['Settings']], ['Backup', []], ['Users', ['Users']], ['ShippingRates', ['ShippingRates']]
   ]) {
@@ -2288,7 +2288,7 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.ok(html.includes('class="table products-table"'));
   assert.ok(html.includes('<th class="product-description-column">description</th>'));
   assert.ok(html.includes('<td class="product-description-column">Deskripsi produk uji</td>'));
-  assert.ok(html.includes('<th class="product-name-column">Nama</th>'));
+  assert.ok(html.includes('<th class="product-name-column">Nama Produk</th>'));
   assert.ok(html.includes('<td class="product-name-column">Produk Uji</td>'));
   assert.equal(context.state.admin.tables.Products[0].description, 'Deskripsi produk uji');
   assert.ok(html.includes('aria-label="Edit Produk" title="Edit"'));

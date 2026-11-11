@@ -12,6 +12,7 @@
     productSearch: '',
     productCategory: '',
     availableOnly: true,
+    catalogView: 'grid',
     type: 'DIRECT',
     cart: {},
     page: 'shop',
@@ -482,17 +483,21 @@
       '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat..." value="' +
       safe(state.productSearch || '') + '"' +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
-      '<select class="form-select" id="category-filter" aria-label="Kategori"' +
-      (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
-      '<option value="">Semua kategori</option>' + catalog.categories.map(function (row) {
-        return '<option value="' + safe(row.id) + '"' +
-          (row.id === state.productCategory ? ' selected' : '') + '>' + safe(row.name) + '</option>';
-      }).join('') + '</select><div class="availability-option">' +
+      '<div class="availability-option">' +
       '<input class="form-check-input" type="checkbox" id="availability-filter"' +
       (state.availableOnly !== false ? ' checked' : '') +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<label class="form-check-label d-inline-flex align-items-center gap-2" for="availability-filter">' +
-      buttonLabel('stock', 'Tersedia saja') + '</label></div></div>' +
+      buttonLabel('stock', 'Tersedia saja') + '</label></div>' +
+      '<div class="hv-view-switch" role="group" aria-label="Tampilan katalog">' +
+      '<button type="button" class="hv-view-button" data-catalog-view="grid" aria-label="Tampilan grid" title="Grid" aria-pressed="' + (state.catalogView === 'grid') + '">' + window.HV_UI.icon('dashboard') + '</button>' +
+      '<button type="button" class="hv-view-button" data-catalog-view="list" aria-label="Tampilan list" title="List" aria-pressed="' + (state.catalogView === 'list') + '">' + window.HV_UI.icon('menu') + '</button></div></div>' +
+      '<div class="hv-category-pills" role="group" aria-label="Pilih kategori produk">' +
+      '<button type="button" class="hv-category-pill" data-category-pill="" aria-pressed="' + (!state.productCategory) + '">Semua</button>' +
+      catalog.categories.map(function (row) {
+        return '<button type="button" class="hv-category-pill" data-category-pill="' + safe(row.id) +
+          '" aria-pressed="' + (row.id === state.productCategory) + '">' + safe(row.name) + '</button>';
+      }).join('') + '</div>' +
       renderVouchers(catalog.vouchers || []) +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
       '<div id="product-pagination"></div>' +
@@ -597,8 +602,9 @@
       return;
     }
     const search = document.getElementById('product-search').value.toLowerCase();
-    const category = document.getElementById('category-filter').value;
+    const category = state.productCategory;
     const products = filterCatalogProducts(state.catalog.products, search, category);
+    holder.classList.toggle('hv-products-list', state.catalogView === 'list');
     const pagination = productPageData(products);
     document.getElementById('products').innerHTML = products.length
       ? pagination.items.map(function (product) {
@@ -1834,6 +1840,23 @@
     if (button.dataset.nav) {
       return navigate(button.dataset.nav);
     }
+    if (button.dataset.catalogView === 'grid' || button.dataset.catalogView === 'list') {
+      state.catalogView = button.dataset.catalogView;
+      document.querySelectorAll('[data-catalog-view]').forEach(function (item) {
+        item.setAttribute('aria-pressed', String(item.dataset.catalogView === state.catalogView));
+      });
+      renderProducts();
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(button.dataset, 'categoryPill')) {
+      state.productCategory = button.dataset.categoryPill;
+      state.productPage = 0;
+      document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
+        pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
+      });
+      renderProducts();
+      return;
+    }
     if (button.dataset.type) {
       state.type = button.dataset.type;
       state.cart = {};
@@ -2008,10 +2031,12 @@
 
   // Memperbarui hasil pencarian dan filter segera saat pengguna mengubah isian.
   document.addEventListener('input', function (event) {
-    if (['product-search', 'category-filter', 'availability-filter'].includes(event.target.id)) {
+    if (['product-search', 'availability-filter'].includes(event.target.id)) {
       state.productPage = 0;
       state.productSearch = document.getElementById('product-search').value;
-      state.productCategory = document.getElementById('category-filter').value;
+      document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
+        pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
+      });
       if (event.target.id === 'availability-filter') { state.availableOnly = event.target.checked; }
       renderProducts();
     } else if (['order-search', 'order-filter'].includes(event.target.id)) {

@@ -1048,3 +1048,18 @@
   #admin-body .hv-admin-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   #admin-body .hv-admin-quick-item { min-height: 78px; padding: 10px 7px; font-size: 12px; }
 }
+
+/* Healthy Vibes v1.2 Tahap D.1: filter katalog dan pilihan tampilan. */
+.catalog-filters { grid-template-columns: minmax(0,1fr) auto auto; }
+.hv-view-switch { display:flex; align-items:center; gap:5px; }
+.hv-view-button { width:44px; height:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #d9e6df; border-radius:12px; background:#fff; color:#065B55; }
+.hv-view-button[aria-pressed="true"] { background:#065B55; border-color:#065B55; color:#fff; }
+.hv-view-button:focus-visible { outline:3px solid #F58B32; outline-offset:2px; }
+.products.hv-products-list { grid-template-columns:minmax(0,1fr); }
+.hv-products-list .product-card { display:grid; grid-template-columns:minmax(110px, 190px) minmax(0,1fr); gap:4px 18px; align-items:start; }
+.hv-products-list .product-card > [data-photo] { grid-row:1 / span 6; margin-bottom:0; }
+.hv-products-list .product-card > :not([data-photo]) { grid-column:2; }
+.hv-products-list .product-card:not(:has([data-photo])) { grid-template-columns:minmax(0,1fr); }
+.hv-products-list .product-card:not(:has([data-photo])) > * { grid-column:1; }
+@media(max-width:767px) { .catalog-filters { grid-template-columns:minmax(0,1fr) auto; } .catalog-filters #product-search { grid-column:1/-1; } .hv-products-list .product-card { grid-template-columns:minmax(90px, 32%) minmax(0,1fr); gap:3px 10px; } .hv-products-list .product-card .price { align-items:flex-start!important; } }
+@media(max-width:359px) { .catalog-filters { grid-template-columns:minmax(0,1fr) auto; } .catalog-filters #product-search { grid-column:1/-1; } .hv-products-list .product-card { grid-template-columns:minmax(0,1fr); } .hv-products-list .product-card > * { grid-column:1!important; } .hv-products-list .product-card > [data-photo] { grid-row:auto; } }
