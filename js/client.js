@@ -12,7 +12,6 @@
     productSearch: '',
     productCategory: '',
     availableOnly: true,
-    catalogView: 'grid',
     type: 'DIRECT',
     cart: {},
     page: 'shop',
@@ -483,21 +482,17 @@
       '<input class="form-control" id="product-search" aria-label="Cari produk" placeholder="Cari menu sehat..." value="' +
       safe(state.productSearch || '') + '"' +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
-      '<div class="availability-option">' +
+      '<select class="form-select" id="category-filter" aria-label="Kategori"' +
+      (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
+      '<option value="">Semua kategori</option>' + catalog.categories.map(function (row) {
+        return '<option value="' + safe(row.id) + '"' +
+          (row.id === state.productCategory ? ' selected' : '') + '>' + safe(row.name) + '</option>';
+      }).join('') + '</select><div class="availability-option">' +
       '<input class="form-check-input" type="checkbox" id="availability-filter"' +
       (state.availableOnly !== false ? ' checked' : '') +
       (state.catalogLoading || state.catalogError ? ' disabled' : '') + '>' +
       '<label class="form-check-label d-inline-flex align-items-center gap-2" for="availability-filter">' +
-      buttonLabel('stock', 'Tersedia saja') + '</label></div>' +
-      '<div class="hv-view-switch" role="group" aria-label="Tampilan katalog">' +
-      '<button type="button" class="hv-view-button" data-catalog-view="grid" aria-label="Tampilan grid" title="Grid" aria-pressed="' + (state.catalogView === 'grid') + '">' + window.HV_UI.icon('dashboard') + '</button>' +
-      '<button type="button" class="hv-view-button" data-catalog-view="list" aria-label="Tampilan list" title="List" aria-pressed="' + (state.catalogView === 'list') + '">' + window.HV_UI.icon('menu') + '</button></div></div>' +
-      '<div class="hv-category-pills" role="group" aria-label="Pilih kategori produk">' +
-      '<button type="button" class="hv-category-pill" data-category-pill="" aria-pressed="' + (!state.productCategory) + '">Semua</button>' +
-      catalog.categories.map(function (row) {
-        return '<button type="button" class="hv-category-pill" data-category-pill="' + safe(row.id) +
-          '" aria-pressed="' + (row.id === state.productCategory) + '">' + safe(row.name) + '</button>';
-      }).join('') + '</div>' +
+      buttonLabel('stock', 'Tersedia saja') + '</label></div></div>' +
       renderVouchers(catalog.vouchers || []) +
       '<h2 class="h4 mb-3">Menu Pilihan</h2><div class="products" id="products"></div>' +
       '<div id="product-pagination"></div>' +
@@ -602,9 +597,8 @@
       return;
     }
     const search = document.getElementById('product-search').value.toLowerCase();
-    const category = state.productCategory;
+    const category = document.getElementById('category-filter').value;
     const products = filterCatalogProducts(state.catalog.products, search, category);
-    holder.classList.toggle('hv-products-list', state.catalogView === 'list');
     const pagination = productPageData(products);
     document.getElementById('products').innerHTML = products.length
       ? pagination.items.map(function (product) {
@@ -1233,17 +1227,7 @@
     }
     if (page === 'Dashboard') {
       const kpi = state.admin.kpi;
-      const quickPages = adminMenu().filter(function (name) { return name !== 'Dashboard'; }).slice(0, 6);
-      const quickLinks = '<section class="hv-admin-quick" aria-label="Akses cepat pengelola">' +
-        '<h2 class="h4">Akses Cepat</h2><div class="hv-admin-quick-grid">' +
-        quickPages.map(function (name) {
-          return '<button class="hv-admin-quick-item" data-admin-page="' + safe(name) + '" type="button">' +
-            window.HV_UI.icon(adminIcons[name]) + '<span>' + safe(tableLabels[name] || name) + '</span>' +
-            window.HV_UI.icon('chevron') + '</button>';
-        }).join('') + '</div></section>';
-      body.innerHTML = '<div class="hv-admin-welcome"><h2>Selamat datang, ' + safe(state.user.name) + '</h2>' +
-        '<p>Kelola toko melalui menu yang tersedia sesuai hak akses akun.</p></div>' +
-        quickLinks + '<div class="kpis">' + [
+      body.innerHTML = '<div class="kpis">' + [
         ['Pesanan', kpi.orders],
         ['Belum lunas', kpi.pending],
         ['Pembayaran diterima', rupiah(kpi.payments)]
@@ -1478,7 +1462,7 @@
       html += selectField('Produk', 'productId', products, row.productId);
     }
     if (['ReadyStock', 'PreorderCapacity'].includes(table)) {
-      html += field(table === 'ReadyStock' ? 'Stok total (termasuk yang dialokasikan)' : 'Kapasitas total (termasuk yang ditahan/terpakai)', 'capacity', row.capacity, 'number');
+      html += field('Kapasitas total (termasuk yang ditahan/terpakai)', 'capacity', row.capacity, 'number');
     }
     if (table === 'PreorderCapacity') {
       html += field('Tanggal penerimaan', 'date', row.date, 'date');
@@ -1555,22 +1539,35 @@
     if (table === 'Users') { renderUsers(); return; }
     const rows = state.admin.tables[table] || [];
     const editable = canManageMaster(table);
+    // Kolom tambahan merupakan tampilan saja, tidak mengubah schema penyimpanan.
     const keys = rows.length ? Object.keys(rows[0]).filter(function (key) {
       return !['id', 'photoFileId', 'updatedAt', 'mustChangePassword'].includes(key) &&
         !(table === 'Products' && ['sizeValue', 'categoryId'].includes(key));
     }) : [];
     if (keys.includes('code')) { keys.unshift(keys.splice(keys.indexOf('code'), 1)[0]); }
-    if (table === 'ReadyStock') { keys.splice(0, keys.length, 'productId', 'productName', 'capacity', 'remaining'); }
+    if (['ReadyStock', 'PreorderCapacity', 'Discounts'].includes(table)) {
+      const position = keys.indexOf('productId');
+      if (position >= 0) { keys.splice(position + 1, 0, 'productName'); }
+      if (table === 'PreorderCapacity' && !keys.includes('remaining')) { keys.push('remaining'); }
+    }
+    const productLookup = new Map((state.admin.tables.Products || []).map(function (item) {
+      return [String(item.id), item];
+    }));
     const cellValue = function (row, key) {
-      const product = (state.admin.tables.Products || []).find(function (item) { return item.id === row[key]; });
-      const value = table === 'ReadyStock' && key === 'productId' ? (product ? product.code || product.id : row.productId)
-        : table === 'ReadyStock' && key === 'productName' ? (product ? product.name : 'Produk tidak ditemukan')
-        : table === 'ReadyStock' && key === 'remaining' ? row.remaining
-        : table === 'Products' && key === 'sizeUnit'
+      if (key === 'productName') {
+        const product = productLookup.get(String(row.productId));
+        return product ? product.name : 'Produk Tidak Ditemukan';
+      }
+      if (key === 'productId') {
+        const product = productLookup.get(String(row.productId));
+        return product ? product.code || product.id : row.productId;
+      }
+      if (key === 'remaining') { return row.remaining === undefined ? '-' : row.remaining; }
+      const value = table === 'Products' && key === 'sizeUnit'
         ? [row.sizeValue, row.sizeUnit].filter(function (part) {
           return part !== '' && part !== undefined && part !== null;
         }).join(' ') : table === 'Products' && key === 'unit' && row.unit === 'Slace'
-          ? 'Slice' : product ? product.name : row[key];
+          ? 'Slice' : row[key];
       return masterText(key, value);
     };
     const query = table === 'Products' ? String(state.masterSearch || '').trim().toLowerCase() : '';
@@ -1587,16 +1584,16 @@
       '<input class="form-control mb-3" id="master-search" placeholder="Cari data..." aria-label="Cari data" ' +
       'value="' + safe(table === 'Products' ? state.masterSearch || '' : '') + '">' +
       '<div class="table-wrap"><table class="table' + (table === 'Products' ? ' products-table' : '') +
+      (table === 'Vouchers' ? ' vouchers-table' : '') +
       '"><thead><tr>' +
       keys.map(function (key) {
         const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
-          active: 'Aktif', name: 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
+          active: 'Aktif', name: table === 'Categories' ? 'Nama Kategori' : table === 'Products' ? 'Nama Produk' : table === 'ShippingRates' ? 'Jenis Pengiriman' : 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
           date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA',
           unit: 'Satuan', sizeUnit: 'Ukuran', productPrefix: 'Awalan ID Produk',
-          code: table === 'Categories' ? 'ID Kategori' : 'ID Produk',
-          productId: table === 'ReadyStock' ? 'Id Produk' : 'Produk',
-          productName: 'Nama Produk', capacity: table === 'ReadyStock' ? 'Stok' : 'Kapasitas',
-          remaining: 'Sisa Stok' };
+          code: table === 'Categories' ? 'ID Kategori' : table === 'Vouchers' ? 'ID Voucher' : 'ID Produk',
+          productId: 'ID Produk', productName: 'Nama Produk',
+          capacity: table === 'PreorderCapacity' ? 'Stok' : 'Kapasitas', remaining: 'Sisa Stok' };
         return '<th' + (table === 'Products' && ['description', 'name'].includes(key)
           ? ' class="product-' + key + '-column"' : '') +
           '>' + safe(label[key] || key) + '</th>';
@@ -1715,7 +1712,7 @@
       'pada pesanan baru. Sisa kas bukan laba; data pengembalian historis tetap tercatat di laporan.</p>' +
       '<div class="d-flex gap-2 mb-3"><button class="btn btn-primary" id="export-xlsx" ' +
       'type="button">' + buttonLabel('report', 'Excel .xlsx') + '</button><button class="btn btn-outline-dark" id="export-pdf" ' +
-      'type="button">' + buttonLabel('download', 'PDF') + '</button></div><div class="table-wrap"><table class="table"><thead><tr>' +
+      'type="button">' + buttonLabel('download', 'PDF') + '</button></div><div class="table-wrap"><table class="table hv-report-table"><thead><tr>' +
       keys.map(function (key) { return '<th>' + safe(key) + '</th>'; }).join('') +
       '</tr></thead><tbody>' + report.rows.map(function (row) {
         return '<tr>' + keys.map(function (key) { return '<td>' + safe(row[key]) + '</td>'; }).join('') + '</tr>';
@@ -1836,23 +1833,6 @@
     }
     if (button.dataset.nav) {
       return navigate(button.dataset.nav);
-    }
-    if (button.dataset.catalogView === 'grid' || button.dataset.catalogView === 'list') {
-      state.catalogView = button.dataset.catalogView;
-      document.querySelectorAll('[data-catalog-view]').forEach(function (item) {
-        item.setAttribute('aria-pressed', String(item.dataset.catalogView === state.catalogView));
-      });
-      renderProducts();
-      return;
-    }
-    if (Object.prototype.hasOwnProperty.call(button.dataset, 'categoryPill')) {
-      state.productCategory = button.dataset.categoryPill;
-      state.productPage = 0;
-      document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
-        pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
-      });
-      renderProducts();
-      return;
     }
     if (button.dataset.type) {
       state.type = button.dataset.type;
@@ -2028,12 +2008,10 @@
 
   // Memperbarui hasil pencarian dan filter segera saat pengguna mengubah isian.
   document.addEventListener('input', function (event) {
-    if (['product-search', 'availability-filter'].includes(event.target.id)) {
+    if (['product-search', 'category-filter', 'availability-filter'].includes(event.target.id)) {
       state.productPage = 0;
       state.productSearch = document.getElementById('product-search').value;
-      document.querySelectorAll('[data-category-pill]').forEach(function (pill) {
-        pill.setAttribute('aria-pressed', String(pill.dataset.categoryPill === state.productCategory));
-      });
+      state.productCategory = document.getElementById('category-filter').value;
       if (event.target.id === 'availability-filter') { state.availableOnly = event.target.checked; }
       renderProducts();
     } else if (['order-search', 'order-filter'].includes(event.target.id)) {

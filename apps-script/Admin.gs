@@ -362,6 +362,13 @@ function adminData_(user, data) {
       stock.remaining = Math.max(0, Number(stock.capacity) - usedCapacity_(stock.id, orders));
     });
   }
+  // Kuota preorder memakai reservasi yang sama dengan katalog dan ReadyStock.
+  if (page === 'PreorderCapacity') {
+    const orders = rows_('Orders');
+    result.tables.PreorderCapacity.forEach(function (stock) {
+      stock.remaining = Math.max(0, Number(stock.capacity) - usedCapacity_(stock.id, orders));
+    });
+  }
   if (page === 'Pengaturan') {
     result.settings = settings_();
   }
