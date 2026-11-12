@@ -1356,3 +1356,14 @@ body { background:var(--hv-canvas); }
 #admin-body .hv-report-table th, #admin-body .hv-report-table td { white-space: nowrap; }
 /* Desktop: menu navigasi bawah hanya tersedia pada layar kecil. */
 @media (min-width: 768px) { .hv-bottom-nav, .mobile-cart { display: none !important; } }
+
+/* D.2.4: Grafik Dashboard, tanpa mengubah style halaman lain. */
+.hv-dashboard-charts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:16px 0; }
+.hv-chart-panel { min-width:0; }
+.hv-chart-row { margin:12px 0; }
+.hv-chart-label { display:flex; justify-content:space-between; gap:12px; font-size:.9rem; margin-bottom:5px; overflow-wrap:anywhere; }
+.hv-chart-label span { min-width:0; }
+.hv-chart-label strong { white-space:nowrap; }
+.hv-chart-track { height:11px; border-radius:6px; background:#e6ecea; overflow:hidden; }
+.hv-chart-fill { height:100%; background:#15816c; border-radius:6px; }
+@media(max-width:800px) { .hv-dashboard-charts { grid-template-columns:1fr; } }

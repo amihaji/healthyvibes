@@ -1200,6 +1200,65 @@
       '</button></form></section>';
   }
 
+  // Label administrasi hanya mengubah presentasi, bukan nilai API/Google Sheets.
+  function paymentLabel(status) {
+    return status === 'PAID' ? 'Lunas' : status === 'PENDING' || status === 'UNPAID'
+      ? 'Belum Lunas' : String(status || 'Belum Lunas');
+  }
+
+  function orderTypeLabel(type) {
+    return ({ ALL: 'Semua', DIRECT: 'Langsung', PREORDER: 'Preorder' })[type] || String(type || '');
+  }
+
+  function promoTypeLabel(type) {
+    return ({ PERCENT: 'Persen', AMOUNT: 'Nominal' })[type] || String(type || '');
+  }
+
+  function promoValueText(row) {
+    return row.type === 'PERCENT' ? String(row.value ?? '') + '%' :
+      row.type === 'AMOUNT' ? rupiah(row.value) : row.value;
+  }
+
+  // Kolom laporan dipakai bersama oleh layar, Excel, dan PDF.
+  const reportColumns = [
+    ['nomor', 'Nomor Pesanan'], ['waktuWita', 'Waktu Wita'],
+    ['jenis', 'Jenis Pesanan'], ['penerimaan', 'Cara Penerimaan'],
+    ['produk', 'Nama Produk'], ['subtotal', 'Subtotal'], ['voucher', 'Voucer'],
+    ['produkSetelahDiskon', 'Harga Setelah Diskon'], ['pengiriman', 'Jenis Pengiriman'],
+    ['ongkirDalamTagihan', 'Biaya Ongkir'], ['tagihan', 'Total Harga'],
+    ['pembayaran', 'Transfer Pembayaran'], ['status', 'Status Pesanan']
+  ];
+  function reportDisplayValue(row, key) {
+    const value = row[key] ?? '';
+    if (key === 'jenis') { return orderTypeLabel(value); }
+    if (key === 'penerimaan') {
+      return ({ PICKUP: 'Ambil Sendiri', DELIVERY: 'Diantar ke alamat' })[value] || value;
+    }
+    if (key === 'status') { return fulfillmentLabel(value); }
+    if (['subtotal', 'voucher', 'produkSetelahDiskon', 'ongkirDalamTagihan', 'tagihan', 'pembayaran'].includes(key)) {
+      return rupiah(value);
+    }
+    return value;
+  }
+  function reportDisplayRows() {
+    return (state.report?.rows || []).map(function (row) {
+      const result = {};
+      reportColumns.forEach(function (column) { result[column[1]] = reportDisplayValue(row, column[0]); });
+      return result;
+    });
+  }
+
+  function adminBars(title, items, formatter) {
+    const maximum = Math.max(1, ...items.map(function (item) { return Number(item.value) || 0; }));
+    return '<section class="panel hv-chart-panel"><h2 class="h5">' + safe(title) + '</h2>' +
+      (items.length ? items.map(function (item) {
+        const width = Math.max(0, Math.min(100, Number(item.value) / maximum * 100));
+        return '<div class="hv-chart-row"><div class="hv-chart-label"><span>' + safe(item.name) +
+          '</span><strong>' + safe(formatter(item.value)) + '</strong></div>' +
+          '<div class="hv-chart-track"><div class="hv-chart-fill" style="width:' + width + '%"></div></div></div>';
+      }).join('') : '<p class="text-secondary">Belum ada data transaksi yang dapat ditampilkan.</p>') + '</section>';
+  }
+
   // Menampilkan panel pengelola dan isi menu yang sedang dipilih.
   function renderAdmin() {
     renderAccountHeader();
@@ -1236,14 +1295,25 @@
       body.innerHTML = '<div class="kpis">' + [
         ['Pesanan', kpi.orders],
         ['Belum lunas', kpi.pending],
-        ['Pembayaran diterima', rupiah(kpi.payments)]
+        ['Pembayaran diterima', rupiah(kpi.payments)],
+        ['Preorder hari ini', kpi.preorderToday ?? 0]
       ].map(function (item) {
         return '<div class="kpi"><small>' + safe(item[0]) + '</small><strong>' +
           safe(item[1]) + '</strong></div>';
       }).join('') + '</div><section class="panel"><h2 class="h4">Ringkasan Operasional</h2>' +
         '<p>Data berasal dari transaksi tersimpan, bukan contoh.</p>' +
         '<p>Pembayaran pesanan baru sudah termasuk ongkir. Total penerimaan bukan laba.</p>' +
-        '<button class="btn btn-green" id="refresh-admin" type="button">' + buttonLabel('refresh', 'Perbarui Data') + '</button></section>';
+        '<button class="btn btn-green" id="refresh-admin" type="button">' + buttonLabel('refresh', 'Perbarui Data') + '</button></section>' +
+        '<div class="hv-dashboard-charts">' +
+        adminBars('Nilai transaksi per kategori', kpi.byCategory || [], rupiah) +
+        adminBars('5 produk terlaris (jumlah unit)', kpi.topProducts || [], String) +
+        '</div><section class="panel"><h2 class="h5">Preorder untuk hari ini (WITA)</h2>' +
+        ((kpi.preorderProducts || []).length ? '<div class="table-wrap"><table class="table"><thead><tr><th>Produk</th><th>Jumlah</th></tr></thead><tbody>' +
+          kpi.preorderProducts.map(function (item) { return '<tr><td>' + safe(item.name) + '</td><td>' + safe(item.quantity) + '</td></tr>'; }).join('') +
+          '</tbody></table></div>' : '<p>Belum ada produk preorder untuk hari ini.</p>') +
+        '</section><section class="panel"><h2 class="h5">Perlu ditindaklanjuti</h2><p>Pesanan belum lunas: <strong>' +
+        safe(kpi.pending) + '</strong>. Pesanan baru belum dikonfirmasi: <strong>' +
+        safe(kpi.newOrders ?? 0) + '</strong>.</p></section>';
     } else if (page === 'Pesanan') {
       renderOrders();
     } else if (page === 'Pengaturan') {
@@ -1274,7 +1344,7 @@
       '<option value="">Semua status</option>' +
       ['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DISPATCHED', 'COMPLETED', 'CANCELLED']
         .map(function (status) {
-          return '<option>' + status + '</option>';
+          return '<option value="' + status + '">' + safe(fulfillmentLabel(status)) + '</option>';
         }).join('') + '</select></div></div><div id="order-list"></div></section>';
     filterOrders();
   }
@@ -1292,11 +1362,18 @@
     const orders = matching.slice(state.listPage * 20, (state.listPage + 1) * 20);
     document.getElementById('order-list').innerHTML =
       '<div class="table-wrap"><table class="table orders-table"><thead><tr>' +
-      '<th>Nomor</th><th>Pelanggan</th><th>Jadwal (WITA)</th><th>Total</th><th>Status</th><th class="record-action-cell">Aksi</th>' +
+      '<th>No. Pesanan</th><th>Nama Konsumen</th><th>No HP</th><th>WhatsApp</th><th>Jadwal (WITA)</th><th>Total</th><th>Status</th><th class="record-action-cell">Aksi</th>' +
       '</tr></thead><tbody>' + orders.map(function (order) {
-        return '<tr><td>' + safe(order.id) + '</td><td>' + safe(order.name) +
+        const phone = String(order.phone || '');
+        const digits = phone.replace(/\D/g, '');
+        const wa = /^0[0-9]{8,14}$/.test(digits) ? '62' + digits.slice(1) :
+          /^62[0-9]{8,14}$/.test(digits) ? digits : '';
+        const contact = state.user.role === 'Viewer' ? '-' : safe(phone);
+        return '<tr><td>' + safe(order.id) + '</td><td>' + safe(order.name || '-') +
+          '</td><td>' + contact + '</td><td>' + (wa && state.user.role !== 'Viewer' ?
+          '<a href="https://wa.me/' + wa + '" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp ' + safe(order.name) + '">Chat WA</a>' : '-') +
           '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
-          '</td><td>' + safe(order.paymentStatus + ' / ' + order.fulfillment) +
+          '</td><td>' + safe(paymentLabel(order.paymentStatus) + ' / ' + fulfillmentLabel(order.fulfillment)) +
           '</td><td class="record-action-cell">' + iconButton('eye', 'Lihat detail pesanan ' + order.id,
             'data-order="' + safe(order.id) + '"', 'Detail') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
@@ -1599,6 +1676,11 @@
         return product ? product.code || product.id : row.productId;
       }
       if (key === 'remaining') { return row.remaining === undefined ? '-' : row.remaining; }
+      if (['Discounts', 'Vouchers'].includes(table)) {
+        if (key === 'type') { return promoTypeLabel(row.type); }
+        if (key === 'value') { return promoValueText(row); }
+        if (key === 'orderType') { return orderTypeLabel(row.orderType); }
+      }
       const value = table === 'Products' && key === 'sizeUnit'
         ? [row.sizeValue, row.sizeUnit].filter(function (part) {
           return part !== '' && part !== undefined && part !== null;
@@ -1624,6 +1706,7 @@
       '"><thead><tr>' +
       keys.map(function (key) {
         const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
+          description: 'Keterangan', type: 'Tipe', value: 'Nilai', maximum: 'Maksimum', orderType: 'Jenis Pesanan',
           active: 'Aktif', name: table === 'Categories' ? 'Nama Kategori' : table === 'Products' ? 'Nama Produk' : table === 'ShippingRates' ? 'Jenis Pengiriman' : 'Nama', price: table === 'ShippingRates' ? 'Biaya Pengiriman (Rp)' : 'Harga',
           date: 'Tanggal', startsAt: 'Mulai WITA', endsAt: 'Berakhir WITA',
           unit: 'Satuan', sizeUnit: 'Ukuran', productPrefix: 'Awalan ID Produk',
@@ -1733,25 +1816,24 @@
       ], '') + selectField('Status pesanan', 'status', [
         ['', 'Semua'],
         ...['NEW', 'CONFIRMED', 'PREPARING', 'READY', 'DISPATCHED', 'COMPLETED', 'CANCELLED']
-          .map(function (status) { return [status, status]; })
+          .map(function (status) { return [status, fulfillmentLabel(status)]; })
       ], '') + '<button class="btn btn-green" type="submit">' + buttonLabel('report', 'Tampilkan') + '</button></form>' +
       '<div id="report-result" class="mt-4"></div></section>';
   }
 
-  // Laporan memisahkan harga produk dan ongkir di dalam total tagihan.
+  // Data historis refund tidak dihapus dari server; hanya disembunyikan dari laporan.
   function renderReport() {
     const report = state.report;
-    const keys = report.rows.length ? Object.keys(report.rows[0]) : [];
+    const rows = reportDisplayRows();
     document.getElementById('report-result').innerHTML =
       '<p>Pembayaran diterima: ' + rupiah(report.summary.payments) + '</p>' +
-      '<p class="small">Periode berdasarkan tanggal pesanan WITA. Pembayaran termasuk ongkir ' +
-      'pada pesanan baru. Sisa kas bukan laba; data pengembalian historis tetap tercatat di laporan.</p>' +
-      '<div class="d-flex gap-2 mb-3"><button class="btn btn-primary" id="export-xlsx" ' +
-      'type="button">' + buttonLabel('report', 'Excel .xlsx') + '</button><button class="btn btn-outline-dark" id="export-pdf" ' +
-      'type="button">' + buttonLabel('download', 'PDF') + '</button></div><div class="table-wrap"><table class="table hv-report-table"><thead><tr>' +
-      keys.map(function (key) { return '<th>' + safe(key) + '</th>'; }).join('') +
-      '</tr></thead><tbody>' + report.rows.map(function (row) {
-        return '<tr>' + keys.map(function (key) { return '<td>' + safe(row[key]) + '</td>'; }).join('') + '</tr>';
+      '<p class="small">Periode berdasarkan tanggal pesanan WITA. Pembayaran termasuk ongkir pada pesanan baru. Total penerimaan bukan laba.</p>' +
+      '<div class="d-flex gap-2 mb-3"><button class="btn btn-primary" id="export-xlsx" type="button">' +
+      buttonLabel('report', 'Excel .xlsx') + '</button><button class="btn btn-outline-dark" id="export-pdf" type="button">' +
+      buttonLabel('download', 'PDF') + '</button></div><div class="table-wrap"><table class="table hv-report-table"><thead><tr>' +
+      reportColumns.map(function (column) { return '<th>' + safe(column[1]) + '</th>'; }).join('') +
+      '</tr></thead><tbody>' + rows.map(function (row) {
+        return '<tr>' + reportColumns.map(function (column) { return '<td>' + safe(row[column[1]]) + '</td>'; }).join('') + '</tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -1777,12 +1859,11 @@
   // Mengunduh laporan Excel berisi lembar Pesanan dan Ringkasan.
   async function exportXlsx() {
     await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
-    const rows = state.report.rows.map(function (row) {
+    const rows = reportDisplayRows().map(function (row) {
       const result = {};
       Object.keys(row).forEach(function (key) {
         const value = row[key];
-        result[key] = typeof value === 'string' && /^[=+\-@]/.test(value)
-          ? "'" + value : value;
+        result[key] = typeof value === 'string' && /^[=+\-@]/.test(value) ? "'" + value : value;
       });
       return result;
     });
@@ -1800,11 +1881,12 @@
     await loadScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js');
     const pdf = new window.jspdf.jsPDF({ orientation: 'landscape' });
     pdf.text('Healthy Vibes - Laporan Pesanan', 14, 16);
-    const keys = state.report.rows.length ? Object.keys(state.report.rows[0]) : ['Tidak ada data'];
+    const keys = reportColumns.map(function (column) { return column[1]; });
+    const rows = reportDisplayRows();
     pdf.autoTable({
       startY: 24,
       head: [keys],
-      body: state.report.rows.map(function (row) { return keys.map(function (key) { return row[key]; }); }),
+      body: rows.map(function (row) { return keys.map(function (key) { return String(row[key] ?? ''); }); }),
       styles: { fontSize: 7, overflow: 'linebreak' },
       headStyles: { fillColor: [6, 91, 85] },
       didDrawPage: function (data) {

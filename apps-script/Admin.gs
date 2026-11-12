@@ -384,14 +384,52 @@ function adminSummary_() {
     return order.transactionState === 'COMMITTED';
   });
   const ids = new Set(orders.map(function (order) { return order.id; }));
-  function total(table) {
-    return rows_(table).reduce(function (sum, row) {
-      return sum + (ids.has(row.orderId) ? Number(row.amount) : 0);
-    }, 0);
+  const payments = rows_('Payments').reduce(function (sum, row) {
+    return sum + (ids.has(row.orderId) ? Number(row.amount) || 0 : 0);
+  }, 0);
+  const categories = rows_('Categories');
+  const products = rows_('Products');
+  const items = rows_('OrderItems');
+  const byProduct = new Map(products.map(function (product) { return [product.id, product]; }));
+  const byCategory = new Map(categories.map(function (category) { return [category.id, category.name]; }));
+  const categoryTotals = new Map();
+  const productTotals = new Map();
+  const preorderTotals = new Map();
+  const today = clock_().date;
+  const validOrders = new Map(orders.filter(function (order) {
+    return order.fulfillment !== 'CANCELLED';
+  }).map(function (order) { return [order.id, order]; }));
+  items.forEach(function (item) {
+    const order = validOrders.get(item.orderId);
+    if (!order) { return; }
+    const product = byProduct.get(item.productId);
+    const categoryId = product ? product.categoryId : '';
+    const category = byCategory.get(categoryId) || 'Kategori tidak diketahui';
+    const amount = Number(item.subtotal) || 0;
+    const quantity = Number(item.quantity) || 0;
+    categoryTotals.set(category, (categoryTotals.get(category) || 0) + amount);
+    const name = item.name || (product ? product.name : item.productId) || 'Produk tidak diketahui';
+    productTotals.set(name, (productTotals.get(name) || 0) + quantity);
+    if (order.type === 'PREORDER' && order.date === today) {
+      preorderTotals.set(name, (preorderTotals.get(name) || 0) + quantity);
+    }
+  });
+  function series(map, limit, valueName) {
+    return Array.from(map, function (entry) {
+      return { name: entry[0], [valueName || 'value']: entry[1] };
+    }).sort(function (left, right) {
+      return right[valueName || 'value'] - left[valueName || 'value'];
+    }).slice(0, limit || undefined);
   }
   return {
-    orders: orders.length, payments: total('Payments'),
-    pending: orders.filter(function (order) { return order.paymentStatus !== 'PAID'; }).length
+    orders: orders.length, payments: payments,
+    pending: orders.filter(function (order) { return order.paymentStatus !== 'PAID'; }).length,
+    newOrders: orders.filter(function (order) { return order.fulfillment === 'NEW'; }).length,
+    preorderToday: orders.filter(function (order) {
+      return order.type === 'PREORDER' && order.date === today && order.fulfillment !== 'CANCELLED';
+    }).length,
+    byCategory: series(categoryTotals), topProducts: series(productTotals, 5),
+    preorderProducts: series(preorderTotals, undefined, 'quantity')
   };
 }
 
