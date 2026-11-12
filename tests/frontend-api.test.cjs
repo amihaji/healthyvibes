@@ -410,12 +410,14 @@ test('Kolom Jam Layanan selalu memakai format 24 jam tanpa kontrol AM/PM', funct
 });
 
 test('Semua source dapat diparse dan frontend tidak memakai template Google', function () {
+  const backendRuntime = vm.createContext({});
   for (const directory of ['js', 'apps-script']) {
     for (const file of fs.readdirSync(path.join(root, directory))) {
       if (/\.(js|gs)$/.test(file)) {
         new vm.Script(source(directory + '/' + file), { filename: file });
-        // Pemeriksaan sintaks cukup dengan new vm.Script di atas.
-        // Integrasi backend diuji terpisah dengan runtime dan mock yang sesuai.
+        if (directory === 'apps-script') {
+          vm.runInContext(source(directory + '/' + file), backendRuntime);
+        }
       }
     }
   }
@@ -583,9 +585,7 @@ test('Filter tersedia menyaring stok/kuota aktif sebelum halaman serta bekerja d
   assert.deepEqual(ids(context.filterCatalogProducts(products, '', '')), ['a', 'b', 'c', 'd']);
   assert.match(client, /id="availability-filter"/);
   assert.ok(client.includes('class="catalog-filters"'));
-  assert.ok(client.includes('<div class="availability-option">'));
-  assert.ok(client.includes('class="hv-category-pills"'));
-  assert.ok(!client.includes('id="category-filter"'));
+  assert.ok(client.includes('</select><div class="availability-option">'));
   assert.match(source('css/styles.css'), /\.catalog-filters #product-search \{ grid-column: 1 \/ -1; \}/);
   assert.ok(client.includes("availableOnly: true"));
   assert.ok(client.includes('state.availableOnly = event.target.checked'));
@@ -596,7 +596,6 @@ test('Render halaman hanya meminta foto produk pada halaman aktif', function () 
   const requested = [];
   const holder = {
     innerHTML: '',
-    classList: { toggle: function () {} },
     querySelectorAll: function () {
       return Array.from(this.innerHTML.matchAll(/data-photo="([^"]+)"/g), function (match) {
         return { dataset: { photo: match[1] } };
@@ -849,29 +848,39 @@ function adminContext(tables, reads) {
   return context;
 }
 
-test('Dashboard membaca dua tabel sekali dan tidak menyusun laporan lengkap', function () {
+test('Dashboard menghitung KPI dan grafik dari data transaksi tanpa laporan lengkap', function () {
   const reads = [];
   const context = adminContext({
     Orders: [
-      { id: 'a', transactionState: 'COMMITTED', paymentStatus: 'PENDING', refundStatus: 'PENDING', snapshotJson: 'Tidak perlu diparse' },
-      { id: 'b', transactionState: 'COMMITTED', paymentStatus: 'PAID', refundStatus: 'NONE' },
-      { id: 'c', transactionState: 'PREPARING', paymentStatus: 'PENDING', refundStatus: 'PENDING' }
+      { id: 'a', transactionState: 'COMMITTED', paymentStatus: 'UNPAID', fulfillment: 'NEW', type: 'PREORDER', date: '2026-11-12' },
+      { id: 'b', transactionState: 'COMMITTED', paymentStatus: 'PAID', fulfillment: 'COMPLETED', type: 'DIRECT', date: '2026-11-11' },
+      { id: 'c', transactionState: 'PREPARING', paymentStatus: 'UNPAID' }
     ],
     Payments: [{ orderId: 'a', amount: 100 }, { orderId: 'b', amount: 200 }, { orderId: 'c', amount: 500 }],
-    Refunds: [{ orderId: 'a', amount: 10 }, { orderId: 'unknown', amount: 20 }]
+    Categories: [{ id: 'cat', name: 'Minuman' }],
+    Products: [{ id: 'p', name: 'Teh', categoryId: 'cat' }],
+    OrderItems: [{ orderId: 'a', productId: 'p', name: 'Teh', quantity: 2, subtotal: 100 }]
   }, reads);
+  context.clock_ = function () { return { date: '2026-11-12' }; };
   context.report_ = function () { throw new Error('Dashboard tidak boleh menyusun laporan'); };
   const result = context.adminData_({ role: 'Admin' }, { page: 'Dashboard' });
-  assert.deepEqual(reads, ['Orders', 'Payments']);
-  assert.deepEqual(JSON.parse(JSON.stringify(result.kpi)),
-    { orders: 2, payments: 300, pending: 1 });
+  assert.deepEqual(reads, ['Orders', 'Payments', 'Categories', 'Products', 'OrderItems']);
+  const kpi = JSON.parse(JSON.stringify(result.kpi));
+  assert.equal(kpi.orders, 2);
+  assert.equal(kpi.payments, 300);
+  assert.equal(kpi.pending, 1);
+  assert.equal(kpi.newOrders, 1);
+  assert.equal(kpi.preorderToday, 1);
+  assert.deepEqual(kpi.byCategory, [{ name: 'Minuman', value: 100 }]);
+  assert.deepEqual(kpi.topProducts, [{ name: 'Teh', value: 2 }]);
+  assert.deepEqual(kpi.preorderProducts, [{ name: 'Teh', quantity: 2 }]);
   assert.deepEqual(Object.keys(result.tables), []);
 });
 
 test('Data Admin hanya memuat tabel menu aktif beserta kebutuhan formulirnya', function () {
   for (const [page, expected] of [
-    ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products', 'Orders']],
-    ['PreorderCapacity', ['PreorderCapacity', 'Products', 'Orders']], ['Discounts', ['Discounts', 'Products']],
+    ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products']],
+    ['PreorderCapacity', ['PreorderCapacity', 'Products']], ['Discounts', ['Discounts', 'Products']],
     ['Pesanan', ['Orders', 'Files', 'Shipping']], ['Laporan', ['Categories']],
     ['Pengaturan', ['Settings']], ['Backup', []], ['Users', ['Users']], ['ShippingRates', ['ShippingRates']]
   ]) {
@@ -2286,9 +2295,9 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.ok(!html.includes('<td>cat-private</td>'));
   assert.equal(context.state.admin.tables.Products[0].categoryId, 'cat-private');
   assert.ok(html.includes('class="table products-table"'));
-  assert.ok(html.includes('<th class="product-description-column">description</th>'));
+  assert.ok(html.includes('<th class="product-description-column">Keterangan</th>'));
   assert.ok(html.includes('<td class="product-description-column">Deskripsi produk uji</td>'));
-  assert.ok(html.includes('<th class="product-name-column">Nama Produk</th>'));
+  assert.ok(html.includes('<th class="product-name-column">Nama</th>'));
   assert.ok(html.includes('<td class="product-name-column">Produk Uji</td>'));
   assert.equal(context.state.admin.tables.Products[0].description, 'Deskripsi produk uji');
   assert.ok(html.includes('aria-label="Edit Produk" title="Edit"'));
@@ -3167,9 +3176,10 @@ test('Pesanan pengelola memakai satu tabel, filter dan pagination tetap berfungs
     paymentStatus: 'UNPAID', fulfillment: i === 0 ? 'READY' : 'NEW'
   }));
   const context = vm.createContext({
-    state: { admin: { tables: { Orders: orders } }, listPage: 0 },
+    state: { user: { role: 'Admin' }, admin: { tables: { Orders: orders } }, listPage: 0 },
     document: { getElementById: id => ({ 'order-search': search, 'order-filter': filter, 'order-list': list })[id] },
     safe: String, dateText: String, rupiah: String, buttonLabel: (_, text) => text,
+    paymentLabel: value => value, fulfillmentLabel: value => value,
     iconButton: (_, label, attributes) => '<button ' + attributes + '>' + label + '</button>'
   });
   vm.runInContext(client.slice(client.indexOf('  function filterOrders('), client.indexOf('  // Detail pesanan')), context);
