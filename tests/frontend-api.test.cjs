@@ -585,7 +585,8 @@ test('Filter tersedia menyaring stok/kuota aktif sebelum halaman serta bekerja d
   assert.deepEqual(ids(context.filterCatalogProducts(products, '', '')), ['a', 'b', 'c', 'd']);
   assert.match(client, /id="availability-filter"/);
   assert.ok(client.includes('class="catalog-filters"'));
-  assert.ok(client.includes('</select><div class="availability-option">'));
+  assert.ok(client.includes('<div class="availability-option">'));
+  assert.ok(client.includes('class="hv-category-pills"')); // Filter kategori berupa tombol, bukan select lama.
   assert.match(source('css/styles.css'), /\.catalog-filters #product-search \{ grid-column: 1 \/ -1; \}/);
   assert.ok(client.includes("availableOnly: true"));
   assert.ok(client.includes('state.availableOnly = event.target.checked'));
@@ -596,6 +597,7 @@ test('Render halaman hanya meminta foto produk pada halaman aktif', function () 
   const requested = [];
   const holder = {
     innerHTML: '',
+    classList: { toggle: function () {} },
     querySelectorAll: function () {
       return Array.from(this.innerHTML.matchAll(/data-photo="([^"]+)"/g), function (match) {
         return { dataset: { photo: match[1] } };
@@ -879,8 +881,8 @@ test('Dashboard menghitung KPI dan grafik dari data transaksi tanpa laporan leng
 
 test('Data Admin hanya memuat tabel menu aktif beserta kebutuhan formulirnya', function () {
   for (const [page, expected] of [
-    ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products']],
-    ['PreorderCapacity', ['PreorderCapacity', 'Products']], ['Discounts', ['Discounts', 'Products']],
+    ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products', 'Orders']],
+    ['PreorderCapacity', ['PreorderCapacity', 'Products', 'Orders']], ['Discounts', ['Discounts', 'Products']],
     ['Pesanan', ['Orders', 'Files', 'Shipping']], ['Laporan', ['Categories']],
     ['Pengaturan', ['Settings']], ['Backup', []], ['Users', ['Users']], ['ShippingRates', ['ShippingRates']]
   ]) {
@@ -2297,7 +2299,7 @@ test('Ikon aksi memiliki tooltip/nama aksesibel, urutan Edit-Hapus-Foto, dan hak
   assert.ok(html.includes('class="table products-table"'));
   assert.ok(html.includes('<th class="product-description-column">Keterangan</th>'));
   assert.ok(html.includes('<td class="product-description-column">Deskripsi produk uji</td>'));
-  assert.ok(html.includes('<th class="product-name-column">Nama</th>'));
+  assert.ok(html.includes('<th class="product-name-column">Nama Produk</th>'));
   assert.ok(html.includes('<td class="product-name-column">Produk Uji</td>'));
   assert.equal(context.state.admin.tables.Products[0].description, 'Deskripsi produk uji');
   assert.ok(html.includes('aria-label="Edit Produk" title="Edit"'));
