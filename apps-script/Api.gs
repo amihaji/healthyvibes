@@ -133,6 +133,7 @@ function dispatch_(request) {
     myOrders: ['Konsumen'],
     myOrderStatus: ['Konsumen'],
     myOrderUpload: ['Konsumen'],
+    myTestimonialSave: ['Konsumen'],
     myInvoice: ['Konsumen'],
     adminData: ['Admin', 'Operator', 'Viewer'],
     changePassword: ['Admin', 'Operator', 'Viewer', 'Konsumen'],
@@ -167,6 +168,7 @@ function dispatch_(request) {
     myOrders: function () { return myOrders_(user, data); },
     myOrderStatus: function () { return customerOrder_(accountOrderAccess_(user, data)); },
     myOrderUpload: function () { return upload_(null, data, user); },
+    myTestimonialSave: function () { return saveTestimonial_(user, data); },
     myInvoice: function () {
       return download_(null, Object.assign({}, data, { kind: 'INVOICE' }), user);
     },

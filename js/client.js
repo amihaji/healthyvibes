@@ -959,6 +959,50 @@
       buttonLabel('upload', 'Unggah Tanda Terima') + '</button></div></form>';
   }
 
+  // Form testimoni hanya tersedia setelah tanda terima tercatat di server.
+  function testimonialPanel(order) {
+    if (!order.handoverUploaded) { return ''; }
+    const existing = order.testimonial;
+    if (existing) {
+      const names = ['', 'Saya Kecewa', 'Kurang Memuaskan', 'Ok Kok', 'Enak', 'Enak Banget'];
+      return '<section class="order-section testimonial-panel"><h2 class="h5">Testimoni Anda</h2>' +
+        '<p class="testimonial-stars" aria-label="' + safe(existing.rating) + ' dari 5 bintang">' +
+        '★'.repeat(existing.rating) + '☆'.repeat(5 - existing.rating) + '</p>' +
+        '<p><strong>' + safe(names[existing.rating] || '') + '</strong></p>' +
+        (existing.aspects && existing.aspects.length ? '<p>Aspek: ' + safe(existing.aspects.join(', ')) + '</p>' : '') +
+        (existing.comment ? '<p class="text-break">' + safe(existing.comment) + '</p>' : '') +
+        '<p class="small text-secondary">Testimoni telah dikirim dan tidak dapat diedit.</p></section>';
+    }
+    return '<section class="order-section testimonial-panel" id="testimonial-section"><h2 class="h5">Form Testimoni</h2>' +
+      '<p>Bagaimana pengalaman Anda? Boleh diisi sekarang atau nanti melalui Pesanan Saya.</p>' +
+      '<form id="testimonial-form"><fieldset class="testimonial-rating"><legend class="form-label">Rating produk dan pelayanan</legend>' +
+      [1,2,3,4,5].map(function (n) {
+        return '<label class="testimonial-star-choice"><input type="radio" name="rating" value="' + n + '" required>' +
+          '<span aria-label="' + n + ' bintang">★</span></label>';
+      }).join('') + '</fieldset><div id="testimonial-fields" aria-live="polite"></div>' +
+      '<div id="testimonial-result" role="status" aria-live="polite"></div>' +
+      '<div class="testimonial-actions"><button type="submit" class="btn btn-green">Kirim Testimoni</button>' +
+      '<button type="button" class="btn btn-outline-dark" id="testimonial-later">Isi Nanti</button></div></form></section>';
+  }
+
+  function updateTestimonialFields(form) {
+    const rating = Number(form.elements.rating.value || 0);
+    const labels = ['', 'Saya Kecewa', 'Kurang Memuaskan', 'Ok Kok', 'Enak', 'Enak Banget'];
+    const faces = ['', '☹', '🙁', '😐', '🙂', '😄'];
+    const all = ['Kesegaran', 'Rasa', 'Kemasan', 'Porsi', 'Kualitas', 'Kebersihan', 'Ketepatan Waktu', 'Pelayanan'];
+    const options = rating <= 3 ? all : rating === 4 ? all.slice(6) : [];
+    form.querySelectorAll('.testimonial-star-choice span').forEach(function (star, index) {
+      star.style.color = index < rating ? '#d49a11' : '#a6a6a6';
+    });
+    const fields = form.querySelector('#testimonial-fields');
+    fields.innerHTML = rating ? '<p class="testimonial-mood"><span aria-hidden="true">' + faces[rating] + '</span> ' + labels[rating] + '</p>' +
+      (options.length ? '<fieldset><legend class="form-label">Apa yang perlu diperbaiki? (opsional)</legend><div class="testimonial-checks">' +
+        options.map(function (item) { return '<label><input type="checkbox" name="aspects" value="' + safe(item) + '"> ' + safe(item) + '</label>'; }).join('') +
+        '</div></fieldset>' : '') +
+      (rating === 5 ? '<label class="form-label" for="testimonial-comment">Masukan Anda (opsional)</label>' +
+        '<textarea id="testimonial-comment" name="comment" class="form-control" maxlength="1000" rows="3" placeholder="Tulis masukan Anda..."></textarea>' : '') : '';
+  }
+
   // Menampilkan status, jadwal, rincian produk, dan tindakan pelanggan secara terpisah.
   function renderOrder() {
     const order = state.order;
@@ -1003,7 +1047,7 @@
       '<label class="form-label">Struk bukti transfer (JPG/PNG/WebP)</label>' +
       '<input class="form-control mb-2" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>' +
       '<button class="btn btn-primary" type="submit">' + buttonLabel('upload', 'Unggah Bukti Transfer') + '</button></form>' : '') +
-      handoverForm(order) + '</section>';
+      handoverForm(order) + testimonialPanel(order) + '</section>';
   }
 
   // Form ringkas yang mendukung autofill tanpa menyimpan credential di browser.
@@ -2016,6 +2060,7 @@
     }
     if (button.dataset.userView) { viewUser(button.dataset.userView); return; }
     if (button.dataset.userReset) { resetUserDialog(button.dataset.userReset); return; }
+    if (button.id === 'testimonial-later') { document.getElementById('testimonial-section').hidden = true; return; }
     if (button.dataset.myOrder) {
       const token = state.token;
       const order = await rpc('myOrderStatus', { orderId: button.dataset.myOrder });
@@ -2194,6 +2239,12 @@
     }
   });
 
+  document.addEventListener('change', function (event) {
+    if (event.target.name === 'rating' && event.target.closest('#testimonial-form')) {
+      updateTestimonialFields(event.target.closest('#testimonial-form'));
+    }
+  });
+
   // Tombol submit dikunci selama request agar klik ganda tidak membuat dua operasi.
   document.addEventListener('submit', async function (event) {
     event.preventDefault();
@@ -2206,9 +2257,10 @@
     try {
       await submitAction(form);
     } catch (error) {
-      if (['login-form', 'order-action-form', 'handover-form', 'delete-master-form',
+      if (['login-form', 'order-action-form', 'handover-form', 'testimonial-form', 'delete-master-form',
         'request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)) {
         const selector = form.id === 'login-form' ? '#login-error'
+          : form.id === 'testimonial-form' ? '#testimonial-result'
           : form.id === 'handover-form' ? '#handover-result'
             : form.id === 'delete-master-form' ? '#delete-master-result'
               : ['request-reset-form', 'admin-reset-form', 'complete-reset-form'].includes(form.id)
@@ -2273,6 +2325,23 @@
       dialog.close();
       await navigate('admin');
       notify('Password diganti. Silakan login kembali.');
+    } else if (form.id === 'testimonial-form') {
+      if (!state.order || !state.order.handoverUploaded || state.order.testimonial) {
+        throw new Error('Testimoni tidak tersedia untuk pesanan ini.');
+      }
+      const rating = Number(form.elements.rating.value);
+      if (!rating) { throw new Error('Pilih rating terlebih dahulu.'); }
+      const aspects = Array.from(form.querySelectorAll('[name="aspects"]:checked')).map(function (input) { return input.value; });
+      const comment = form.elements.comment ? form.elements.comment.value : '';
+      const confirmed = await confirmAction('Kirim testimoni ini? Setelah dikirim, penilaian tidak dapat diedit.');
+      if (!confirmed) { return; }
+      const token = state.token;
+      const order = state.order;
+      const saved = await rpc('myTestimonialSave', { orderId: order.id, rating: rating, aspects: aspects, comment: comment });
+      if (token !== state.token || order !== state.order || state.page !== 'status') { return; }
+      state.order.testimonial = saved;
+      renderOrder();
+      notify('Testimoni berhasil dikirim. Terima kasih.');
     } else if (['proof-form', 'handover-form', 'product-photo-form'].includes(form.id)) {
       if (form.id === 'handover-form' && data.received !== 'on') {
         throw new Error('Konfirmasi bahwa produk sudah diterima terlebih dahulu.');

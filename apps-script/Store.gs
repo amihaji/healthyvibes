@@ -60,6 +60,14 @@ function sheetReadValue_(key, value, display, timezone) {
   return value;
 }
 
+// Pemetaan khusus Products: nama kolom Sheets Indonesia, API tetap kompatibel.
+const HV_PRODUCT_FIELD_MAP = {
+  satuan: 'unit', unitUkuran: 'sizeUnit', nilaiUkuran: 'sizeValue', idProduk: 'code'
+};
+function internalSheetKey_(sheetName, header) {
+  return sheetName === 'Products' ? (HV_PRODUCT_FIELD_MAP[header] || header) : header;
+}
+
 // API tetap memakai ISO UTC; Sheet memakai tanggal asli dengan tampilan 24 jam.
 function sheetWriteValue_(key, value) {
   const kind = temporalKind_(key);
@@ -74,6 +82,7 @@ function sheetWriteValue_(key, value) {
 }
 
 function writeSheetRow_(sheet, row, headers, record) {
+  const sheetName = sheet.getName();
   const range = sheet.getRange(row, 1, 1, headers.length);
   if (headers.some(function (key) { return temporalKind_(key); })) {
     const formats = range.getNumberFormats()[0];
@@ -82,7 +91,7 @@ function writeSheetRow_(sheet, row, headers, record) {
     })]);
   }
   range.setValues([headers.map(function (key) {
-    return sheetWriteValue_(key, record[key]);
+    return sheetWriteValue_(internalSheetKey_(sheetName, key), record[internalSheetKey_(sheetName, key)]);
   })]);
 }
 
@@ -144,7 +153,8 @@ function rows_(name) {
       const result = { _row: index + 2 };
       headers.forEach(function (key, position) {
         const value = values[position];
-        result[key] = sheetReadValue_(key, value, display && display[index][position], timezone);
+        const field = internalSheetKey_(name, key);
+        result[field] = sheetReadValue_(field, value, display && display[index][position], timezone);
       });
       return result;
     });

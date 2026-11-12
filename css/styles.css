@@ -1398,3 +1398,20 @@ body { background:var(--hv-canvas); }
 @media (max-width: 360px) {
   .order-detail-buttons > .btn { flex-basis: 100%; }
 }
+
+/* D.2.5: hanya form Testimoni pada halaman pesanan pelanggan. */
+.testimonial-panel { margin-top: 20px; }
+.testimonial-rating { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 12px 0; }
+.testimonial-rating legend { width: 100%; margin-bottom: 6px; }
+.testimonial-star-choice { cursor: pointer; position: relative; }
+.testimonial-star-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.testimonial-star-choice span { display: inline-flex; align-items: center; justify-content: center; font-size: 34px; color: #a6a6a6; border-radius: 8px; min-width: 42px; min-height: 44px; }
+
+.testimonial-star-choice:has(input:focus-visible) span { outline: 2px solid #075b53; outline-offset: 2px; }
+.testimonial-mood { font-weight: 650; font-size: 1.08rem; margin: 12px 0; }
+.testimonial-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.testimonial-checks label { display: flex; align-items: center; gap: 8px; }
+.testimonial-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.testimonial-actions .btn { min-height: 42px; }
+.testimonial-stars { color: #d49a11; font-size: 1.5rem; letter-spacing: 2px; }
+@media(max-width: 480px) { .testimonial-checks { grid-template-columns: 1fr; } .testimonial-actions .btn { flex: 1 1 100%; } }

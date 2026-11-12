@@ -7,7 +7,7 @@ const HV_SCHEMA = {
   Categories: ['id', 'name', 'active', 'updatedAt', 'code', 'productPrefix'],
   Products: [
     'id', 'categoryId', 'name', 'description', 'price',
-    'photoFileId', 'active', 'updatedAt', 'unit', 'sizeUnit', 'sizeValue', 'code'
+    'photoFileId', 'active', 'updatedAt', 'satuan', 'unitUkuran', 'nilaiUkuran', 'idProduk'
   ],
   Discounts: [
     'id', 'productId', 'type', 'value', 'startsAt', 'endsAt', 'active'
@@ -63,6 +63,7 @@ const HV_SCHEMA = {
     'id', 'requestId', 'orderId', 'productId', 'kind',
     'driveFileId', 'mimeType', 'size', 'createdAt', 'uploadedBy'
   ],
+  Testimonials: ['id', 'orderId', 'customerId', 'rating', 'aspectsJson', 'comment', 'createdAt'],
   AuditLog: ['id', 'createdAt', 'actorId', 'action', 'entityId', 'detail'],
   BackupLog: ['id', 'createdAt', 'folderId', 'databaseFileId', 'status']
 };
@@ -363,7 +364,7 @@ function normalizeProductUnits_(db) {
   const sheet = db.getSheetByName('Products');
   if (!sheet || sheet.getLastRow() < 2) { return 0; }
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const column = headers.indexOf('unit') + 1;
+  const column = headers.indexOf('satuan') + 1;
   if (!column) { return 0; }
   let changed = 0;
   sheet.getRange(2, column, sheet.getLastRow() - 1, 1).getValues().forEach(function (row, index) {

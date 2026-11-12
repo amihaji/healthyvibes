@@ -295,6 +295,15 @@ function customerOrder_(order) {
   result.handoverUploaded = rows_('Files').some(function (file) {
     return file.orderId === order.id && file.kind === 'TANDATERIMA';
   });
+  const testimonial = rows_('Testimonials').find(function (row) {
+    return row.orderId === order.id && row.customerId === order.customerId;
+  });
+  result.testimonial = testimonial ? {
+    rating: Number(testimonial.rating),
+    aspects: JSON.parse(testimonial.aspectsJson || '[]'),
+    comment: String(testimonial.comment || ''),
+    createdAt: testimonial.createdAt
+  } : null;
   return result;
 }
 
@@ -392,4 +401,37 @@ function fulfillment_(user, data) {
   });
   audit_(user, 'FULFILLMENT', order.id, data.status);
   return true;
+}
+
+// Testimoni: satu kali per pesanan, hanya pemilik akun setelah tanda terima berhasil.
+function saveTestimonial_(user, data) {
+  const order = accountOrderAccess_(user, data);
+  if (!rows_('Files').some(function (file) {
+    return file.orderId === order.id && file.kind === 'TANDATERIMA';
+  })) { throw new Error('Unggah tanda terima sebelum memberikan testimoni.'); }
+  if (rows_('Testimonials').some(function (row) { return row.orderId === order.id; })) {
+    throw new Error('Testimoni untuk pesanan ini sudah dikirim dan tidak dapat diubah.');
+  }
+  const rating = Number(data.rating);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error('Pilih rating 1 sampai 5 bintang.');
+  }
+  const allowed = rating <= 3
+    ? ['Kesegaran', 'Rasa', 'Kemasan', 'Porsi', 'Kualitas', 'Kebersihan', 'Ketepatan Waktu', 'Pelayanan']
+    : rating === 4 ? ['Ketepatan Waktu', 'Pelayanan'] : [];
+  const aspects = data.aspects;
+  if (!Array.isArray(aspects) || aspects.length > allowed.length ||
+      new Set(aspects).size !== aspects.length ||
+      aspects.some(function (value) { return allowed.indexOf(value) < 0; })) {
+    throw new Error('Pilihan aspek testimoni tidak valid.');
+  }
+  const comment = String(data.comment || '').trim();
+  if (comment.length > 1000) { throw new Error('Masukan maksimal 1000 karakter.'); }
+  const record = {
+    id: Utilities.getUuid(), orderId: order.id, customerId: user.id,
+    rating: rating, aspectsJson: JSON.stringify(aspects), comment: comment,
+    createdAt: new Date().toISOString()
+  };
+  append_('Testimonials', record);
+  return { rating: rating, aspects: aspects, comment: comment, createdAt: record.createdAt };
 }
