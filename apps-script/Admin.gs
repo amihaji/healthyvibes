@@ -218,7 +218,7 @@ function saveMaster_(user, data) {
     append_(table, record);
   }
   audit_(user, 'SAVE_' + table, record.id, old ? 'Edit' : 'Tambah');
-  return table === 'Users' ? userView_(record) : publicRecord_(record, HV_SCHEMA[table]);
+  return table === 'Users' ? userView_(record) : publicRecord_(record, HV_SCHEMA[table].map(function (key) { return internalSheetKey_(table, key); }));
 }
 
 // Penghapusan nyata hanya untuk master; relasi transaksi tidak boleh menjadi yatim.
@@ -348,7 +348,7 @@ function adminData_(user, data) {
         }
         return !sensitive.includes(key);
       });
-      const record = publicRecord_(row, fields);
+      const record = publicRecord_(row, fields.map(function (key) { return internalSheetKey_(name, key); }));
       if (name === 'Orders' && row.transactionState === 'COMMITTED') {
         Object.assign(record, orderAmounts_(row));
       }

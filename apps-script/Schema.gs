@@ -425,6 +425,8 @@ function assignMasterCodes_(db) {
   };
   const categories = read('Categories');
   const products = read('Products');
+  // Header Sheets berbahasa Indonesia; logika kode produk memakai field internal 'code'.
+  products.forEach(function (row) { row.code = row.idProduk; });
   const changes = [];
   const validate = function (records, field, pattern) {
     const seen = [];
@@ -446,7 +448,10 @@ function assignMasterCodes_(db) {
   });
   const set = function (table, row, key, value) {
     row[key] = value;
-    changes.push({ table: table, row: row._row, column: HV_SCHEMA[table].indexOf(key) + 1, value: value });
+    const header = table === 'Products' && key === 'code' ? 'idProduk' : key;
+    const column = HV_SCHEMA[table].indexOf(header) + 1;
+    if (column < 1) { throw new Error('Kolom ' + header + ' tidak ditemukan pada ' + table + '. Migrasi dihentikan.'); }
+    changes.push({ table: table, row: row._row, column: column, value: value });
   };
   categories.forEach(function (row) {
     if (!row.code) { set('Categories', row, 'code', nextMasterCode_('HV', 2, categories, db.getId())); }

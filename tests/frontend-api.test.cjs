@@ -1056,7 +1056,7 @@ test('Penulisan baris menjaga format kolom lain dan mencegah konversi jam ke 189
     setNumberFormats: function (value) { calls.push(['formats', value]); },
     setValues: function (value) { calls.push(['values', value]); }
   };
-  context.writeSheetRow_({ getRange: function () { return range; } }, 2,
+  context.writeSheetRow_({ getName: function () { return 'ServiceHours'; }, getRange: function () { return range; } }, 2,
     ['opens', 'createdAt', 'price'], {
       opens: '08:00', createdAt: '2026-11-02T09:00:00Z', price: 25000
     });
@@ -1863,7 +1863,10 @@ function shippingContext() {
   const createOrder = context.createOrder_;
   context.createOrder_ = data => createOrder(data, { id: 'consumer1', role: 'Konsumen' });
   context.append_ = (table, record) => {
-    const saved = Object.fromEntries(Array.from(schema[table], key => [key, record[key] == null ? '' : record[key]]));
+    const saved = Object.fromEntries(Array.from(schema[table], key => {
+      const field = table === 'Products' ? ({ satuan: 'unit', unitUkuran: 'sizeUnit', nilaiUkuran: 'sizeValue', idProduk: 'code' }[key] || key) : key;
+      return [field, record[field] == null ? '' : record[field]];
+    }));
     tables[table].push(saved);
     return saved;
   };
@@ -2713,7 +2716,7 @@ test('Migrasi Products menambahkan kolom kanan tanpa mengubah produk lama dan am
   context.extendSchemaColumns_(db, 'Products');
   context.extendSchemaColumns_(db, 'Products');
   assert.deepEqual(headers, expected);
-  assert.deepEqual(headers.slice(-4), ['unit', 'sizeUnit', 'sizeValue', 'code']);
+  assert.deepEqual(headers.slice(-4), ['satuan', 'unitUkuran', 'nilaiUkuran', 'idProduk']);
   assert.equal(columns, expected.length);
   assert.equal(JSON.stringify(product), before);
   assert.ok(source('apps-script/Schema.gs').includes("extendSchemaColumns_(db, 'Products')"));
@@ -2790,7 +2793,7 @@ test('Ejaan Slace dari data atau client lama disimpan kembali sebagai Slice', fu
 test('Migrasi ejaan hanya mengoreksi sel Slace dan aman dijalankan ulang', function () {
   const context = setupContext('owner@test', 'owner@test');
   const headers = Array.from(vm.runInContext('HV_SCHEMA.Products', context));
-  const column = headers.indexOf('unit') + 1;
+  const column = headers.indexOf('satuan') + 1;
   const data = [
     headers, ['p1', 'cat', 'Produk 1', '', 10000, '', true, '', 'Slace', 'gr', 100],
     ['p2', 'cat', 'Produk 2', '', 20000, '', true, '', 'Paket', 'ml', 250],
@@ -3010,7 +3013,7 @@ test('Header tidak sesuai menyebut posisi serta header aktual/harapan tanpa menu
       assert.ok(error.message.includes('Header yang diharapkan: ' + JSON.stringify(expected)));
       assert.ok(error.message.includes('inspectHealthyVibesSchema'));
       if (actual[9] === 'sizeValue') {
-        assert.ok(error.message.includes('posisi 10. Aktual: "sizeValue"; diharapkan: "sizeUnit"'));
+        assert.ok(error.message.includes('posisi 10. Aktual: "sizeValue"; diharapkan: "unitUkuran"'));
       }
       return true;
     });
@@ -3040,13 +3043,13 @@ test('Pemeriksaan header baca-saja membedakan skema lama valid dan urutan berbed
   });
   let products = context.inspectHealthyVibesSchema().find(row => row.table === 'Products');
   assert.equal(products.canAppend, true);
-  assert.deepEqual(Array.from(products.missingColumns), ['unit', 'sizeUnit', 'sizeValue', 'code']);
+  assert.deepEqual(Array.from(products.missingColumns), ['satuan', 'unitUkuran', 'nilaiUkuran', 'idProduk']);
   headers.Products.push('sizeValue', 'unit', 'sizeUnit');
   products = context.inspectHealthyVibesSchema().find(row => row.table === 'Products');
   assert.equal(products.canAppend, false);
   assert.equal(products.mismatches[0].column, 9);
   assert.equal(products.mismatches[0].actual, 'sizeValue');
-  assert.equal(products.mismatches[0].expected, 'unit');
+  assert.equal(products.mismatches[0].expected, 'satuan');
   assert.ok(logs.some(message => message.startsWith('Products: ')));
 });
 
