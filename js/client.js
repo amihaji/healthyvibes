@@ -1267,7 +1267,7 @@
       '<div><h1 class="h2 mb-1">Panel Pengelola</h1><p class="admin-account mb-0">' + safe(state.user.name) +
       ' (' + safe(state.user.role) + ')</p></div><div class="admin-actions">' +
       '<button class="btn btn-outline-dark" id="change-password" type="button">' + buttonLabel('key', 'Password') + '</button>' +
-      '<button class="btn btn-outline-dark" id="logout" type="button">' + buttonLabel('logout', 'Keluar') + '</button></div></div>' +
+      '</div></div>' +
       '<div class="admin-layout"><details class="admin-navigation" id="admin-navigation"' +
       (adminViewport.matches ? '' : ' open') + '><summary class="admin-menu-toggle">' +
       '<span class="admin-menu-title">' + buttonLabel('menu', 'Menu Pengelola') +
