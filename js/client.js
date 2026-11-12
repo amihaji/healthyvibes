@@ -1362,17 +1362,12 @@
     const orders = matching.slice(state.listPage * 20, (state.listPage + 1) * 20);
     document.getElementById('order-list').innerHTML =
       '<div class="table-wrap"><table class="table orders-table"><thead><tr>' +
-      '<th>No. Pesanan</th><th>Nama Konsumen</th><th>No HP</th><th>WhatsApp</th><th>Jadwal (WITA)</th><th>Total</th><th>Status</th><th class="record-action-cell">Aksi</th>' +
+      '<th>No. Pesanan</th><th>Nama Konsumen</th><th>No HP Konsumen</th><th>Jadwal (WITA)</th><th>Total</th><th>Status</th><th class="record-action-cell">Aksi</th>' +
       '</tr></thead><tbody>' + orders.map(function (order) {
         const phone = String(order.phone || '');
-        const digits = phone.replace(/\D/g, '');
-        const wa = /^0[0-9]{8,14}$/.test(digits) ? '62' + digits.slice(1) :
-          /^62[0-9]{8,14}$/.test(digits) ? digits : '';
         const contact = state.user.role === 'Viewer' ? '-' : safe(phone);
         return '<tr><td>' + safe(order.id) + '</td><td>' + safe(order.name || '-') +
-          '</td><td>' + contact + '</td><td>' + (wa && state.user.role !== 'Viewer' ?
-          '<a href="https://wa.me/' + wa + '" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp ' + safe(order.name) + '">Chat WA</a>' : '-') +
-          '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
+          '</td><td>' + contact + '</td><td>' + safe(dateText(order.date) + ' ' + order.time) + '</td><td>' + rupiah(order.total) +
           '</td><td>' + safe(paymentLabel(order.paymentStatus) + ' / ' + fulfillmentLabel(order.fulfillment)) +
           '</td><td class="record-action-cell">' + iconButton('eye', 'Lihat detail pesanan ' + order.id,
             'data-order="' + safe(order.id) + '"', 'Detail') + '</td></tr>';
