@@ -1397,7 +1397,7 @@
       (state.user.role !== 'Viewer' ? '<p>' + safe(order.name + ' | ' + order.phone) +
         '</p><p>' + safe(order.address) + '</p>' : '') +
       orderCharges(order) + orderStatusPanel(order) +
-      (state.user.role !== 'Viewer' ? '<div class="d-flex gap-2 flex-wrap mb-3">' +
+      (state.user.role !== 'Viewer' ? '<div class="d-flex gap-2 flex-wrap mb-3 order-detail-buttons">' +
       files.map(function (file) {
         return '<button class="btn btn-outline-dark" data-file="' + safe(file.driveFileId) +
           '" type="button">' + buttonLabel('eye', file.kind === 'STRUK'
