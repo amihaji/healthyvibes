@@ -1415,3 +1415,24 @@ body { background:var(--hv-canvas); }
 .testimonial-actions .btn { min-height: 42px; }
 .testimonial-stars { color: #d49a11; font-size: 1.5rem; letter-spacing: 2px; }
 @media(max-width: 480px) { .testimonial-checks { grid-template-columns: 1fr; } .testimonial-actions .btn { flex: 1 1 100%; } }
+
+/* D.2.5 UI patch: tombol Pesanan Saya dan checklist Testimoni saja. */
+.my-orders-toolbar { align-items: flex-start; align-self: flex-start; }
+.my-orders-toolbar > .btn {
+  width: auto; min-width: 0; min-height: 38px;
+  padding: 7px 12px; font-size: .875rem; line-height: 1.25;
+  flex: 0 0 auto; white-space: nowrap;
+}
+.testimonial-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.testimonial-checks label { min-width: 0; margin: 0; font-size: .95rem; line-height: 1.35; }
+.testimonial-checks input[type="checkbox"] { flex: 0 0 auto; margin: 0; }
+@media (max-width: 480px) {
+  .my-orders-toolbar > .btn { min-height: 36px; padding: 7px 10px; font-size: .8125rem; }
+  .testimonial-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
+  .testimonial-checks label { font-size: .875rem; }
+}
+@media (max-width: 360px) {
+  .my-orders-toolbar { width: 100%; }
+  .testimonial-checks { gap: 12px 8px; }
+  .testimonial-checks label { font-size: .8125rem; gap: 5px; }
+}

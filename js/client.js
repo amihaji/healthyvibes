@@ -357,7 +357,7 @@
     const result = state.customerOrders;
     app.innerHTML = '<section class="panel"><div class="d-flex justify-content-between gap-2 flex-wrap mb-3">' +
       '<div><h1 class="h3">Pesanan Saya</h1><p class="mb-0">' + safe(state.user.name) +
-      ' · ' + result.total + ' pesanan</p></div><div class="d-flex gap-2 flex-wrap">' +
+      ' · ' + result.total + ' pesanan</p></div><div class="d-flex gap-2 flex-wrap my-orders-toolbar">' +
       '<button class="btn btn-outline-dark btn-sm" data-nav="status" type="button">' +
       buttonLabel('refresh', 'Perbarui') + '</button><button class="btn btn-primary btn-sm" data-nav="shop" type="button">' +
       buttonLabel('menu', 'Belanja') + '</button></div></div>' +
