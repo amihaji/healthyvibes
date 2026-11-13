@@ -1483,3 +1483,26 @@ body { background:var(--hv-canvas); }
   .testimonial-panel .testimonial-checks { column-gap: 8px; row-gap: 0; }
   .testimonial-panel .testimonial-actions .btn { flex: 0 1 auto; }
 }
+
+/* D.2.5: posisikan blok dua kolom checklist tepat di tengah form. */
+.testimonial-panel .testimonial-checks {
+  width: min(100%, 360px);
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 0;
+  justify-content: center;
+}
+.testimonial-panel .testimonial-checks label {
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 24px;
+}
+@media (max-width: 480px) {
+  .testimonial-panel .testimonial-checks {
+    width: min(100%, 340px);
+    column-gap: 8px;
+  }
+}
