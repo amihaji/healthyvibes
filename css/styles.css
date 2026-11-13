@@ -1452,3 +1452,34 @@ body { background:var(--hv-canvas); }
 @media (max-width: 480px) {
   .testimonial-checks { row-gap: 4px; column-gap: 8px; }
 }
+
+/* D.2.5: ratakan isi form testimoni ke tengah dan rapatkan checklist. */
+.testimonial-panel { text-align: center; }
+.testimonial-panel .testimonial-rating { justify-content: center; }
+.testimonial-panel .testimonial-rating legend { text-align: center; }
+.testimonial-panel .testimonial-mood { text-align: center; }
+.testimonial-panel fieldset > legend.form-label { text-align: center; }
+.testimonial-panel .testimonial-checks {
+  width: min(100%, 480px);
+  margin: 0 auto 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 0;
+  column-gap: 12px;
+  grid-auto-rows: min-content;
+  align-content: start;
+}
+.testimonial-panel .testimonial-checks label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  min-height: 24px;
+  padding: 0;
+  margin: 0;
+  line-height: 1.2;
+}
+.testimonial-panel .testimonial-actions { justify-content: center; }
+@media (max-width: 480px) {
+  .testimonial-panel .testimonial-checks { column-gap: 8px; row-gap: 0; }
+  .testimonial-panel .testimonial-actions .btn { flex: 0 1 auto; }
+}
