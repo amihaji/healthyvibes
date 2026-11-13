@@ -1506,3 +1506,41 @@ body { background:var(--hv-canvas); }
     column-gap: 8px;
   }
 }
+
+/* D.2.5 hotfix: pusatkan grup checklist berdasarkan lebar isi aktual,
+   bukan berdasarkan dua kolom 50% pada container. */
+.testimonial-panel fieldset:has(> .testimonial-checks) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border: 0;
+}
+.testimonial-panel .testimonial-checks {
+  display: grid;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto 12px;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: clamp(14px, 4vw, 32px);
+  row-gap: 0;
+  justify-content: center;
+  justify-items: start;
+}
+.testimonial-panel .testimonial-checks label {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+}
+@media (max-width: 480px) {
+  .testimonial-panel .testimonial-checks {
+    width: max-content;
+    max-width: 100%;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    column-gap: 12px;
+  }
+}
