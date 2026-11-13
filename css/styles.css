@@ -1553,3 +1553,34 @@ body { background:var(--hv-canvas); }
 .product-card .hv-photo-discount { color: #fff; background: #c62828; }
 .product-card .hv-photo-favorite { color: #704400; background: #ffebaa; margin-left: auto; }
 @media (max-width: 420px) { .product-card .hv-photo-labels { top: 6px; left: 6px; right: 6px; } .product-card .hv-photo-discount, .product-card .hv-photo-favorite { padding: 4px 5px; font-size: 10px; } }
+
+
+/* D.2.6 hotfix: restore side-by-side product list after photo label wrapper. */
+.hv-products-list .product-card > .hv-photo-frame {
+  grid-column: 1;
+  grid-row: 1 / span 8;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.hv-products-list .product-card > .hv-photo-frame [data-photo] {
+  margin-bottom: 0;
+}
+.hv-products-list .product-card > :not(.hv-photo-frame) {
+  grid-column: 2;
+  min-width: 0;
+}
+.hv-products-list .product-card:not(:has(.hv-photo-frame [data-photo])) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.hv-products-list .product-card:not(:has(.hv-photo-frame [data-photo])) > * {
+  grid-column: 1;
+}
+@media (max-width: 359px) {
+  .hv-products-list .product-card > .hv-photo-frame {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .hv-products-list .product-card > :not(.hv-photo-frame) {
+    grid-column: 1;
+  }
+}
