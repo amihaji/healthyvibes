@@ -584,6 +584,17 @@
       '<span>Sampai: ' + safe(dateTimeText(discount.endsAt)) + ' WITA</span></div></div>';
   }
 
+  // Label foto tidak mempengaruhi harga atau aturan stok di server.
+  function photoLabels(product) {
+    let html = '';
+    if (product.discount && Number(product.price) > 0 && Number(product.unitPrice) < Number(product.price)) {
+      const percent = Math.round((Number(product.price) - Number(product.unitPrice)) * 100 / Number(product.price));
+      if (percent > 0) { html += '<span class="hv-photo-discount">Diskon ' + percent + '%</span>'; }
+    }
+    if (product.favorite) { html += '<span class="hv-photo-favorite">★ Favorit</span>'; }
+    return html ? '<div class="hv-photo-labels">' + html + '</div>' : '';
+  }
+
   // Menampilkan halaman produk aktif saja; foto halaman lain belum diminta ke server.
   function renderProducts() {
     if (photoObserver) { photoObserver.disconnect(); }
@@ -609,8 +620,10 @@
     document.getElementById('products').innerHTML = products.length
       ? pagination.items.map(function (product) {
         return '<article class="product-card">' +
+          '<div class="hv-photo-frame">' +
           (product.photoFileId ? '<div data-photo="' + safe(product.id) +
             '" data-photo-file="' + safe(product.photoFileId) + '"></div>' : '') +
+          photoLabels(product) + '</div>' +
           '<h2>' + safe(product.name) + '</h2>' + renderProductSpecs(product) + '<p class="description">' +
           safe(product.description) + '</p>' + renderProductDiscount(product) + '<small>Tersedia: ' + product.available +
           '</small><div class="price d-flex flex-wrap gap-2 justify-content-between align-items-center mt-2">' +

@@ -1544,3 +1544,12 @@ body { background:var(--hv-canvas); }
     column-gap: 12px;
   }
 }
+
+/* D.2.6: label promosi dan favorit pada sudut foto katalog. */
+.product-card .hv-photo-frame { position: relative; margin-bottom: 14px; }
+.product-card .hv-photo-frame [data-photo] { margin-bottom: 0; }
+.product-card .hv-photo-labels { position: absolute; top: 9px; left: 9px; right: 9px; display: flex; justify-content: space-between; align-items: flex-start; gap: 5px; pointer-events: none; flex-wrap: wrap; }
+.product-card .hv-photo-discount, .product-card .hv-photo-favorite { display: inline-block; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; line-height: 1.2; box-shadow: 0 1px 5px #0002; }
+.product-card .hv-photo-discount { color: #fff; background: #c62828; }
+.product-card .hv-photo-favorite { color: #704400; background: #ffebaa; margin-left: auto; }
+@media (max-width: 420px) { .product-card .hv-photo-labels { top: 6px; left: 6px; right: 6px; } .product-card .hv-photo-discount, .product-card .hv-photo-favorite { padding: 4px 5px; font-size: 10px; } }

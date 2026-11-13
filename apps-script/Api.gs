@@ -209,6 +209,21 @@ function catalog_(data) {
   const products = rows_('Products').filter(function (row) { return active_(row.active); });
   const discounts = rows_('Discounts');
   const orders = rows_('Orders');
+  // Favorit dihitung dari unit pada pesanan lunas yang tidak dibatalkan.
+  const sales = Object.create(null);
+  const validOrders = Object.create(null);
+  orders.forEach(function (order) {
+    if (order.paymentStatus === 'PAID' && order.transactionState === 'COMMITTED' &&
+        order.fulfillment !== 'CANCELLED') { validOrders[String(order.id)] = true; }
+  });
+  rows_('OrderItems').forEach(function (item) {
+    if (validOrders[String(item.orderId)]) {
+      const id = String(item.productId);
+      sales[id] = (sales[id] || 0) + Math.max(0, Number(item.quantity) || 0);
+    }
+  });
+  const leaders = Object.keys(sales).filter(function (id) { return sales[id] > 0; })
+    .sort(function (a, b) { return sales[b] - sales[a] || a.localeCompare(b); }).slice(0, 3);
   // Tabel stok dibaca satu kali untuk semua produk, bukan satu kali per produk.
   const pools = rows_(type === 'DIRECT' ? 'ReadyStock' : 'PreorderCapacity');
   let reserved = Object.create(null);
@@ -235,6 +250,7 @@ function catalog_(data) {
     const discount = discounts.find(function (row) {
       return row.productId === product.id && validPeriod_(row);
     });
+    view.favorite = leaders.indexOf(String(product.id)) !== -1;
     view.unitPrice = Number(product.price);
     if (discount && config.discountRounding) {
       const amount = discount.type === 'PERCENT'
@@ -247,7 +263,7 @@ function catalog_(data) {
       }
     }
     const pool = pools.find(function (row) {
-      return row.productId === product.id && (type === 'DIRECT' || row.date === schedule.date);
+      return row.productId === product.id && (type === 'DIRECT' || String(row.date).slice(0, 10) === schedule.date);
     });
     view.available = pool && reserved
       ? Math.max(0, Number(pool.capacity) - (reserved[pool.id] || 0)) : 0;
