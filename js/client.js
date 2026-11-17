@@ -752,7 +752,7 @@
         }), recipient.time);
       if (!state.token) {
         content += '<hr><h2 class="h5">Akun untuk Pesanan Saya</h2>' +
-          '<p class="small">Akun langsung aktif. Riwayat dan status pesanan dibuka melalui Login, tanpa kunci privat.</p>' +
+          '<p class="small">Akun langsung aktif. Riwayat dan status pesanan dibuka melalui Login</p>' +
           '<button class="btn btn-outline-dark btn-sm mb-3" id="checkout-login" type="button">' +
           buttonLabel('login', 'Sudah punya akun? Login') + '</button>' +
           field('Username (minimal 6 karakter)', 'username', '') +
