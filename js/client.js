@@ -608,7 +608,7 @@
             '<button class="btn btn-outline-dark" data-nav="shop" type="button">' +
             buttonLabel('refresh', 'Coba Lagi') + '</button>'
           : state.catalogSlow
-            ? 'Halaman sudah siap. Server Google masih menyiapkan harga dan stok terbaru; produk akan muncul otomatis.'
+            ? 'Tunggu lagi load data'
             : 'Mengambil harga dan stok terbaru...') + '</div>';
       return;
     }
