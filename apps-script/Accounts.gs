@@ -200,21 +200,27 @@ function registerCustomer_(data) {
   const users = rows_('Users');
   const existing = users.find(function (row) { return row.username === username; });
   if (existing) {
-    // Respons pendaftaran yang terputus dapat diulang hanya dengan password yang benar.
+    // Retry yang identik tetap bisa melanjutkan setelah respons jaringan terputus.
     if (existing.role === 'Konsumen' && existing.registrationId === registrationId &&
       existing.email === contact.email && existing.phone === contact.phone &&
       active_(existing.active) && !existing.blockedAt &&
       bcrypt_().compareSync(password, existing.passwordHash)) {
       return login_({ username: username, password: password });
     }
-    throw new Error('Username atau kontak sudah terdaftar. Gunakan Login atau Lupa Password.');
+    throw new Error('User ID sudah terdaftar. Pilih User ID lain atau gunakan Login atau Lupa Password.');
   }
-  if (users.some(function (row) {
+  const existingPhone = users.some(function (row) {
     const phone = String(row.phone || '').replace(/[ +()-]/g, '').replace(/^0/, '62');
-    return contact.email && String(row.email || '').trim().toLowerCase() === contact.email ||
-      contact.phone && phone === contact.phone;
-  })) {
-    throw new Error('Username atau kontak sudah terdaftar. Gunakan Login atau Lupa Password.');
+    return contact.phone && phone === contact.phone;
+  });
+  if (existingPhone) {
+    throw new Error('Nomor HP sudah terdaftar. Gunakan Login atau Lupa Password jika ini akun Anda.');
+  }
+  const existingEmail = users.some(function (row) {
+    return contact.email && String(row.email || '').trim().toLowerCase() === contact.email;
+  });
+  if (existingEmail) {
+    throw new Error('Email sudah terdaftar. Gunakan Login atau Lupa Password jika ini akun Anda.');
   }
   const user = append_('Users', Object.assign({}, contact, {
     id: id_(), username: username, name: name, role: 'Konsumen', active: true,

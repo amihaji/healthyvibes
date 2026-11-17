@@ -454,6 +454,18 @@ test('Pendaftaran menolak username/kontak ganda termasuk akun staf dan nonaktif'
   }
 });
 
+test('Pendaftaran memberi pesan spesifik untuk User ID, nomor HP, dan email ganda', () => {
+  for (const [changes, message] of [
+    [{ username: 'operator1' }, /User ID sudah terdaftar/],
+    [{ phone: '+62 812 3456 789' }, /Nomor HP sudah terdaftar/],
+    [{ email: 'OPERATOR@example.test' }, /Email sudah terdaftar/]
+  ]) {
+    const f = consumerFixture();
+    assert.throws(() => f.context.registerCustomer_({ ...f.signup, ...changes }), message);
+    assert.equal(f.tables.Users.length, 1);
+  }
+});
+
 test('Pendaftaran terputus aman diulang, tetapi requestId bukan bukti kepemilikan', () => {
   const f = consumerFixture();
   const first = f.login();
