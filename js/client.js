@@ -461,7 +461,7 @@
       '<img class="hero-image" src="image/Header_HealthyVibes.jpg" alt="Wafel dengan stroberi dan secangkir teh" fetchpriority="high" decoding="async">' +
       '<div class="hero-copy"><span class="hero-eyebrow">HEALTHY VIBES / PILIHAN SEHAT</span>' +
       '<h1 id="shop-title">Dibuat dengan sepenuh hati, dinikmati<br><span>setiap hari</span></h1>' +
-      '<p>Pesan langsung atau rencanakan menu sehat Anda untuk besok.</p>' +
+      '<p>Pesan langsung atau rencanakan cemilan Anda untuk besok</p>' +
       // PDF dibuka di tab baru agar halaman pemesanan tetap tersedia.
       '<a class="btn btn-primary hero-action" href="pdf/Katalog_Menu_Healthy_Vibes.pdf" target="_blank" rel="noopener" type="application/pdf">' +
       buttonLabel('menu', 'Lihat Katalog') + '</a>' +
