@@ -879,6 +879,28 @@ test('Dashboard menghitung KPI dan grafik dari data transaksi tanpa laporan leng
   assert.deepEqual(Object.keys(result.tables), []);
 });
 
+test('Dashboard mengelompokkan nominal dan unit berdasarkan bulan WITA, tanpa pesanan batal', function () {
+  const reads = [];
+  const context = adminContext({
+    Orders: [
+      { id: 'a', transactionState: 'COMMITTED', fulfillment: 'COMPLETED', total: 50000, createdAt: '2026-10-31T17:30:00Z' },
+      { id: 'b', transactionState: 'COMMITTED', fulfillment: 'CANCELLED', total: 90000, createdAt: '2026-11-02T00:00:00Z' },
+      { id: 'c', transactionState: 'COMMITTED', fulfillment: 'NEW', total: 25000, createdAt: '2026-10-15T00:00:00Z' }
+    ],
+    Payments: [], Categories: [], Products: [],
+    OrderItems: [{ orderId: 'a', quantity: 3 }, { orderId: 'b', quantity: 8 }, { orderId: 'c', quantity: 2 }]
+  }, reads);
+  context.clock_ = function (date) {
+    return { date: date ? new Date(date.getTime() + 8 * 3600000).toISOString().slice(0, 10) : '2026-11-20' };
+  };
+  const result = context.adminSummary_().monthlyTransactions;
+  assert.equal(result.length, 12);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.slice(-2))), [
+    { month: '2026-10', amount: 25000, units: 2 },
+    { month: '2026-11', amount: 50000, units: 3 }
+  ]);
+});
+
 test('Data Admin hanya memuat tabel menu aktif beserta kebutuhan formulirnya', function () {
   for (const [page, expected] of [
     ['Products', ['Products', 'Categories']], ['ReadyStock', ['ReadyStock', 'Products', 'Orders']],

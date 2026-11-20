@@ -414,6 +414,31 @@ function adminSummary_() {
       preorderTotals.set(name, (preorderTotals.get(name) || 0) + quantity);
     }
   });
+  // Grafik 12 bulan terakhir berdasarkan tanggal pembuatan transaksi (WITA).
+  // Pesanan dibatalkan tidak dihitung; nominal adalah total tagihan, bukan uang diterima.
+  const monthKeys = [];
+  const monthly = new Map();
+  const currentMonth = clock_().date.slice(0, 7);
+  const [currentYear, currentNumber] = currentMonth.split('-').map(Number);
+  for (let offset = 11; offset >= 0; offset--) {
+    const key = new Date(Date.UTC(currentYear, currentNumber - 1 - offset, 1)).toISOString().slice(0, 7);
+    monthKeys.push(key);
+    monthly.set(key, { month: key, amount: 0, units: 0 });
+  }
+  const monthlyOrders = new Map();
+  orders.forEach(function (order) {
+    if (order.fulfillment === 'CANCELLED' || !order.createdAt) { return; }
+    const date = new Date(order.createdAt);
+    if (isNaN(date.getTime())) { return; }
+    const key = clock_(date).date.slice(0, 7);
+    if (!monthly.has(key)) { return; }
+    monthly.get(key).amount += Number(order.total) || 0;
+    monthlyOrders.set(order.id, key);
+  });
+  items.forEach(function (item) {
+    const key = monthlyOrders.get(item.orderId);
+    if (key) { monthly.get(key).units += Number(item.quantity) || 0; }
+  });
   function series(map, limit, valueName) {
     return Array.from(map, function (entry) {
       return { name: entry[0], [valueName || 'value']: entry[1] };
@@ -429,6 +454,7 @@ function adminSummary_() {
       return order.type === 'PREORDER' && order.date === today && order.fulfillment !== 'CANCELLED';
     }).length,
     byCategory: series(categoryTotals), topProducts: series(productTotals, 5),
+    monthlyTransactions: monthKeys.map(function (key) { return monthly.get(key); }),
     preorderProducts: series(preorderTotals, undefined, 'quantity')
   };
 }

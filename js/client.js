@@ -1316,6 +1316,48 @@
       }).join('') : '<p class="text-secondary">Belum ada data transaksi yang dapat ditampilkan.</p>') + '</section>';
   }
 
+  // Grafik nominal bulanan: batang berbeda warna, dengan 12 bulan tetap terbaca di HP.
+  function monthlyAmountChart(rows) {
+    const max = Math.max(1, ...rows.map(function (row) { return Number(row.amount) || 0; }));
+    const colors = ['#0d766c', '#2879ae', '#e28a39', '#7c65b8', '#c15e75', '#278b82'];
+    return '<section class="panel hv-chart-panel hv-monthly-panel"><h2 class="h5">Total nominal transaksi per bulan</h2>' +
+      '<p class="hv-chart-note">12 bulan terakhir (WITA). Total tagihan pesanan, bukan pembayaran diterima. Pesanan batal tidak dihitung.</p>' +
+      '<div class="hv-monthly-scroll"><div class="hv-monthly-bars" role="img" aria-label="Grafik batang total nominal transaksi bulanan">' +
+      rows.map(function (row, index) {
+        const value = Math.max(0, Number(row.amount) || 0);
+        const height = value ? Math.max(4, value / max * 100) : 0;
+        return '<div class="hv-monthly-bar-item" title="' + safe(row.month + ': ' + rupiah(value)) + '">' +
+          '<span class="hv-monthly-bar-value">' + safe(value ? rupiah(value) : '0') + '</span>' +
+          '<div class="hv-monthly-bar-track"><div class="hv-monthly-bar" style="height:' + height + '%;background:' + colors[index % colors.length] + '"></div></div>' +
+          '<span class="hv-monthly-month">' + safe(row.month.slice(5) + '/' + row.month.slice(2, 4)) + '</span></div>';
+      }).join('') + '</div></div></section>';
+  }
+
+  // Grafik garis jumlah unit pesanan bulanan, tanpa dependensi library eksternal.
+  function monthlyUnitsChart(rows) {
+    const values = rows.map(function (row) { return Math.max(0, Number(row.units) || 0); });
+    const max = Math.max(1, ...values);
+    const points = values.map(function (value, index) {
+      return { x: 44 + index * 52, y: 175 - value / max * 145, value: value };
+    });
+    const line = points.map(function (point) { return point.x + ',' + point.y; }).join(' ');
+    const labels = rows.map(function (row, index) {
+      return '<text x="' + points[index].x + '" y="207" text-anchor="middle" class="hv-line-label">' + safe(row.month.slice(5) + '/' + row.month.slice(2, 4)) + '</text>';
+    }).join('');
+    return '<section class="panel hv-chart-panel hv-monthly-panel"><h2 class="h5">Jumlah item dipesan per bulan</h2>' +
+      '<p class="hv-chart-note">Total unit dari seluruh pesanan yang tidak dibatalkan, berdasarkan bulan transaksi (WITA).</p>' +
+      '<div class="hv-monthly-scroll"><svg class="hv-monthly-line" viewBox="0 0 660 225" role="img" aria-label="Grafik garis jumlah unit pesanan selama 12 bulan">' +
+      [0, .5, 1].map(function (fraction) {
+        const y = 175 - fraction * 145;
+        return '<line x1="44" y1="' + y + '" x2="616" y2="' + y + '" class="hv-line-grid" />' +
+          '<text x="36" y="' + (y + 4) + '" text-anchor="end" class="hv-line-axis">' + safe(String(Math.round(max * fraction))) + '</text>';
+      }).join('') + '<polyline points="' + line + '" fill="none" stroke="#167ca2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />' +
+      points.map(function (point, index) {
+        return '<circle cx="' + point.x + '" cy="' + point.y + '" r="4.5" fill="#167ca2"><title>' +
+          safe(rows[index].month + ': ' + point.value + ' unit') + '</title></circle>';
+      }).join('') + labels + '</svg></div></section>';
+  }
+
   // Menampilkan panel pengelola dan isi menu yang sedang dipilih.
   function renderAdmin() {
     renderAccountHeader();
@@ -1361,6 +1403,10 @@
         '<p>Data berasal dari transaksi tersimpan, bukan contoh.</p>' +
         '<p>Pembayaran pesanan baru sudah termasuk ongkir. Total penerimaan bukan laba.</p>' +
         '<button class="btn btn-green" id="refresh-admin" type="button">' + buttonLabel('refresh', 'Perbarui Data') + '</button></section>' +
+        '<div class="hv-dashboard-charts hv-monthly-charts">' +
+        monthlyAmountChart(kpi.monthlyTransactions || []) +
+        monthlyUnitsChart(kpi.monthlyTransactions || []) +
+        '</div>' +
         '<div class="hv-dashboard-charts">' +
         adminBars('Nilai transaksi per kategori', kpi.byCategory || [], rupiah) +
         adminBars('5 produk terlaris (jumlah unit)', kpi.topProducts || [], String) +

@@ -1650,3 +1650,24 @@ body { background:var(--hv-canvas); }
     white-space: nowrap;
   }
 }
+
+/* D.2.8 Dashboard: dua grafik bulanan berdampingan di desktop dan bertumpuk di HP. */
+.hv-monthly-charts { align-items:stretch; }
+.hv-monthly-panel { overflow:hidden; }
+.hv-chart-note { color:#586b71; font-size:.82rem; line-height:1.5; min-height:2.5em; }
+/* Area grafik boleh digeser horizontal pada layar sempit, tanpa mengecilkan tulisan. */
+.hv-monthly-scroll { width:100%; overflow-x:auto; overscroll-behavior-inline:contain; padding-bottom:5px; }
+.hv-monthly-bars { min-width:580px; height:255px; display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:7px; align-items:end; }
+.hv-monthly-bar-item { min-width:0; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:7px; }
+.hv-monthly-bar-value { font-size:.66rem; color:#42575b; white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg); max-height:62px; overflow:hidden; }
+.hv-monthly-bar-track { width:100%; height:155px; display:flex; align-items:flex-end; justify-content:center; border-bottom:1px solid #bdcbc8; }
+.hv-monthly-bar { width:75%; max-width:30px; border-radius:5px 5px 0 0; min-height:0; }
+.hv-monthly-month { font-size:.69rem; color:#3b5157; white-space:nowrap; }
+.hv-monthly-line { display:block; width:100%; min-width:580px; height:auto; }
+.hv-line-grid { stroke:#dce6e5; stroke-width:1; stroke-dasharray:4 4; }
+.hv-line-axis, .hv-line-label { fill:#56676c; font-size:11px; }
+/* Grafik kategori dan produk memiliki warna berbeda untuk memudahkan pembacaan. */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-fill { background:#2879ae; }
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(1) .hv-chart-row:nth-of-type(3n) .hv-chart-fill { background:#e28a39; }
+@media(max-width:1050px) { .hv-dashboard-charts { grid-template-columns:1fr; } }
+@media(max-width:600px) { .hv-dashboard-charts { gap:12px; margin:12px 0; } .hv-monthly-panel { padding:14px; } .hv-chart-note { min-height:0; } }
