@@ -1666,8 +1666,14 @@ body { background:var(--hv-canvas); }
 .hv-monthly-line { display:block; width:100%; min-width:580px; height:auto; }
 .hv-line-grid { stroke:#dce6e5; stroke-width:1; stroke-dasharray:4 4; }
 .hv-line-axis, .hv-line-label { fill:#56676c; font-size:11px; }
-/* Grafik kategori dan produk memiliki warna berbeda untuk memudahkan pembacaan. */
+/* Grafik Dashboard: setiap kategori memakai warna berbeda, berulang tiap 5 baris.
+   Berlaku hanya untuk panel "Nilai transaksi per kategori". Grafik lain tidak berubah. */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n+1) .hv-chart-fill { background:#17846d; } /* Hijau */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n+2) .hv-chart-fill { background:#2879ae; } /* Biru */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n+3) .hv-chart-fill { background:#e28a39; } /* Oranye */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n+4) .hv-chart-fill { background:#8657b7; } /* Ungu */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n) .hv-chart-fill { background:#c45472; } /* Merah muda */
+/* Produk terlaris tetap berwarna biru seperti revisi Dashboard sebelumnya. */
 .hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-fill { background:#2879ae; }
-.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(1) .hv-chart-row:nth-of-type(3n) .hv-chart-fill { background:#e28a39; }
 @media(max-width:1050px) { .hv-dashboard-charts { grid-template-columns:1fr; } }
 @media(max-width:600px) { .hv-dashboard-charts { gap:12px; margin:12px 0; } .hv-monthly-panel { padding:14px; } .hv-chart-note { min-height:0; } }
