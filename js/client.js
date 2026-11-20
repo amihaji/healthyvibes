@@ -460,7 +460,7 @@
     app.innerHTML = '<section class="hero shop-hero" aria-labelledby="shop-title">' +
       '<img class="hero-image" src="image/Header_HealthyVibes.jpg" alt="Wafel dengan stroberi dan secangkir teh" fetchpriority="high" decoding="async">' +
       '<div class="hero-copy"><span class="hero-eyebrow">HEALTHY VIBES / PILIHAN SEHAT</span>' +
-      '<h1 id="shop-title">Pilihan sehat,<br>untuk hari yang <span>lebih baik.</span></h1>' +
+      '<h1 id="shop-title">Dibuat dengan sepenuh hati,<br><span>dinikmati setiap hari</span></h1>' +
       '<p>Pesan langsung atau rencanakan menu sehat Anda untuk besok.</p>' +
       // PDF dibuka di tab baru agar halaman pemesanan tetap tersedia.
       '<a class="btn btn-primary hero-action" href="pdf/Katalog_Menu_Healthy_Vibes.pdf" target="_blank" rel="noopener" type="application/pdf">' +
