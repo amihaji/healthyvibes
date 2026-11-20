@@ -1628,3 +1628,25 @@ body { background:var(--hv-canvas); }
     width: clamp(22px, 28%, 38px);
   }
 }
+
+/* D.2.8: Label Diskon dan Favorit khusus List pada HP.
+   Perkecil font dan jarak agar keduanya tetap sejajar di bagian atas foto.
+   Grid dan tampilan desktop tidak berubah; watermark tetap di kanan bawah. */
+@media (min-width: 360px) and (max-width: 600px) {
+  .hv-products-list .product-card .hv-photo-labels {
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    gap: 2px;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+  .hv-products-list .product-card .hv-photo-discount,
+  .hv-products-list .product-card .hv-photo-favorite {
+    padding: 3px 4px;
+    border-radius: 4px;
+    font-size: 8px;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+}
