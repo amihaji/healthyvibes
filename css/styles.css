@@ -1611,3 +1611,20 @@ body { background:var(--hv-canvas); }
     width: clamp(48px, 24%, 76px);
   }
 }
+
+/* WATERMARK KHUSUS TAMPILAN LIST D.2.8
+   Foto List lebih sempit daripada Grid, sehingga ukuran logo dibatasi
+   agar tidak mendominasi foto atau menutupi label Diskon/Favorit.
+   Posisi kanan bawah dan efek cahaya dari aturan utama tetap berlaku. */
+.hv-products-list .product-card .hv-photo-frame:has([data-photo])::after {
+  right: 4px;
+  bottom: 4px;
+  width: clamp(24px, 30%, 44px);
+}
+@media (max-width: 420px) {
+  .hv-products-list .product-card .hv-photo-frame:has([data-photo])::after {
+    right: 3px;
+    bottom: 3px;
+    width: clamp(22px, 28%, 38px);
+  }
+}
