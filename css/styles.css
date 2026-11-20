@@ -1586,17 +1586,21 @@ body { background:var(--hv-canvas); }
 }
 
 
-/* D.2.8: watermark logo transparan pada kanan bawah foto katalog.
-   Berlaku untuk Grid dan List, tanpa mengubah struktur HTML atau event. */
+/* WATERMARK PRODUK D.2.8
+   Logo berada di kanan bawah foto produk, berlaku pada tampilan Grid dan List.
+   Ukuran 2x dari versi sebelumnya: desktop 56-104px dan HP 48-76px.
+   brightness + drop-shadow membuat logo lebih terang dan berpendar.
+   pointer-events: none memastikan watermark tidak menghalangi klik produk. */
 .product-card .hv-photo-frame:has([data-photo])::after {
   content: "";
   position: absolute;
   right: 8px;
   bottom: 8px;
-  width: clamp(28px, 13%, 52px);
+  width: clamp(56px, 26%, 104px);
   aspect-ratio: 1 / 1;
   background: url("../image/Logo_HealthyVibes_Trans.png") center / contain no-repeat;
-  opacity: .72;
+  opacity: 1;
+  filter: brightness(1.35) drop-shadow(0 0 4px rgba(255,255,255,.95)) drop-shadow(0 0 9px rgba(255,255,255,.8));
   pointer-events: none;
   z-index: 2;
 }
@@ -1604,6 +1608,6 @@ body { background:var(--hv-canvas); }
   .product-card .hv-photo-frame:has([data-photo])::after {
     right: 5px;
     bottom: 5px;
-    width: clamp(24px, 12%, 38px);
+    width: clamp(48px, 24%, 76px);
   }
 }
