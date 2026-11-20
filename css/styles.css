@@ -1673,7 +1673,12 @@ body { background:var(--hv-canvas); }
 .hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n+3) .hv-chart-fill { background:#e28a39; } /* Oranye */
 .hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n+4) .hv-chart-fill { background:#8657b7; } /* Ungu */
 .hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:first-child .hv-chart-row:nth-of-type(5n) .hv-chart-fill { background:#c45472; } /* Merah muda */
-/* Produk terlaris tetap berwarna biru seperti revisi Dashboard sebelumnya. */
-.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-fill { background:#2879ae; }
+/* D.2.8: Lima produk terlaris memiliki warna berbeda untuk memudahkan pembacaan.
+   Warna mengikuti urutan peringkat produk, bukan nama produk. */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-row:nth-of-type(5n+1) .hv-chart-fill { background:#2879ae; } /* Biru */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-row:nth-of-type(5n+2) .hv-chart-fill { background:#17846d; } /* Hijau */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-row:nth-of-type(5n+3) .hv-chart-fill { background:#e28a39; } /* Oranye */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-row:nth-of-type(5n+4) .hv-chart-fill { background:#8657b7; } /* Ungu */
+.hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-row:nth-of-type(5n) .hv-chart-fill { background:#c45472; } /* Merah muda */
 @media(max-width:1050px) { .hv-dashboard-charts { grid-template-columns:1fr; } }
 @media(max-width:600px) { .hv-dashboard-charts { gap:12px; margin:12px 0; } .hv-monthly-panel { padding:14px; } .hv-chart-note { min-height:0; } }
