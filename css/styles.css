@@ -1584,3 +1584,26 @@ body { background:var(--hv-canvas); }
     grid-column: 1;
   }
 }
+
+
+/* D.2.8: watermark logo transparan pada kanan bawah foto katalog.
+   Berlaku untuk Grid dan List, tanpa mengubah struktur HTML atau event. */
+.product-card .hv-photo-frame:has([data-photo])::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: clamp(28px, 13%, 52px);
+  aspect-ratio: 1 / 1;
+  background: url("../image/Logo_HealthyVibes_Trans.png") center / contain no-repeat;
+  opacity: .72;
+  pointer-events: none;
+  z-index: 2;
+}
+@media (max-width: 420px) {
+  .product-card .hv-photo-frame:has([data-photo])::after {
+    right: 5px;
+    bottom: 5px;
+    width: clamp(24px, 12%, 38px);
+  }
+}
