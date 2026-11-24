@@ -3422,3 +3422,17 @@ test('Halaman produk dijepit setelah data dihapus dan tidak memengaruhi tabel la
   context.renderMaster('Users');
   assert.equal(context.state.masterTable, 'Users');
 });
+
+test('D.2.9: hanya enam tabel master memakai Aksi sticky dan data satu baris di HP', function () {
+  const { context, body } = masterPaginationContext(1);
+  for (const table of ['Categories', 'ReadyStock', 'PreorderCapacity', 'Discounts', 'ServiceHours', 'ShippingRates', 'Products', 'Vouchers', 'ServiceAreas']) {
+    context.renderMaster(table);
+    assert.equal(body.innerHTML.includes('hv-mobile-sticky-table'),
+      ['Categories', 'ReadyStock', 'PreorderCapacity', 'Discounts', 'ServiceHours', 'ShippingRates'].includes(table), table);
+  }
+  const css = source('css/styles.css');
+  const mobile = css.slice(css.indexOf('/* D.2.9: Enam tabel master'));
+  assert.match(mobile, /@media \(max-width: 767px\)/);
+  assert.match(mobile, /\.hv-mobile-sticky-table td\s*\{[^}]*white-space: nowrap;/);
+  assert.match(mobile, /\.hv-mobile-sticky-table \.record-action-cell\s*\{[^}]*position: sticky;[^}]*right: 0;/);
+});

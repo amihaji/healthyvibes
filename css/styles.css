@@ -1682,3 +1682,29 @@ body { background:var(--hv-canvas); }
 .hv-dashboard-charts:not(.hv-monthly-charts) .hv-chart-panel:nth-child(2) .hv-chart-row:nth-of-type(5n) .hv-chart-fill { background:#c45472; } /* Merah muda */
 @media(max-width:1050px) { .hv-dashboard-charts { grid-template-columns:1fr; } }
 @media(max-width:600px) { .hv-dashboard-charts { gap:12px; margin:12px 0; } .hv-monthly-panel { padding:14px; } .hv-chart-note { min-height:0; } }
+
+/* D.2.9: Enam tabel master khusus HP. Data utuh satu baris;
+   kolom Aksi menempel di kanan area scroll, bukan di kanan layar.
+   Latar solid dan bayangan memisahkan Aksi dari data yang bergeser. */
+@media (max-width: 767px) {
+  #admin-body .hv-mobile-sticky-table th,
+  #admin-body .hv-mobile-sticky-table td {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  #admin-body .hv-mobile-sticky-table .record-action-cell {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: -5px 0 10px #08192e18;
+  }
+  #admin-body .hv-mobile-sticky-table thead .record-action-cell {
+    z-index: 3;
+    background: #eef5f0;
+  }
+  #admin-body .hv-mobile-sticky-table tbody tr:hover .record-action-cell {
+    background: #f5faf6;
+  }
+}

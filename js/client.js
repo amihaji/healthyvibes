@@ -1801,6 +1801,8 @@
       'value="' + safe(table === 'Products' ? state.masterSearch || '' : '') + '">' +
       '<div class="table-wrap"><table class="table' + (table === 'Products' ? ' products-table' : '') +
       (table === 'Vouchers' ? ' vouchers-table' : '') +
+      // Penanda khusus enam tabel agar aturan mobile tidak mengenai menu lain.
+      (['Categories', 'ReadyStock', 'PreorderCapacity', 'Discounts', 'ServiceHours', 'ShippingRates'].includes(table) ? ' hv-mobile-sticky-table' : '') +
       '"><thead><tr>' +
       keys.map(function (key) {
         const label = { weekday: 'Hari', opens: 'Jam buka WITA', closes: 'Jam tutup WITA',
