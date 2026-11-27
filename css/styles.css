@@ -1708,3 +1708,9 @@ body { background:var(--hv-canvas); }
     background: #f5faf6;
   }
 }
+
+/* Login: sembunyikan ikon mata bawaan Microsoft Edge agar hanya
+   tombol tampil/sembunyikan password milik Healthy Vibes yang terlihat. */
+#login-pass::-ms-reveal {
+  display: none;
+}
