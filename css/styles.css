@@ -190,7 +190,25 @@
     min-height: 44px;
     padding: 6px;
   }
-  .header-user:hover { text-decoration: underline; }
+  /* Nama user: garis bawah orange seperti navigasi Home dan Katalog. */
+  .header-user { position: relative; }
+  .header-user::after {
+    content: "";
+    position: absolute;
+    bottom: 5px;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    background: var(--orange);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .2s ease;
+    pointer-events: none;
+  }
+  .header-user:hover,
+  .header-user:focus-visible { text-decoration: none; color: #03413c; }
+  .header-user:hover::after,
+  .header-user:focus-visible::after { transform: scaleX(1); }
   .site-header.is-authenticated .site-nav { min-width: 0; flex-wrap: wrap; row-gap: 8px; }
 
   /* Menggunakan huruf tebal yang konsisten untuk judul utama. */
